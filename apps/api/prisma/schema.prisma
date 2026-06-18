@@ -1,0 +1,135 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  MODERATOR
+}
+
+enum UserStatus {
+  ACTIVE
+  BANNED
+  UNVERIFIED
+  DELETED
+}
+
+enum DeviceType {
+  WEB
+  MOBILE
+}
+
+enum AuthProvider {
+  GOOGLE
+}
+
+model accounts {
+  id        String     @id @default(auto()) @map("_id") @db.ObjectId
+  email     String     @unique
+  name      String
+  password  String
+  avatarUrl String
+  role      UserRole
+  status    UserStatus @default(UNVERIFIED)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  deletedAt DateTime?
+
+  //Relationships
+  sessions          sessions[]
+  authProviders     auth_providers[]
+  documents         documents[]      @relation("authorId")
+  reviewedDocuments documents[]      @relation("reviewedById")
+}
+
+model auth_providers {
+  id                String       @id @default(auto()) @map("_id") @db.ObjectId
+  provider          AuthProvider
+  providerAccountId String
+  accountId         String       @db.ObjectId
+  account           accounts     @relation(fields: [accountId], references: [id])
+  email             String
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@unique([provider, providerAccountId])
+  @@unique([provider, accountId])
+}
+
+model sessions {
+  id           String     @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String     @db.ObjectId
+  user         accounts   @relation(fields: [userId], references: [id])
+  refreshToken String
+  deviceId     String
+  deviceType   DeviceType
+  isRevoked    Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  expiresAt    DateTime
+
+  @@unique([userId, deviceId])
+}
+
+model schools {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  code      String   @unique
+  createdAt DateTime @default(now())
+
+  //Relationships
+  subjects subjects[]
+}
+
+model subjects {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  code      String   @unique
+  schoolId  String   @db.ObjectId
+  createdAt DateTime @default(now())
+
+  //Relationships
+  documents documents[]
+  school    schools     @relation(fields: [schoolId], references: [id])
+}
+
+enum DocumentStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+  DELETED
+}
+
+model documents {
+  id              String         @id @default(auto()) @map("_id") @db.ObjectId
+  title           String
+  description     String?
+  fileUrl         String
+  publicId        String
+  sizeInBytes     Int
+  format          String
+  resourceType    String
+  subjectId       String?        @db.ObjectId
+  status          DocumentStatus @default(PENDING)
+  authorId        String         @db.ObjectId
+  isPublic        Boolean        @default(false)
+  reviewedById    String?        @db.ObjectId
+  reviewedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  deletedAt       DateTime?
+
+  //Relationships
+  subject  subjects? @relation(fields: [subjectId], references: [id])
+  author   accounts  @relation("authorId", fields: [authorId], references: [id])
+  reviewer accounts? @relation("reviewedById", fields: [reviewedById], references: [id])
+}

@@ -1,0 +1,2 @@
+// Superseded by the unified SettingsPage shared across all roles.
+export { SettingsPage as ModeratorSettingsPage } from "./SettingsPage";

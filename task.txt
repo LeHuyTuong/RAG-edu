@@ -1,0 +1,49 @@
+DANH SÁCH TASK DỰ ÁN AI STUDY HUB
+---------------------------------
+
+[BACKEND]
+1. Task: Bổ sung theo dõi lượt tải/xem vào Prisma
+   Expected Outcome: Cập nhật model `documents` thêm trường `downloadCount` và `viewCount` (Int, default: 0). Chạy prisma generate thành công.
+   Note: Cần đảm bảo schema tương thích với MongoDB hiện tại.
+
+2. Task: API tăng lượt xem/tải tài liệu
+   Expected Outcome: Endpoint `PATCH /documents/:id/stats` hoạt động, cho phép increment lượt xem/tải.
+   Note: Cần cơ chế bảo mật tránh spam lượt tải ảo.
+
+3. Task: Xây dựng API Admin Settings
+   Expected Outcome: CRUD cho bảng `settings` hoàn tất, Admin có thể cấu hình size file và loại file.
+   Note: Bảo mật Role-based Access Control (RBAC).
+
+4. Task: Cấu hình Worker xử lý AI (BullMQ)
+   Expected Outcome: Redis & BullMQ worker kết nối thành công, có thể nhận job test.
+   Note: Chạy worker dưới dạng process riêng để không ảnh hưởng API.
+
+5. Task: Tích hợp Gemini API trích xuất nội dung
+   Expected Outcome: Function trích xuất text từ file PDF/Docx hoạt động, lưu được text vào DB.
+   Note: Sử dụng Gemini 1.5 Flash để tiết kiệm token.
+
+[FRONTEND WEB]
+6. Task: Trang Admin Settings (Web)
+   Expected Outcome: UI quản lý cấu hình hệ thống kết nối thành công với API Settings mới.
+   Note: Sử dụng các component AdminPrimitives đã có.
+
+7. Task: Avatar Upload thực tế (Profile)
+   Expected Outcome: Người dùng có thể đổi ảnh đại diện, ảnh được lưu trực tiếp trên Cloudinary.
+   Note: Cần cập nhật cả ở trang Profile và Header.
+
+8. Task: UI Badge trạng thái AI xử lý
+   Expected Outcome: Badge hiển thị trạng thái "Processing", "Summarized" xuất hiện trên Card tài liệu.
+   Note: Hiển thị real-time hoặc cập nhật sau khi load lại trang.
+
+[MOBILE]
+9. Task: Refactor Upload trực tiếp trên Mobile
+   Expected Outcome: App Mobile upload file thẳng lên Cloudinary (unsigned) thay vì gửi qua API.
+   Note: Giảm tải cho server và đồng bộ logic với Web.
+
+10. Task: Xóa Mock Data màn hình Library (Mobile)
+    Expected Outcome: Màn hình thư viện hiển thị dữ liệu thật từ API Documents.
+    Note: Cần xử lý các trạng thái Empty/Error đẹp mắt.
+
+11. Task: Nút Download tài liệu trên Mobile
+    Expected Outcome: Người dùng tải được file về bộ nhớ điện thoại thông qua link Cloudinary.
+    Note: Sử dụng thư viện expo-file-system hoặc Linking để mở link.

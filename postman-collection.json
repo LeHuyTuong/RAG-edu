@@ -1,0 +1,962 @@
+{
+  "info": {
+    "_postman_id": "ai-study-hub-api",
+    "name": "AI Study Hub API",
+    "description": "Current API collection for AI Study Hub. Includes web cookie auth, mobile bearer auth, password recovery, accounts, documents, and subjects.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "123456"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/",
+              "host": ["{{base_url}}"],
+              "path": [""]
+            },
+            "description": "Simple API root endpoint."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Auth - Web Cookie Flow",
+      "item": [
+        {
+          "name": "Signup (sets email-verification cookie)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('signup response is successful', function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 201]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"name\": \"{{name}}\",\n  \"password\": \"{{password}}\",\n  \"avatarUrl\": \"{{avatar_url}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/signup",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "signup"]
+            },
+            "description": "Web signup creates an UNVERIFIED account, sends a verification email, and sets an httpOnly accessToken cookie for resend verification."
+          },
+          "response": []
+        },
+        {
+          "name": "Resend Verification Email (web cookie)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/resend-verification-email",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "resend-verification-email"]
+            },
+            "description": "Requires the email-verification accessToken cookie from signup. Postman should keep the cookie automatically."
+          },
+          "response": []
+        },
+        {
+          "name": "Verify Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{verification_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/verify-email",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "verify-email"]
+            },
+            "description": "Paste the token from the verification email. The API clears the signup accessToken cookie after verification."
+          },
+          "response": []
+        },
+        {
+          "name": "Signin Web (sets accessToken cookie)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const data = body.data || {};",
+                  "if (data.refreshToken) pm.collectionVariables.set('web_refresh_token', data.refreshToken);",
+                  "pm.test('web signin response is successful', function () {",
+                  "  pm.expect(pm.response.code).to.eql(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"deviceId\": \"{{web_device_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/signin",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "signin"]
+            },
+            "description": "Web login sets httpOnly accessToken cookie and returns refreshToken in the response body."
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Web Access Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const data = body.data || {};",
+                  "if (data.accessToken) pm.collectionVariables.set('web_access_token', data.accessToken);",
+                  "pm.test('refresh response is successful', function () {",
+                  "  pm.expect(pm.response.code).to.eql(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{web_refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "refresh"]
+            },
+            "description": "Refresh requires refreshToken in the body. The returned accessToken can be copied into bearer requests if needed."
+          },
+          "response": []
+        },
+        {
+          "name": "Change Password (web cookie)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"{{password}}\",\n  \"newPassword\": \"{{new_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/change-password",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "change-password"]
+            },
+            "description": "Requires a valid accessToken cookie from web signin."
+          },
+          "response": []
+        },
+        {
+          "name": "Logout (web cookie)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "logout"]
+            },
+            "description": "Requires a valid accessToken cookie from web signin and revokes the current device session."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Auth - Mobile Bearer Flow",
+      "item": [
+        {
+          "name": "Signup Mobile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"name\": \"{{name}}\",\n  \"password\": \"{{password}}\",\n  \"avatarUrl\": \"{{avatar_url}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/signup",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "signup"]
+            },
+            "description": "Mobile uses the same signup endpoint as web. Verify the email token before mobile signin."
+          },
+          "response": []
+        },
+        {
+          "name": "Mobile Signin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const data = body.data || {};",
+                  "if (data.accessToken) pm.collectionVariables.set('mobile_access_token', data.accessToken);",
+                  "if (data.refreshToken) pm.collectionVariables.set('mobile_refresh_token', data.refreshToken);",
+                  "pm.test('mobile signin response is successful', function () {",
+                  "  pm.expect(pm.response.code).to.eql(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"deviceId\": \"{{mobile_device_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/mobile-signin",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "mobile-signin"]
+            },
+            "description": "Mobile login returns both accessToken and refreshToken in the response body."
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Mobile Access Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const data = body.data || {};",
+                  "if (data.accessToken) pm.collectionVariables.set('mobile_access_token', data.accessToken);",
+                  "pm.test('mobile refresh response is successful', function () {",
+                  "  pm.expect(pm.response.code).to.eql(200);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{mobile_refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "refresh"]
+            },
+            "description": "Refresh requires refreshToken in the body and stores the returned accessToken into mobile_access_token."
+          },
+          "response": []
+        },
+        {
+          "name": "Change Password (mobile bearer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobile_access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"{{password}}\",\n  \"newPassword\": \"{{new_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/change-password",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "change-password"]
+            },
+            "description": "Requires mobile_access_token from mobile signin or refresh."
+          },
+          "response": []
+        },
+        {
+          "name": "Logout (mobile bearer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobile_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "logout"]
+            },
+            "description": "Revokes the current mobile device session."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Password Recovery",
+      "item": [
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/forgot-password",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "forgot-password"]
+            },
+            "description": "Anti-enumeration endpoint. Always returns the generic reset email message for unknown/inactive accounts."
+          },
+          "response": []
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{password_reset_token}}\",\n  \"password\": \"{{new_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/reset-password",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "reset-password"]
+            },
+            "description": "Consumes a reset token from email, updates the password, and revokes active sessions for that account."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Documents",
+      "item": [
+        {
+          "name": "Create Document",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobile_access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Physics Chapter 1\",\n  \"description\": \"Introduction to mechanics\",\n  \"fileUrl\": \"https://example.com/docs/physics-ch1.pdf\",\n  \"publicId\": \"physics-ch1-public-id\",\n  \"sizeInBytes\": 2048576,\n  \"format\": \"pdf\",\n  \"resourceType\": \"raw\",\n  \"subjectId\": \"{{subject_id}}\",\n  \"isPublic\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/documents",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "documents"]
+            },
+            "description": "Requires an active user access token. subjectId is optional, but isPublic is required by the API DTO."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Documents",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/documents?page=1&limit=10&include=author,subject",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "documents"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "include",
+                  "value": "author,subject"
+                },
+                {
+                  "key": "subjectId",
+                  "value": "{{subject_id}}",
+                  "disabled": true
+                },
+                {
+                  "key": "authorId",
+                  "value": "{{account_id}}",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "ACTIVE",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Public list endpoint. Optional bearer/cookie auth can reveal documents visible to the current user."
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Documents",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobile_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/documents/me?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "documents", "me"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Requires auth and returns documents owned by the current user."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Document by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/documents/{{document_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "documents", "{{document_id}}"]
+            },
+            "description": "Public detail endpoint with optional auth visibility."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Document",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobile_access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Physics Chapter 1 - Updated\",\n  \"description\": \"Introduction to mechanics and motion\",\n  \"isPublic\": false,\n  \"subjectId\": \"{{subject_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/documents/{{document_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "documents", "{{document_id}}"]
+            },
+            "description": "Requires owner access."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Document",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobile_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/documents/{{document_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "documents", "{{document_id}}"]
+            },
+            "description": "Requires owner access."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Subjects",
+      "item": [
+        {
+          "name": "Create Subject (admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Physics\",\n  \"code\": \"PHY101\",\n  \"schoolId\": \"{{school_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/subjects",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "subjects"]
+            },
+            "description": "Requires ADMIN role."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Subjects",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/subjects?page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "subjects"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                },
+                {
+                  "key": "schoolId",
+                  "value": "{{school_id}}",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Public list endpoint."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Subject by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/subjects/{{subject_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "subjects", "{{subject_id}}"]
+            },
+            "description": "Public detail endpoint."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Subject (admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Physics Advanced\",\n  \"code\": \"PHY201\",\n  \"schoolId\": \"{{school_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/subjects/{{subject_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "subjects", "{{subject_id}}"]
+            },
+            "description": "Requires ADMIN role."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Subject (admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/subjects/{{subject_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "subjects", "{{subject_id}}"]
+            },
+            "description": "Requires ADMIN role."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Accounts",
+      "item": [
+        {
+          "name": "Create Account (admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{managed_email}}\",\n  \"name\": \"Managed User\",\n  \"password\": \"{{password}}\",\n  \"avatarUrl\": \"{{avatar_url}}\",\n  \"role\": \"USER\",\n  \"status\": \"ACTIVE\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/accounts",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "accounts"]
+            },
+            "description": "Requires ADMIN role."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Accounts (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/accounts",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "accounts"]
+            },
+            "description": "Requires ADMIN role."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Account by ID (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/accounts/{{account_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "accounts", "{{account_id}}"]
+            },
+            "description": "Requires ADMIN role."
+          },
+          "response": []
+        },
+        {
+          "name": "Ban Account (admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{admin_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/accounts/{{account_id}}/ban",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "accounts", "{{account_id}}", "ban"]
+            },
+            "description": "Requires ADMIN role."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Own Account (user)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobile_access_token}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated User\",\n  \"avatarUrl\": \"{{avatar_url}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/accounts/{{account_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "accounts", "{{account_id}}"]
+            },
+            "description": "Requires USER role and the path id must match the authenticated user."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Own Account (user)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{mobile_access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/v1/accounts/{{account_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "accounts", "{{account_id}}"]
+            },
+            "description": "Requires USER role and the path id must match the authenticated user."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test('response has valid status code', function () {",
+          "  pm.expect(pm.response.code).to.be.below(500);",
+          "});"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "email",
+      "value": "user@example.com",
+      "type": "string"
+    },
+    {
+      "key": "managed_email",
+      "value": "managed-user@example.com",
+      "type": "string"
+    },
+    {
+      "key": "name",
+      "value": "John Doe",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "securepassword123",
+      "type": "string"
+    },
+    {
+      "key": "new_password",
+      "value": "newsecurepassword123",
+      "type": "string"
+    },
+    {
+      "key": "avatar_url",
+      "value": "https://example.com/avatar.jpg",
+      "type": "string"
+    },
+    {
+      "key": "web_device_id",
+      "value": "postman-web",
+      "type": "string"
+    },
+    {
+      "key": "mobile_device_id",
+      "value": "postman-mobile",
+      "type": "string"
+    },
+    {
+      "key": "verification_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "password_reset_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "web_refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "web_access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "mobile_access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "mobile_refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "admin_access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "account_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "document_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "subject_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "school_id",
+      "value": "default-school",
+      "type": "string"
+    }
+  ]
+}

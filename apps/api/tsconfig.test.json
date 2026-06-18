@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "strict": false,
+    "noImplicitAny": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "types": ["jest", "node"],
+    "skipLibCheck": true
+  },
+  "include": [
+    "src/**/*.spec.ts",
+    "test/**/*.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

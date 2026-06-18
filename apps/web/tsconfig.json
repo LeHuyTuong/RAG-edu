@@ -1,0 +1,47 @@
+{
+  "extends": "@repo/typescript-config/nextjs.json",
+  "compilerOptions": {
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@repo/tokens": ["../../packages/tokens/src/index.ts"],
+      "@repo/tokens/web": ["../../packages/tokens/src/web.ts"],
+      "@/*": ["./src/*"],
+      "@/types": ["./src/types/index.ts"],
+      "@/config/*": ["./src/config/*"],
+      "@/config": ["./src/config/index.ts"],
+      "@/utils": ["./src/utils/index.ts"],
+      "@/hooks": ["./src/hooks/index.ts"],
+      "@/stores": ["./src/stores/index.ts"],
+      "@/lib": ["./src/lib/index.ts"],
+      "@/lib/*": ["./src/lib/*"],
+      "@/stores/*": ["./src/stores/*"],
+      "@/shared/*": ["./src/shared/*"],
+      "@/mockdata": ["./src/mockdata/index.ts"],
+      "@/data/*": ["./src/data/*"],
+      "@/components": ["./src/components"],
+      "@/components/*": ["./src/components/*"],
+      "@/modules": ["./src/modules"],
+      "@/modules/*": ["./src/modules/*"]
+    },
+    "strictNullChecks": true
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "next-env.d.ts",
+    "next.config.js",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "tests/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx"
+  ]
+}

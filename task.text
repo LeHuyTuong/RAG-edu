@@ -1,0 +1,73 @@
+DANH SÁCH TASK DỰ ÁN AI STUDY HUB
+---------------------------------
+
+[BACKEND]
+1. Task: Bổ sung theo dõi lượt tải/xem vào Prisma
+   Expected Outcome: Cập nhật model `documents` thêm trường `downloadCount` và `viewCount` (Int, default: 0). Chạy prisma generate thành công.
+   Note: Cần đảm bảo schema tương thích với MongoDB hiện tại.
+
+2. Task: API tăng lượt xem/tải tài liệu
+   Expected Outcome: Endpoint `PATCH /documents/:id/stats` hoạt động, cho phép increment lượt xem/tải.
+   Note: Cần cơ chế bảo mật tránh spam lượt tải ảo.
+
+3. Task: Xây dựng API Admin Settings
+   Expected Outcome: CRUD cho bảng `settings` hoàn tất, Admin có thể cấu hình size file và loại file.
+   Note: Bảo mật Role-based Access Control (RBAC).
+
+4. Task: Cấu hình Worker xử lý AI (BullMQ)
+   Expected Outcome: Redis & BullMQ worker kết nối thành công, có thể nhận job test.
+   Note: Chạy worker dưới dạng process riêng để không ảnh hưởng API.
+
+5. Task: Tích hợp Gemini API trích xuất nội dung
+   Expected Outcome: Function trích xuất text từ file PDF/Docx hoạt động, lưu được text vào DB.
+   Note: Sử dụng Gemini 1.5 Flash để tiết kiệm token.
+
+[FRONTEND WEB]
+6. Task: Trang Admin Settings (Web)
+   Expected Outcome: UI quản lý cấu hình hệ thống kết nối thành công với API Settings mới.
+   Note: Cần kết nối các trường giới hạn dung lượng file và định dạng file.
+
+7. Task: Tối ưu Quản lý Người dùng (Admin)
+   Expected Outcome: Chuyển cơ chế Tìm kiếm & Lọc người dùng sang phía Server (API).
+   Note: Hiện tại đang lọc ở Client, sẽ chậm khi số lượng User lớn.
+
+8. Task: Hiển thị Thống kê thật (My Documents)
+   Expected Outcome: Thay thế các placeholder "—" bằng lượt xem và lượt tải thực tế từ API.
+   Note: Đợi Backend hoàn thành task 1 và 2.
+
+9. Task: Khung giao diện Bình luận (Web)
+   Expected Outcome: Triển khai UI cho danh sách bình luận và form gửi bình luận ở trang chi tiết.
+   Note: Hiện tại đang để "Sắp ra mắt". Có thể dùng dữ liệu mock trước nếu Backend chưa có API.
+
+10. Task: Kết nối Global Search (Home/Header)
+    Expected Outcome: Khi gõ tìm kiếm ở trang chủ hoặc Header, trình duyệt sẽ chuyển sang trang Library với từ khóa tìm kiếm tương ứng.
+    Note: Đồng bộ param `search` giữa Header và trang Library.
+
+11. Task: Avatar Upload thực tế (Profile)
+    Expected Outcome: Người dùng có thể đổi ảnh đại diện qua Cloudinary trực tiếp từ trang Profile.
+    Note: Cần cập nhật state toàn cục để Avatar ở Header cũng thay đổi theo.
+
+[MOBILE]
+12. Task: Hoàn thiện luồng Upload file thật (Mobile)
+    Expected Outcome: Tích hợp `expo-document-picker` để chọn file từ máy, upload trực tiếp lên Cloudinary (unsigned) và lưu metadata về API.
+    Note: Thay thế hoàn toàn sample file và logic mock hiện tại.
+
+13. Task: Kết nối API thật cho màn hình Profile (Mobile)
+    Expected Outcome: Hiển thị thông tin User từ `GET /accounts/:id` và lưu thông tin qua `PATCH /accounts/:id`.
+    Note: Thay thế dữ liệu tĩnh `INITIAL_PROFILE` và logic setTimeout.
+
+14. Task: Màn hình Moderator thực tế (Mobile)
+    Expected Outcome: Danh sách chờ duyệt lấy từ `GET /documents?status=PENDING`. Các nút Duyệt/Từ chối gọi đúng API endpoint.
+    Note: Phân quyền chỉ cho user có role MODERATOR hoặc ADMIN thấy màn hình này.
+
+15. Task: Logic Tìm kiếm tài liệu (Mobile)
+    Expected Outcome: Thanh search ở tab Search gọi API `GET /documents?search=...` và hiển thị kết quả.
+    Note: Cần kết hợp với phân trang để tối ưu hiệu năng.
+
+16. Task: Xóa Mock Data màn hình Library & Detail (Mobile)
+    Expected Outcome: Màn hình thư viện và chi tiết tài liệu hiển thị 100% dữ liệu từ API.
+    Note: Đảm bảo các template route đã được chuyển sang route chính thức.
+
+17. Task: Nút Download tài liệu trên Mobile
+    Expected Outcome: Người dùng tải được file về bộ nhớ điện thoại thông qua link Cloudinary.
+    Note: Sử dụng thư viện expo-file-system hoặc Linking để mở link.

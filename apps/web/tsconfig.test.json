@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "strict": false,
+    "noImplicitAny": false,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "types": ["vitest/globals", "node"],
+    "skipLibCheck": true
+  },
+  "include": [
+    "src/**/*.{ts,tsx}",
+    "tests/**/*.{ts,tsx}",
+    "next-env.d.ts",
+    "next.config.js",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": ["node_modules"]
+}
