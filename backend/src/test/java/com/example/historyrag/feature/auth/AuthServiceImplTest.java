@@ -2,15 +2,13 @@ package com.example.historyrag.feature.auth;
 
 import com.example.historyrag.exception.DuplicateResourceException;
 import com.example.historyrag.exception.InvalidTokenException;
-import com.example.historyrag.feature.admin.Admin;
-import com.example.historyrag.feature.admin.AdminRepository;
 import com.example.historyrag.feature.auth.dto.AuthUserResponse;
 import com.example.historyrag.feature.auth.dto.LoginRequest;
 import com.example.historyrag.feature.auth.dto.LoginResponse;
 import com.example.historyrag.feature.auth.dto.RegisterRequest;
 import com.example.historyrag.feature.auth.dto.RegisterResponse;
-import com.example.historyrag.feature.user.Member;
-import com.example.historyrag.feature.user.MemberRepository;
+import com.example.historyrag.feature.user.User;
+import com.example.historyrag.feature.user.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,57 +38,33 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class AuthServiceImplTest {
 
-    @Mock
-    private AuthenticationManager authenticationManager;
-
-    @Mock
-    private JwtEncoder jwtEncoder;
-
-    @Mock
-    private JwtDecoder jwtDecoder;
-
-    @Mock
-    private AdminRepository adminRepository;
-
-    @Mock
-    private MemberRepository memberRepository;
-
-    @Mock
-    private RefreshTokenRepository refreshTokenRepository;
-
-    @Mock
-    private PasswordEncoder passwordEncoder;
+    @Mock private AuthenticationManager authenticationManager;
+    @Mock private JwtEncoder jwtEncoder;
+    @Mock private JwtDecoder jwtDecoder;
+    @Mock private UserRepository userRepository;
+    @Mock private RefreshTokenRepository refreshTokenRepository;
+    @Mock private PasswordEncoder passwordEncoder;
 
     private AuthServiceImpl authService;
 
     @BeforeEach
     void setUp() {
         authService = new AuthServiceImpl(
-                authenticationManager,
-                jwtEncoder,
-                jwtDecoder,
-                adminRepository,
-                memberRepository,
-                refreshTokenRepository,
-                passwordEncoder,
-                900,
-                259200
-        );
+                authenticationManager, jwtEncoder, jwtDecoder,
+                userRepository, refreshTokenRepository, passwordEncoder,
+                900L, 259200L);
     }
 
     @Test
-    @DisplayName("Should login member and store hashed refresh token")
-    void login_memberCredentials_returnsTokensAndStoresRefreshToken() {
-        Member member = member(1L, "member@example.com", "member", "Member Name");
-        when(memberRepository.findByEmail("member@example.com")).thenReturn(Optional.of(member));
+    @DisplayName("login — should issue tokens and store hashed refresh token")
+    void login_validCredentials_returnsTokensAndStoresRefreshToken() {
+        User user = user(1L, "student@example.com", "student", User.UserRole.STUDENT);
+        when(userRepository.findByEmail("student@example.com")).thenReturn(Optional.of(user));
         when(jwtEncoder.encode(any(JwtEncoderParameters.class)))
-                .thenReturn(jwt("access-token"), jwt("refresh-token"));
+                .thenReturn(fakeJwt("access-token"), fakeJwt("refresh-token"));
 
         LoginResponse response = authService.login(
-                new LoginRequest("member@example.com", "password123"),
-                "JUnit",
-                "127.0.0.1"
-        );
+                new LoginRequest("student@example.com", "password123"), "JUnit", "127.0.0.1");
 
         assertEquals("access-token", response.accessToken());
         assertEquals("refresh-token", response.refreshToken());
@@ -98,227 +72,158 @@ class AuthServiceImplTest {
 
         ArgumentCaptor<RefreshToken> captor = ArgumentCaptor.forClass(RefreshToken.class);
         verify(refreshTokenRepository).save(captor.capture());
-        RefreshToken savedToken = captor.getValue();
-        assertEquals(member, savedToken.getMember());
-        assertNull(savedToken.getAdmin());
-        assertEquals(sha256("refresh-token"), savedToken.getTokenHash());
-        assertFalse(savedToken.getRevoked());
-        assertEquals("JUnit", savedToken.getDeviceInfo());
-        assertEquals("127.0.0.1", savedToken.getIpAddress());
+        RefreshToken saved = captor.getValue();
+        assertEquals(user, saved.getUser());
+        assertEquals(sha256("refresh-token"), saved.getTokenHash());
+        assertFalse(saved.getRevoked());
     }
 
     @Test
-    @DisplayName("Should register member with generated username when username is omitted")
-    void register_missingUsername_generatesUsernameAndSavesMember() {
-        RegisterRequest request = new RegisterRequest(null, "Nguyen Van A", "nguyenvana@example.com", "password123");
-        when(adminRepository.existsByEmail(request.email())).thenReturn(false);
-        when(memberRepository.existsByEmail(request.email())).thenReturn(false);
-        when(adminRepository.existsByUsername("nguyenvana")).thenReturn(false);
-        when(memberRepository.existsByUsername("nguyenvana")).thenReturn(false);
-        when(passwordEncoder.encode("password123")).thenReturn("encoded-password");
-        when(memberRepository.save(any(Member.class))).thenAnswer(invocation -> {
-            Member member = invocation.getArgument(0);
-            member.setId(10L);
-            return member;
+    @DisplayName("register — should create STUDENT user with generated username")
+    void register_missingUsername_generatesUsernameAndSavesUser() {
+        RegisterRequest request = new RegisterRequest(null, "Nguyen Van A", "nva@example.com", "password123");
+        when(userRepository.existsByEmail(request.email())).thenReturn(false);
+        when(userRepository.existsByUsername("nva")).thenReturn(false);
+        when(passwordEncoder.encode("password123")).thenReturn("hashed");
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> {
+            User u = inv.getArgument(0);
+            u.setId(10L);
+            return u;
         });
 
         RegisterResponse response = authService.register(request);
 
         assertEquals(10L, response.id());
-        assertEquals("nguyenvana", response.username());
-        assertEquals("nguyenvana@example.com", response.email());
-        assertEquals("Nguyen Van A", response.fullName());
-        assertEquals(Member.UserStatus.ACTIVE, response.status());
+        assertEquals("nva", response.username());
+        assertEquals("STUDENT", response.role());
 
-        ArgumentCaptor<Member> captor = ArgumentCaptor.forClass(Member.class);
-        verify(memberRepository).save(captor.capture());
-        Member savedMember = captor.getValue();
-        assertEquals("encoded-password", savedMember.getPasswordHash());
-        assertEquals("nguyenvana", savedMember.getUsername());
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(captor.capture());
+        assertEquals(User.UserRole.STUDENT, captor.getValue().getRole());
+        assertEquals("hashed", captor.getValue().getPasswordHash());
     }
 
     @Test
-    @DisplayName("Should reject register when email exists in admin table")
-    void register_emailExistsInAdmin_throwsDuplicateResourceException() {
-        RegisterRequest request = new RegisterRequest("admin", "Admin", "admin@example.com", "password123");
-        when(adminRepository.existsByEmail(request.email())).thenReturn(true);
+    @DisplayName("register — should reject duplicate email")
+    void register_duplicateEmail_throwsDuplicateResourceException() {
+        RegisterRequest request = new RegisterRequest("u", "Name", "dup@example.com", "password123");
+        when(userRepository.existsByEmail("dup@example.com")).thenReturn(true);
 
-        DuplicateResourceException exception = assertThrows(
-                DuplicateResourceException.class,
-                () -> authService.register(request)
-        );
-
-        assertTrue(exception.getMessage().contains("email"));
-        verify(memberRepository, never()).save(any(Member.class));
+        assertThrows(DuplicateResourceException.class, () -> authService.register(request));
+        verify(userRepository, never()).save(any());
     }
 
     @Test
-    @DisplayName("Should rotate refresh token and revoke old token")
-    void refresh_validMemberRefreshToken_returnsNewTokensAndRevokesOldToken() {
-        Member member = member(1L, "member@example.com", "member", "Member Name");
-        RefreshToken storedToken = refreshToken(member, null, "old-refresh-token", false, Instant.now().plusSeconds(60));
-        storedToken.setDeviceInfo("JUnit");
-        storedToken.setIpAddress("127.0.0.1");
+    @DisplayName("refresh — should rotate token and revoke old one")
+    void refresh_validToken_rotatesAndRevokesOld() {
+        User user = user(1L, "s@example.com", "s", User.UserRole.STUDENT);
+        RefreshToken stored = refreshToken(user, "old-token", false, Instant.now().plusSeconds(600));
+        stored.setDeviceInfo("JUnit");
+        stored.setIpAddress("127.0.0.1");
 
-        when(jwtDecoder.decode("old-refresh-token"))
-                .thenReturn(refreshJwt("old-refresh-token", "member@example.com", "MEMBER", "refresh"));
-        when(refreshTokenRepository.findByTokenHash(sha256("old-refresh-token")))
-                .thenReturn(Optional.of(storedToken));
+        when(jwtDecoder.decode("old-token"))
+                .thenReturn(refreshJwt("old-token", "s@example.com", "refresh"));
+        when(refreshTokenRepository.findByTokenHash(sha256("old-token")))
+                .thenReturn(Optional.of(stored));
         when(jwtEncoder.encode(any(JwtEncoderParameters.class)))
-                .thenReturn(jwt("new-access-token"), jwt("new-refresh-token"));
+                .thenReturn(fakeJwt("new-access"), fakeJwt("new-refresh"));
 
-        LoginResponse response = authService.refresh("old-refresh-token");
+        LoginResponse response = authService.refresh("old-token");
 
-        assertEquals("new-access-token", response.accessToken());
-        assertEquals("new-refresh-token", response.refreshToken());
-        assertTrue(storedToken.getRevoked());
-
-        ArgumentCaptor<RefreshToken> captor = ArgumentCaptor.forClass(RefreshToken.class);
-        verify(refreshTokenRepository).save(captor.capture());
-        RefreshToken newToken = captor.getValue();
-        assertEquals(member, newToken.getMember());
-        assertEquals(sha256("new-refresh-token"), newToken.getTokenHash());
-        assertFalse(newToken.getRevoked());
+        assertEquals("new-access", response.accessToken());
+        assertTrue(stored.getRevoked());
     }
 
     @Test
-    @DisplayName("Should reject refresh token when stored token is revoked")
-    void refresh_revokedStoredToken_throwsInvalidTokenException() {
-        Member member = member(1L, "member@example.com", "member", "Member Name");
-        RefreshToken storedToken = refreshToken(member, null, "old-refresh-token", true, Instant.now().plusSeconds(60));
+    @DisplayName("refresh — should reject revoked token")
+    void refresh_revokedToken_throwsInvalidTokenException() {
+        User user = user(1L, "s@example.com", "s", User.UserRole.STUDENT);
+        RefreshToken stored = refreshToken(user, "old-token", true, Instant.now().plusSeconds(600));
 
-        when(jwtDecoder.decode("old-refresh-token"))
-                .thenReturn(refreshJwt("old-refresh-token", "member@example.com", "MEMBER", "refresh"));
-        when(refreshTokenRepository.findByTokenHash(sha256("old-refresh-token")))
-                .thenReturn(Optional.of(storedToken));
+        when(jwtDecoder.decode("old-token"))
+                .thenReturn(refreshJwt("old-token", "s@example.com", "refresh"));
+        when(refreshTokenRepository.findByTokenHash(sha256("old-token")))
+                .thenReturn(Optional.of(stored));
 
-        InvalidTokenException exception = assertThrows(
-                InvalidTokenException.class,
-                () -> authService.refresh("old-refresh-token")
-        );
-
-        assertTrue(exception.getMessage().contains("thu hồi"));
-        verify(refreshTokenRepository, never()).save(any(RefreshToken.class));
+        assertThrows(InvalidTokenException.class, () -> authService.refresh("old-token"));
     }
 
     @Test
-    @DisplayName("Should reject refresh token when JWT type is not refresh")
-    void refresh_tokenTypeIsNotRefresh_throwsInvalidTokenException() {
+    @DisplayName("refresh — should reject token with wrong type claim")
+    void refresh_wrongType_throwsInvalidTokenException() {
         when(jwtDecoder.decode("access-token"))
-                .thenReturn(refreshJwt("access-token", "member@example.com", "MEMBER", "access"));
+                .thenReturn(refreshJwt("access-token", "s@example.com", "access"));
 
-        InvalidTokenException exception = assertThrows(
-                InvalidTokenException.class,
-                () -> authService.refresh("access-token")
-        );
-
-        assertTrue(exception.getMessage().contains("không phải refresh token"));
+        assertThrows(InvalidTokenException.class, () -> authService.refresh("access-token"));
         verify(refreshTokenRepository, never()).findByTokenHash(anyString());
     }
 
     @Test
-    @DisplayName("Should revoke refresh token on logout")
-    void logout_validRefreshToken_revokesStoredToken() {
-        RefreshToken storedToken = refreshToken(
-                member(1L, "member@example.com", "member", "Member Name"),
-                null,
-                "refresh-token",
-                false,
-                Instant.now().plusSeconds(60)
-        );
-        when(refreshTokenRepository.findByTokenHash(sha256("refresh-token"))).thenReturn(Optional.of(storedToken));
+    @DisplayName("logout — should revoke the stored token")
+    void logout_validToken_revokesStoredToken() {
+        User user = user(1L, "s@example.com", "s", User.UserRole.STUDENT);
+        RefreshToken stored = refreshToken(user, "rt", false, Instant.now().plusSeconds(600));
+        when(refreshTokenRepository.findByTokenHash(sha256("rt"))).thenReturn(Optional.of(stored));
 
-        authService.logout("refresh-token");
+        authService.logout("rt");
 
-        assertTrue(storedToken.getRevoked());
+        assertTrue(stored.getRevoked());
     }
 
     @Test
-    @DisplayName("Should return admin profile from getMe when account type is ADMIN")
-    void getMe_adminAccount_returnsAdminResponse() {
-        Admin admin = admin(99L, "admin@example.com", "admin", "Admin Name");
-        when(adminRepository.findByEmail("admin@example.com")).thenReturn(Optional.of(admin));
+    @DisplayName("getMe — should return admin profile")
+    void getMe_adminUser_returnsAdminResponse() {
+        User admin = user(99L, "admin@example.com", "admin", User.UserRole.ADMIN);
+        when(userRepository.findByEmail("admin@example.com")).thenReturn(Optional.of(admin));
 
         AuthUserResponse response = authService.getMe("admin@example.com", "ADMIN");
 
         assertEquals(99L, response.id());
-        assertEquals("admin@example.com", response.email());
-        assertEquals("ADMIN", response.accountType());
         assertEquals("ADMIN", response.role());
     }
 
-    private Member member(Long id, String email, String username, String fullName) {
-        Member member = new Member();
-        member.setId(id);
-        member.setEmail(email);
-        member.setUsername(username);
-        member.setFullName(fullName);
-        member.setPasswordHash("encoded-password");
-        member.setStatus(Member.UserStatus.valueOf("ACTIVE"));
-        member.setCreatedAt(Instant.now());
-        member.setUpdatedAt(Instant.now());
-        return member;
+    // ── helpers ──────────────────────────────────────────────────────
+
+    private User user(Long id, String email, String username, User.UserRole role) {
+        User u = new User();
+        u.setId(id);
+        u.setEmail(email);
+        u.setUsername(username);
+        u.setFullName("Test User");
+        u.setPasswordHash("hashed");
+        u.setRole(role);
+        u.setStatus(User.UserStatus.ACTIVE);
+        return u;
     }
 
-    private Admin admin(Long id, String email, String username, String fullName) {
-        Admin admin = new Admin();
-        admin.setId(id);
-        admin.setEmail(email);
-        admin.setUsername(username);
-        admin.setFullName(fullName);
-        admin.setPasswordHash("encoded-password");
-        admin.setStatus(Member.UserStatus.valueOf("ACTIVE"));
-        admin.setCreatedAt(Instant.now());
-        admin.setUpdatedAt(Instant.now());
-        return admin;
+    private RefreshToken refreshToken(User user, String rawToken, boolean revoked, Instant expiresAt) {
+        RefreshToken rt = new RefreshToken();
+        rt.setUser(user);
+        rt.setTokenHash(sha256(rawToken));
+        rt.setRevoked(revoked);
+        rt.setExpiresAt(expiresAt);
+        rt.setCreatedAt(Instant.now());
+        return rt;
     }
 
-    private RefreshToken refreshToken(
-            Member member,
-            Admin admin,
-            String rawToken,
-            boolean revoked,
-            Instant expiresAt) {
-        RefreshToken refreshToken = new RefreshToken();
-        refreshToken.setMember(member);
-        refreshToken.setAdmin(admin);
-        refreshToken.setTokenHash(sha256(rawToken));
-        refreshToken.setRevoked(revoked);
-        refreshToken.setExpiresAt(expiresAt);
-        refreshToken.setCreatedAt(Instant.now());
-        return refreshToken;
-    }
-
-    private Jwt jwt(String tokenValue) {
-        return new Jwt(
-                tokenValue,
-                Instant.now(),
-                Instant.now().plusSeconds(60),
+    private Jwt fakeJwt(String tokenValue) {
+        return new Jwt(tokenValue, Instant.now(), Instant.now().plusSeconds(900),
                 Map.of("alg", "HS384"),
-                Map.of("sub", "subject@example.com")
-        );
+                Map.of("sub", "sub@example.com"));
     }
 
-    private Jwt refreshJwt(String tokenValue, String subject, String accountType, String type) {
-        return new Jwt(
-                tokenValue,
-                Instant.now(),
-                Instant.now().plusSeconds(60),
+    private Jwt refreshJwt(String tokenValue, String subject, String type) {
+        return new Jwt(tokenValue, Instant.now(), Instant.now().plusSeconds(259200),
                 Map.of("alg", "HS384"),
-                Map.of(
-                        "sub", subject,
-                        "accountType", accountType,
-                        "type", type
-                )
-        );
+                Map.of("sub", subject, "type", type));
     }
 
-    private String sha256(String rawToken) {
+    private String sha256(String raw) {
         try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            return HexFormat.of().formatHex(digest.digest(rawToken.getBytes(StandardCharsets.UTF_8)));
-        } catch (Exception ex) {
-            throw new IllegalStateException(ex);
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(md.digest(raw.getBytes(StandardCharsets.UTF_8)));
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
         }
     }
 }

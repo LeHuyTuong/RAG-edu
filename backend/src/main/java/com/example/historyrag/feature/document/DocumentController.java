@@ -1,17 +1,19 @@
 package com.example.historyrag.feature.document;
 
-import com.example.historyrag.dto.ApiResponse;
-import com.example.historyrag.dto.ResultPaginationDTO;
+import com.example.historyrag.shared.ApiResponse;
+import com.example.historyrag.shared.ResultPaginationDTO;
 import com.example.historyrag.feature.document.dto.CreateDocumentRequest;
 import com.example.historyrag.feature.document.dto.DocumentResponse;
 import com.example.historyrag.feature.document.dto.UpdateDocumentRequest;
 import jakarta.validation.Valid;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.net.URI;
 import java.util.List;
@@ -26,12 +28,13 @@ public class DocumentController {
         this.documentService = documentService;
     }
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<DocumentResponse>> create(
-            @Valid @RequestBody CreateDocumentRequest request,
+            @RequestPart("file") MultipartFile file,
+            @Valid @RequestPart("data") CreateDocumentRequest request,
             @AuthenticationPrincipal Jwt jwt) {
         Long ownerId = jwt.getClaim("userId");
-        DocumentResponse response = documentService.create(request, ownerId);
+        DocumentResponse response = documentService.create(file, request, ownerId);
         URI location = URI.create("/api/v1/documents/" + response.id());
         return ResponseEntity.created(location)
                 .body(ApiResponse.created("Tạo tài liệu thành công", response));
@@ -83,6 +86,24 @@ public class DocumentController {
         Long ownerId = jwt.getClaim("userId");
         documentService.delete(id, ownerId);
         return ResponseEntity.ok(ApiResponse.success("Xóa tài liệu thành công", null));
+    }
+
+    @PostMapping("/{id}/restore")
+    public ResponseEntity<ApiResponse<Void>> restore(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Jwt jwt) {
+        Long ownerId = jwt.getClaim("userId");
+        documentService.restore(id, ownerId);
+        return ResponseEntity.ok(ApiResponse.success("Khôi phục tài liệu thành công", null));
+    }
+
+    @DeleteMapping("/{id}/hard")
+    public ResponseEntity<ApiResponse<Void>> hardDelete(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Jwt jwt) {
+        Long ownerId = jwt.getClaim("userId");
+        documentService.hardDelete(id, ownerId);
+        return ResponseEntity.ok(ApiResponse.success("Xóa vĩnh viễn tài liệu thành công", null));
     }
 
     @PostMapping("/{id}/reindex")

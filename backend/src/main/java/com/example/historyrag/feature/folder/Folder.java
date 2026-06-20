@@ -1,6 +1,6 @@
 package com.example.historyrag.feature.folder;
 
-import com.example.historyrag.common.BaseEntity;
+import com.example.historyrag.shared.BaseEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;

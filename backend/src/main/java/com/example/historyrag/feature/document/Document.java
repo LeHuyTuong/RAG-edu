@@ -1,10 +1,12 @@
 package com.example.historyrag.feature.document;
 
-import com.example.historyrag.common.BaseEntity;
+import com.example.historyrag.shared.BaseEntity;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.*;
+
+import java.time.Instant;
 
 @Getter
 @Setter
@@ -25,7 +27,6 @@ public class Document extends BaseEntity {
     @Column(name = "title", nullable = false, length = 500)
     private String title;
 
-    @Lob
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
@@ -63,4 +64,7 @@ public class Document extends BaseEntity {
 
     @Column(name = "chunk_count")
     private Integer chunkCount;
+
+    @Column(name = "uploaded_at", updatable = false)
+    private Instant uploadedAt;
 }

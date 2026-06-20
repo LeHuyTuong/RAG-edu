@@ -1,7 +1,6 @@
 package com.example.historyrag.feature.auth.dto;
 
-import com.example.historyrag.feature.admin.Admin;
-import com.example.historyrag.feature.user.Member;
+import com.example.historyrag.feature.user.User;
 
 import java.time.Instant;
 
@@ -10,35 +9,19 @@ public record AuthUserResponse(
         String username,
         String email,
         String fullName,
-        Member.UserStatus status,
-        String accountType,
+        User.UserStatus status,
         String role,
         Instant createdAt
 ) {
-
-    public static AuthUserResponse fromAdmin(Admin admin) {
+    public static AuthUserResponse fromUser(User user) {
         return new AuthUserResponse(
-                admin.getId(),
-                admin.getUsername(),
-                admin.getEmail(),
-                admin.getFullName(),
-                admin.getStatus(),
-                "ADMIN",
-                "ADMIN",
-                admin.getCreatedAt()
-        );
-    }
-
-    public static AuthUserResponse fromMember(Member member) {
-        return new AuthUserResponse(
-                member.getId(),
-                member.getUsername(),
-                member.getEmail(),
-                member.getFullName(),
-                member.getStatus(),
-                "MEMBER",
-                "USER",
-                member.getCreatedAt()
+                user.getId(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getFullName(),
+                user.getStatus(),
+                user.getRole().name(),
+                user.getCreatedAt()
         );
     }
 }

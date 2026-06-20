@@ -10,7 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
-import com.example.historyrag.dto.ApiResponse;
+import com.example.historyrag.shared.ApiResponse;
 import com.example.historyrag.exception.InvalidTokenException;
 import com.example.historyrag.feature.auth.dto.AuthUserResponse;
 import com.example.historyrag.feature.auth.dto.LoginRequest;

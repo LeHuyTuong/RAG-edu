@@ -2,20 +2,10 @@ package com.example.historyrag.feature.admin;
 
 import com.example.historyrag.feature.admin.dto.DashboardActivityResponse;
 import com.example.historyrag.feature.admin.dto.DashboardResponse;
-import com.example.historyrag.feature.document.DocumentRepository;
+import com.example.historyrag.feature.document.DocumentService;
 import com.example.historyrag.feature.document.DocumentStatus;
-import com.example.historyrag.feature.engagement.CommentStatus;
-import com.example.historyrag.feature.engagement.EngagementRepository;
-import com.example.historyrag.feature.engagement.EngagementType;
-import com.example.historyrag.feature.event.EventRepository;
-import com.example.historyrag.feature.location.LocationRepository;
-import com.example.historyrag.feature.period.PeriodRepository;
-import com.example.historyrag.feature.person.PersonRepository;
-import com.example.historyrag.feature.post.PostRepository;
-import com.example.historyrag.feature.post.PostStatus;
-import com.example.historyrag.feature.source.SourceRepository;
-import com.example.historyrag.feature.tag.TagRepository;
-import com.example.historyrag.feature.user.MemberRepository;
+import com.example.historyrag.feature.user.User;
+import com.example.historyrag.feature.user.UserService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,134 +15,56 @@ import java.util.List;
 @Service
 public class AdminDashboardServiceImpl implements AdminDashboardService {
 
-    private final AdminRepository adminRepository;
-    private final MemberRepository memberRepository;
-    private final PostRepository postRepository;
-    private final EventRepository eventRepository;
-    private final PersonRepository personRepository;
-    private final LocationRepository locationRepository;
-    private final SourceRepository sourceRepository;
-    private final TagRepository tagRepository;
-    private final PeriodRepository periodRepository;
-    private final EngagementRepository engagementRepository;
-    private final DocumentRepository documentRepository;
+    private final UserService userService;
+    private final DocumentService documentService;
 
-    public AdminDashboardServiceImpl(
-            AdminRepository adminRepository,
-            MemberRepository memberRepository,
-            PostRepository postRepository,
-            EventRepository eventRepository,
-            PersonRepository personRepository,
-            LocationRepository locationRepository,
-            SourceRepository sourceRepository,
-            TagRepository tagRepository,
-            PeriodRepository periodRepository,
-            EngagementRepository engagementRepository,
-            DocumentRepository documentRepository) {
-        this.adminRepository = adminRepository;
-        this.memberRepository = memberRepository;
-        this.postRepository = postRepository;
-        this.eventRepository = eventRepository;
-        this.personRepository = personRepository;
-        this.locationRepository = locationRepository;
-        this.sourceRepository = sourceRepository;
-        this.tagRepository = tagRepository;
-        this.periodRepository = periodRepository;
-        this.engagementRepository = engagementRepository;
-        this.documentRepository = documentRepository;
+    public AdminDashboardServiceImpl(UserService userService,
+                                     DocumentService documentService) {
+        this.userService = userService;
+        this.documentService = documentService;
     }
 
     @Override
     @Transactional(readOnly = true)
     public DashboardResponse getDashboard() {
-        long totalAdmins = adminRepository.count();
-        long totalMembers = memberRepository.count();
-        long totalPosts = postRepository.count();
-        long publishedPosts = postRepository.countByStatus(PostStatus.PUBLISHED);
-        long draftPosts = postRepository.countByStatus(PostStatus.DRAFT);
-        long archivedPosts = postRepository.countByStatus(PostStatus.ARCHIVED);
-        long totalEvents = eventRepository.count();
-        long totalPersons = personRepository.count();
-        long totalLocations = locationRepository.count();
-        long totalSources = sourceRepository.count();
-        long totalTags = tagRepository.count();
-        long totalPeriods = periodRepository.count();
-        long totalEngagements = engagementRepository.count();
-        long totalComments = engagementRepository.countByEngagementType(EngagementType.COMMENT);
-        long pendingComments = engagementRepository.countByEngagementTypeAndCommentStatus(
-                EngagementType.COMMENT, CommentStatus.PENDING);
-        long visibleComments = engagementRepository.countByEngagementTypeAndCommentStatus(
-                EngagementType.COMMENT, CommentStatus.VISIBLE);
-        long hiddenComments = engagementRepository.countByEngagementTypeAndCommentStatus(
-                EngagementType.COMMENT, CommentStatus.HIDDEN);
+        long totalUsers = userService.countAll();
+        long totalStudents = userService.countByRole(User.UserRole.STUDENT);
+        long totalAdmins = userService.countByRole(User.UserRole.ADMIN);
 
-        long totalDocuments = documentRepository.count();
-        long uploadingDocs = documentRepository.countByStatus(DocumentStatus.UPLOADING);
-        long indexingDocs = documentRepository.countByStatus(DocumentStatus.INDEXING);
-        long readyDocs = documentRepository.countByStatus(DocumentStatus.READY);
-        long failedDocs = documentRepository.countByStatus(DocumentStatus.FAILED);
+        long totalDocuments = documentService.countAll();
+        long uploadingDocs = documentService.countByStatus(DocumentStatus.UPLOADING);
+        long indexingDocs = documentService.countByStatus(DocumentStatus.INDEXING);
+        long reindexingDocs = documentService.countByStatus(DocumentStatus.REINDEXING);
+        long readyDocs = documentService.countByStatus(DocumentStatus.READY);
+        long failedDocs = documentService.countByStatus(DocumentStatus.FAILED);
 
         return new DashboardResponse(
+                totalUsers,
+                totalStudents,
                 totalAdmins,
-                totalMembers,
-                totalPosts,
-                publishedPosts,
-                draftPosts,
-                archivedPosts,
-                totalEvents,
-                totalPersons,
-                totalLocations,
-                totalSources,
-                totalTags,
-                totalPeriods,
-                totalEngagements,
-                totalComments,
-                pendingComments,
-                visibleComments,
-                hiddenComments,
                 totalDocuments,
                 uploadingDocs,
                 indexingDocs,
+                reindexingDocs,
                 readyDocs,
                 failedDocs,
-                buildActivities(draftPosts, pendingComments, totalMembers, readyDocs)
+                buildActivities(totalStudents, readyDocs, failedDocs)
         );
     }
 
     private List<DashboardActivityResponse> buildActivities(
-            long draftPosts,
-            long pendingComments,
-            long totalMembers,
-            long readyDocs) {
+            long totalStudents, long readyDocs, long failedDocs) {
         List<DashboardActivityResponse> activities = new ArrayList<>();
-        if (pendingComments > 0) {
+        if (failedDocs > 0) {
             activities.add(new DashboardActivityResponse(
-                    "pending-comments",
-                    "forum",
-                    "text-amber-700",
-                    "bg-amber-100",
-                    "Có " + pendingComments + " bình luận đang chờ duyệt",
+                    "failed-docs",
+                    "error_outline",
+                    "text-red-700",
+                    "bg-red-100",
+                    "Có " + failedDocs + " tài liệu index thất bại",
                     "Cần xử lý"
             ));
         }
-        if (draftPosts > 0) {
-            activities.add(new DashboardActivityResponse(
-                    "draft-posts",
-                    "edit_note",
-                    "text-primary",
-                    "bg-primary/10",
-                    "Có " + draftPosts + " bài viết nháp trong hệ thống",
-                    "Biên tập"
-            ));
-        }
-        activities.add(new DashboardActivityResponse(
-                "member-total",
-                "group",
-                "text-on-surface",
-                "bg-accent/10",
-                "Cộng đồng hiện có " + totalMembers + " thành viên",
-                "Hiện tại"
-        ));
         activities.add(new DashboardActivityResponse(
                 "ready-docs",
                 "auto_stories",
@@ -160,6 +72,14 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
                 "bg-surface-variant",
                 "Có " + readyDocs + " tài liệu đã sẵn sàng tra cứu",
                 "Dữ liệu"
+        ));
+        activities.add(new DashboardActivityResponse(
+                "student-total",
+                "group",
+                "text-on-surface",
+                "bg-accent/10",
+                "Hệ thống có " + totalStudents + " học sinh",
+                "Hiện tại"
         ));
         return activities;
     }

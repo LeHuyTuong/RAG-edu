@@ -7,7 +7,7 @@ import com.example.historyrag.feature.auth.dto.LoginRequest;
 import com.example.historyrag.feature.auth.dto.LoginResponse;
 import com.example.historyrag.feature.auth.dto.RegisterRequest;
 import com.example.historyrag.feature.auth.dto.RegisterResponse;
-import com.example.historyrag.feature.user.Member;
+import com.example.historyrag.feature.user.User;
 import jakarta.servlet.http.Cookie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -109,7 +109,8 @@ class AuthControllerTest {
                         "member",
                         "member@example.com",
                         "Member Name",
-                        Member.UserStatus.ACTIVE,
+                        User.UserStatus.ACTIVE,
+                        "STUDENT",
                         Instant.parse("2026-06-09T00:00:00Z")
                 ));
 
@@ -207,9 +208,8 @@ class AuthControllerTest {
                         "member",
                         "member@example.com",
                         "Member Name",
-                        Member.UserStatus.ACTIVE,
-                        "MEMBER",
-                        "USER",
+                        User.UserStatus.ACTIVE,
+                        "STUDENT",
                         Instant.parse("2026-06-09T00:00:00Z")
                 ));
 
@@ -217,8 +217,7 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.statusCode").value(200))
                 .andExpect(jsonPath("$.data.email").value("member@example.com"))
-                .andExpect(jsonPath("$.data.accountType").value("MEMBER"))
-                .andExpect(jsonPath("$.data.role").value("USER"));
+                .andExpect(jsonPath("$.data.role").value("STUDENT"));
     }
 
     private static class JwtArgumentResolver implements HandlerMethodArgumentResolver {

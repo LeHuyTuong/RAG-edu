@@ -13,4 +13,6 @@ public interface FolderService {
     FolderResponse rename(Long id, String folderName, Long ownerId);
 
     void delete(Long id, Long ownerId);
+
+    boolean existsByIdAndOwner(Long id, Long ownerId);
 }

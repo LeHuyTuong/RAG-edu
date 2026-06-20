@@ -1,9 +1,7 @@
 package com.example.historyrag.security;
 
-import com.example.historyrag.feature.admin.Admin;
-import com.example.historyrag.feature.admin.AdminRepository;
-import com.example.historyrag.feature.user.Member;
-import com.example.historyrag.feature.user.MemberRepository;
+import com.example.historyrag.feature.user.User;
+import com.example.historyrag.feature.user.UserRepository;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -17,54 +15,30 @@ import java.util.List;
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
 
-    private static final String ACTIVE_STATUS = "ACTIVE";
     private static final GrantedAuthority ADMIN_AUTHORITY = new SimpleGrantedAuthority("ROLE_ADMIN");
     private static final GrantedAuthority USER_AUTHORITY = new SimpleGrantedAuthority("ROLE_USER");
 
-    private final AdminRepository adminRepository;
-    private final MemberRepository memberRepository;
+    private final UserRepository userRepository;
 
-    public CustomUserDetailsService(AdminRepository adminRepository, MemberRepository memberRepository) {
-        this.adminRepository = adminRepository;
-        this.memberRepository = memberRepository;
+    public CustomUserDetailsService(UserRepository userRepository) {
+        this.userRepository = userRepository;
     }
 
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        return adminRepository.findByEmail(email)
-                .map(this::buildAdminDetails)
-                .or(() -> memberRepository.findByEmail(email).map(this::buildMemberDetails))
+        User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException(
-                        "Không tìm thấy tài khoản admin hoặc user với email: " + email));
-    }
+                        "Không tìm thấy tài khoản với email: " + email));
 
-    private UserDetails buildAdminDetails(Admin admin) {
-        return buildUserDetails(
-                admin.getEmail(),
-                admin.getPasswordHash(),
-                admin.getStatus(),
-                List.of(ADMIN_AUTHORITY));
-    }
+        GrantedAuthority authority = user.getRole() == User.UserRole.ADMIN
+                ? ADMIN_AUTHORITY : USER_AUTHORITY;
+        boolean isActive = user.getStatus() == User.UserStatus.ACTIVE;
 
-    private UserDetails buildMemberDetails(Member member) {
-        return buildUserDetails(
-                member.getEmail(),
-                member.getPasswordHash(),
-                member.getStatus(),
-                List.of(USER_AUTHORITY));
-    }
-
-    private UserDetails buildUserDetails(
-            String email,
-            String passwordHash,
-            Member.UserStatus status,
-            List<GrantedAuthority> authorities) {
-        boolean isActive = ACTIVE_STATUS.equalsIgnoreCase(String.valueOf(status));
         return org.springframework.security.core.userdetails.User.builder()
-                .username(email)
-                .password(passwordHash)
-                .authorities(authorities)
+                .username(user.getEmail())
+                .password(user.getPasswordHash())
+                .authorities(List.of(authority))
                 .disabled(!isActive)
                 .accountLocked(!isActive)
                 .build();

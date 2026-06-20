@@ -1,9 +1,9 @@
 package com.example.historyrag.feature.folder;
 
 import com.example.historyrag.exception.ResourceNotFoundException;
-import com.example.historyrag.feature.document.DocumentRepository;
-import com.example.historyrag.feature.document.DocumentStatus;
+import com.example.historyrag.feature.document.DocumentService;
 import com.example.historyrag.feature.folder.dto.FolderResponse;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,11 +14,12 @@ import java.util.stream.Collectors;
 public class FolderServiceImpl implements FolderService {
 
     private final FolderRepository folderRepository;
-    private final DocumentRepository documentRepository;
+    // @Lazy phá circular: DocumentServiceImpl → FolderService → DocumentService
+    private final DocumentService documentService;
 
-    public FolderServiceImpl(FolderRepository folderRepository, DocumentRepository documentRepository) {
+    public FolderServiceImpl(FolderRepository folderRepository, @Lazy DocumentService documentService) {
         this.folderRepository = folderRepository;
-        this.documentRepository = documentRepository;
+        this.documentService = documentService;
     }
 
     @Override
@@ -35,8 +36,7 @@ public class FolderServiceImpl implements FolderService {
     public List<FolderResponse> listByOwner(Long ownerId) {
         return folderRepository.findByOwnerIdOrderByCreatedAtDesc(ownerId).stream()
                 .map(folder -> {
-                    long docCount = documentRepository.countByFolderIdAndStatusNot(
-                            folder.getId(), DocumentStatus.SOFT_DELETED);
+                    long docCount = documentService.countActiveByFolderId(folder.getId());
                     return FolderResponse.fromEntity(folder, docCount);
                 })
                 .collect(Collectors.toList());
@@ -67,5 +67,11 @@ public class FolderServiceImpl implements FolderService {
         }
 
         folderRepository.delete(folder);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsByIdAndOwner(Long id, Long ownerId) {
+        return folderRepository.existsByIdAndOwnerId(id, ownerId);
     }
 }

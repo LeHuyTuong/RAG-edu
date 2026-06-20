@@ -1,6 +1,6 @@
 package com.example.historyrag.feature.admin;
 
-import com.example.historyrag.dto.ApiResponse;
+import com.example.historyrag.shared.ApiResponse;
 import com.example.historyrag.feature.admin.dto.DashboardResponse;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;

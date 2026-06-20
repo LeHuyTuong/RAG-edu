@@ -1,6 +1,6 @@
 package com.example.historyrag.exception;
 
-import com.example.historyrag.dto.ApiResponse;
+import com.example.historyrag.shared.ApiResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;

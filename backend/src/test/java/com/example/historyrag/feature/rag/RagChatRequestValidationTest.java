@@ -1,9 +1,9 @@
 package com.example.historyrag.feature.rag;
 
-import com.example.historyrag.feature.rag.dto.RagChatRequest;
-import com.example.historyrag.feature.rag.dto.RagIngestRequest;
-import com.example.historyrag.feature.rag.dto.RagIngestSettings;
-import com.example.historyrag.feature.rag.dto.RagRetrieveRequest;
+import com.example.historyrag.infrastructure.webclient.dto.RagChatRequest;
+import com.example.historyrag.infrastructure.webclient.dto.RagIngestRequest;
+import com.example.historyrag.infrastructure.webclient.dto.RagIngestSettings;
+import com.example.historyrag.infrastructure.webclient.dto.RagRetrieveRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;

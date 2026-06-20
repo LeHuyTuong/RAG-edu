@@ -1,20 +1,10 @@
 package com.example.historyrag.feature.admin;
 
 import com.example.historyrag.feature.admin.dto.DashboardResponse;
-import com.example.historyrag.feature.document.DocumentRepository;
+import com.example.historyrag.feature.document.DocumentService;
 import com.example.historyrag.feature.document.DocumentStatus;
-import com.example.historyrag.feature.engagement.CommentStatus;
-import com.example.historyrag.feature.engagement.EngagementRepository;
-import com.example.historyrag.feature.engagement.EngagementType;
-import com.example.historyrag.feature.event.EventRepository;
-import com.example.historyrag.feature.location.LocationRepository;
-import com.example.historyrag.feature.period.PeriodRepository;
-import com.example.historyrag.feature.person.PersonRepository;
-import com.example.historyrag.feature.post.PostRepository;
-import com.example.historyrag.feature.post.PostStatus;
-import com.example.historyrag.feature.source.SourceRepository;
-import com.example.historyrag.feature.tag.TagRepository;
-import com.example.historyrag.feature.user.MemberRepository;
+import com.example.historyrag.feature.user.User;
+import com.example.historyrag.feature.user.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,99 +20,40 @@ import static org.mockito.Mockito.when;
 class AdminDashboardServiceImplTest {
 
     @Mock
-    private AdminRepository adminRepository;
+    private UserService userService;
 
     @Mock
-    private MemberRepository memberRepository;
-
-    @Mock
-    private PostRepository postRepository;
-
-    @Mock
-    private EventRepository eventRepository;
-
-    @Mock
-    private PersonRepository personRepository;
-
-    @Mock
-    private LocationRepository locationRepository;
-
-    @Mock
-    private SourceRepository sourceRepository;
-
-    @Mock
-    private TagRepository tagRepository;
-
-    @Mock
-    private PeriodRepository periodRepository;
-
-    @Mock
-    private EngagementRepository engagementRepository;
-
-    @Mock
-    private DocumentRepository documentRepository;
+    private DocumentService documentService;
 
     private AdminDashboardServiceImpl adminDashboardService;
 
     @BeforeEach
     void setUp() {
-        adminDashboardService = new AdminDashboardServiceImpl(
-                adminRepository,
-                memberRepository,
-                postRepository,
-                eventRepository,
-                personRepository,
-                locationRepository,
-                sourceRepository,
-                tagRepository,
-                periodRepository,
-                engagementRepository,
-                documentRepository);
+        adminDashboardService = new AdminDashboardServiceImpl(userService, documentService);
     }
 
     @Test
-    @DisplayName("Should return dashboard counts from Spring Data JPA repositories")
+    @DisplayName("Should return dashboard counts via service methods")
     void getDashboard_existingData_returnsDashboardSummary() {
-        when(adminRepository.count()).thenReturn(2L);
-        when(memberRepository.count()).thenReturn(40L);
-        when(postRepository.count()).thenReturn(12L);
-        when(postRepository.countByStatus(PostStatus.PUBLISHED)).thenReturn(8L);
-        when(postRepository.countByStatus(PostStatus.DRAFT)).thenReturn(3L);
-        when(postRepository.countByStatus(PostStatus.ARCHIVED)).thenReturn(1L);
-        when(eventRepository.count()).thenReturn(6L);
-        when(personRepository.count()).thenReturn(9L);
-        when(locationRepository.count()).thenReturn(5L);
-        when(sourceRepository.count()).thenReturn(11L);
-        when(tagRepository.count()).thenReturn(7L);
-        when(periodRepository.count()).thenReturn(4L);
-        when(engagementRepository.count()).thenReturn(100L);
-        when(engagementRepository.countByEngagementType(EngagementType.COMMENT)).thenReturn(20L);
-        when(engagementRepository.countByEngagementTypeAndCommentStatus(
-                EngagementType.COMMENT, CommentStatus.PENDING))
-                .thenReturn(2L);
-        when(engagementRepository.countByEngagementTypeAndCommentStatus(
-                EngagementType.COMMENT, CommentStatus.VISIBLE))
-                .thenReturn(17L);
-        when(engagementRepository.countByEngagementTypeAndCommentStatus(
-                EngagementType.COMMENT, CommentStatus.HIDDEN))
-                .thenReturn(1L);
+        when(userService.countAll()).thenReturn(42L);
+        when(userService.countByRole(User.UserRole.STUDENT)).thenReturn(40L);
+        when(userService.countByRole(User.UserRole.ADMIN)).thenReturn(2L);
 
-        when(documentRepository.count()).thenReturn(5L);
-        when(documentRepository.countByStatus(DocumentStatus.UPLOADING)).thenReturn(1L);
-        when(documentRepository.countByStatus(DocumentStatus.INDEXING)).thenReturn(2L);
-        when(documentRepository.countByStatus(DocumentStatus.READY)).thenReturn(3L);
-        when(documentRepository.countByStatus(DocumentStatus.FAILED)).thenReturn(1L);
+        when(documentService.countAll()).thenReturn(10L);
+        when(documentService.countByStatus(DocumentStatus.UPLOADING)).thenReturn(1L);
+        when(documentService.countByStatus(DocumentStatus.INDEXING)).thenReturn(2L);
+        when(documentService.countByStatus(DocumentStatus.REINDEXING)).thenReturn(0L);
+        when(documentService.countByStatus(DocumentStatus.READY)).thenReturn(6L);
+        when(documentService.countByStatus(DocumentStatus.FAILED)).thenReturn(1L);
 
         DashboardResponse response = adminDashboardService.getDashboard();
 
+        assertEquals(42L, response.totalUsers());
+        assertEquals(40L, response.totalStudents());
         assertEquals(2L, response.totalAdmins());
-        assertEquals(40L, response.totalMembers());
-        assertEquals(12L, response.totalPosts());
-        assertEquals(8L, response.publishedPosts());
-        assertEquals(3L, response.draftPosts());
-        assertEquals(2L, response.pendingComments());
-        assertEquals(17L, response.visibleComments());
-        assertEquals(1L, response.hiddenComments());
+        assertEquals(10L, response.totalDocuments());
+        assertEquals(6L, response.readyDocs());
+        assertEquals(1L, response.failedDocs());
         assertFalse(response.activities().isEmpty());
     }
 }
