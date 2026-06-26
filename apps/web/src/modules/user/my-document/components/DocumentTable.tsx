@@ -16,6 +16,13 @@ import { Card } from "@/components/ui/Card";
 import { InputField } from "@/components/ui/InputField";
 import { Pagination } from "@/components/ui/Pagination";
 import { Table, type TableRow } from "@/components/ui/Table";
+import type { StatusTone } from "@/types";
+
+/** Badge only supports status tones, not semantic UI tones. */
+type BadgeStatusTone = Extract<
+  StatusTone,
+  "success" | "warning" | "error" | "neutral"
+>;
 
 import { formatDate } from "@/utils";
 import type { LibraryDocument, PaginationMeta } from "@/types/document.type";
@@ -33,7 +40,7 @@ const COLUMNS = [
 function getStatusDisplay(
   status: string,
   isPublic: boolean,
-): { label: string; tone: "success" | "warning" | "error" | "neutral" } {
+): { label: string; tone: BadgeStatusTone } {
   const normalizedStatus = status.toLowerCase();
 
   if (normalizedStatus === "approved") {

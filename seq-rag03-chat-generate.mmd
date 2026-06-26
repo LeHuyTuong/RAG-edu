@@ -1,0 +1,27 @@
+sequenceDiagram
+    participant CR as chat_routes.py
+    participant PS as prompt_service.py
+    participant LLM as llm_service.py
+    participant CS as citation_service.py
+    participant G as Gemini API
+
+    Note over CR,G: Phần 2/2 — Build Prompt → Generate → Citations
+
+    CR->>+PS: load_system_prompt()
+    PS-->>-CR: system_prompt.txt → string
+
+    CR->>+PS: build_user_message(question, hits)
+    PS->>PS: format hits → [C1],[C2]... + ghép CONTEXT + QUESTION
+    PS-->>-CR: user_message (string)
+
+    CR->>+LLM: generate(system_prompt, user_message, temperature=0.2)
+    LLM->>G: generate_content(model, user_message, system_instruction, temperature=0.2)
+    G-->>LLM: response.text
+    LLM-->>-CR: answer (string)
+
+    CR->>+CS: to_citations(hits)
+    CS->>CS: map ScoredPoint → Citation{ pageNumber, snippet[:300], score }
+    CS->>CS: deduplicate(sourceType, sourceId, chunkIndex)
+    CS-->>-CR: list[Citation]
+
+    CR-->>CR: RagChatResponse{ answer, citations[], usedVector:true }

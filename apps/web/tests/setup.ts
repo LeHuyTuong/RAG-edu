@@ -2,6 +2,28 @@ import "@testing-library/jest-dom";
 import React from "react";
 import { vi } from "vitest";
 
+// ── localStorage polyfill ──────────────────────────────────────────────────
+// Ensure localStorage is available even when jsdom environment is not fully
+// initialized in certain vitest worker pools.
+if (typeof localStorage === "undefined" || localStorage === null) {
+  const store = new Map<string, string>();
+  const mockStorage: Storage = {
+    getItem: (key) => store.get(key) ?? null,
+    setItem: (key, value) => store.set(key, String(value)),
+    removeItem: (key) => store.delete(key),
+    clear: () => store.clear(),
+    get length() {
+      return store.size;
+    },
+    key: (index) => [...store.keys()][index] ?? null,
+  };
+  Object.defineProperty(globalThis, "localStorage", {
+    value: mockStorage,
+    writable: true,
+    configurable: true,
+  });
+}
+
 export const navigationMocks = {
   pathname: vi.fn(() => "/"),
   router: {

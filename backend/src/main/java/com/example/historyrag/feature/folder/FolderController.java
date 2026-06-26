@@ -1,6 +1,7 @@
 package com.example.historyrag.feature.folder;
 
 import com.example.historyrag.shared.ApiResponse;
+import com.example.historyrag.shared.JwtUtils;
 import com.example.historyrag.exception.ResourceNotFoundException;
 import com.example.historyrag.feature.folder.dto.FolderChatRequest;
 import com.example.historyrag.feature.folder.dto.FolderRequest;
@@ -32,7 +33,7 @@ public class FolderController {
     public ResponseEntity<ApiResponse<FolderResponse>> create(
             @Valid @RequestBody FolderRequest request,
             @AuthenticationPrincipal Jwt jwt) {
-        Long ownerId = jwt.getClaim("userId");
+        Long ownerId = JwtUtils.getUserId(jwt);
         FolderResponse response = folderService.create(request.folderName(), ownerId);
         return ResponseEntity.ok(ApiResponse.success("Tạo folder thành công", response));
     }
@@ -40,7 +41,7 @@ public class FolderController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<FolderResponse>>> list(
             @AuthenticationPrincipal Jwt jwt) {
-        Long ownerId = jwt.getClaim("userId");
+        Long ownerId = JwtUtils.getUserId(jwt);
         return ResponseEntity.ok(ApiResponse.success(folderService.listByOwner(ownerId)));
     }
 
@@ -49,7 +50,7 @@ public class FolderController {
             @PathVariable Long id,
             @Valid @RequestBody FolderRequest request,
             @AuthenticationPrincipal Jwt jwt) {
-        Long ownerId = jwt.getClaim("userId");
+        Long ownerId = JwtUtils.getUserId(jwt);
         FolderResponse response = folderService.rename(id, request.folderName(), ownerId);
         return ResponseEntity.ok(ApiResponse.success("Đổi tên folder thành công", response));
     }
@@ -58,7 +59,7 @@ public class FolderController {
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable Long id,
             @AuthenticationPrincipal Jwt jwt) {
-        Long ownerId = jwt.getClaim("userId");
+        Long ownerId = JwtUtils.getUserId(jwt);
         folderService.delete(id, ownerId);
         return ResponseEntity.ok(ApiResponse.success("Xóa folder thành công", null));
     }
@@ -68,7 +69,7 @@ public class FolderController {
             @PathVariable Long id,
             @Valid @RequestBody FolderChatRequest request,
             @AuthenticationPrincipal Jwt jwt) {
-        Long userId = jwt.getClaim("userId");
+        Long userId = JwtUtils.getUserId(jwt);
         // Verify folder belongs to this user
         if (!folderService.existsByIdAndOwner(id, userId)) {
             throw new ResourceNotFoundException("Folder", "id", id);

@@ -4,27 +4,25 @@ import { ConflictException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AccountsService } from './accounts.service';
 
+const prismaMock = {
+  accounts: {
+    create: jest.fn(),
+    findUnique: jest.fn(),
+    findMany: jest.fn(),
+    update: jest.fn(),
+  },
+};
+
 describe('AccountsService', () => {
   let service: AccountsService;
-  let moduleRef: TestingModule;
 
   beforeEach(async () => {
     jest.clearAllMocks();
 
-    moduleRef = await Test.createTestingModule({
+    const moduleRef: TestingModule = await Test.createTestingModule({
       providers: [
         AccountsService,
-        {
-          provide: PrismaService,
-          useValue: {
-            accounts: {
-              create: jest.fn(),
-              findUnique: jest.fn(),
-              findMany: jest.fn(),
-              update: jest.fn(),
-            },
-          },
-        },
+        { provide: PrismaService, useValue: prismaMock },
       ],
     }).compile();
 
@@ -36,9 +34,8 @@ describe('AccountsService', () => {
   });
 
   it('create stores hashed password and returns success message', async () => {
-    const prisma: any = moduleRef.get(PrismaService as any);
-    prisma.accounts.findUnique.mockResolvedValue(null);
-    prisma.accounts.create.mockResolvedValue({ id: 'acc-1' });
+    prismaMock.accounts.findUnique.mockResolvedValue(null);
+    prismaMock.accounts.create.mockResolvedValue({ id: 'acc-1' });
     const res = await service.create({
       email: 'admin@example.com',
       name: 'Admin User',
@@ -46,7 +43,7 @@ describe('AccountsService', () => {
       role: 'ADMIN' as any,
     });
 
-    const createArgs = prisma.accounts.create.mock.calls[0][0];
+    const createArgs = prismaMock.accounts.create.mock.calls[0][0];
     expect(createArgs.data.email).toBe('admin@example.com');
     expect(createArgs.data.name).toBe('Admin User');
     expect(createArgs.data.role).toBe('ADMIN');
@@ -56,9 +53,8 @@ describe('AccountsService', () => {
   });
 
   it('createModerator forces moderator role and active status', async () => {
-    const prisma: any = moduleRef.get(PrismaService as any);
-    prisma.accounts.findUnique.mockResolvedValue(null);
-    prisma.accounts.create.mockResolvedValue({ id: 'acc-1' });
+    prismaMock.accounts.findUnique.mockResolvedValue(null);
+    prismaMock.accounts.create.mockResolvedValue({ id: 'acc-1' });
 
     await service.createModerator({
       email: 'moderator@example.com',
@@ -68,14 +64,13 @@ describe('AccountsService', () => {
       status: UserStatus.BANNED,
     });
 
-    const createArgs = prisma.accounts.create.mock.calls[0][0];
+    const createArgs = prismaMock.accounts.create.mock.calls[0][0];
     expect(createArgs.data.role).toBe(UserRole.MODERATOR);
     expect(createArgs.data.status).toBe(UserStatus.ACTIVE);
   });
 
   it('throws ConflictException when email already exists', async () => {
-    const prisma: any = moduleRef.get(PrismaService as any);
-    prisma.accounts.findUnique.mockResolvedValue({ id: 'existing' });
+    prismaMock.accounts.findUnique.mockResolvedValue({ id: 'existing' });
 
     await expect(
       service.create({
@@ -87,11 +82,10 @@ describe('AccountsService', () => {
   });
 
   it('findAll calls prisma findMany with admin-safe filters and newest ordering', async () => {
-    const prisma: any = moduleRef.get(PrismaService as any);
-    prisma.accounts.findMany.mockResolvedValue([{ id: 1 }]);
+    prismaMock.accounts.findMany.mockResolvedValue([{ id: 1 }]);
     const res = await service.findAll();
     expect(res).toEqual([{ id: 1 }]);
-    expect(prisma.accounts.findMany).toHaveBeenCalledWith(
+    expect(prismaMock.accounts.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
           status: { not: UserStatus.DELETED },
@@ -111,15 +105,14 @@ describe('AccountsService', () => {
   });
 
   it('findAll applies created date range filters', async () => {
-    const prisma: any = moduleRef.get(PrismaService as any);
-    prisma.accounts.findMany.mockResolvedValue([]);
+    prismaMock.accounts.findMany.mockResolvedValue([]);
 
     await service.findAll({
       createdFrom: '2026-06-01',
       createdTo: '2026-06-10',
     });
 
-    expect(prisma.accounts.findMany).toHaveBeenCalledWith(
+    expect(prismaMock.accounts.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
           createdAt: {
@@ -132,16 +125,15 @@ describe('AccountsService', () => {
   });
 
   it('ban updates account status to banned', async () => {
-    const prisma: any = moduleRef.get(PrismaService as any);
-    prisma.accounts.findUnique.mockResolvedValue({
+    prismaMock.accounts.findUnique.mockResolvedValue({
       id: 'acc-1',
       status: UserStatus.ACTIVE,
     });
-    prisma.accounts.update.mockResolvedValue({ id: 'acc-1' });
+    prismaMock.accounts.update.mockResolvedValue({ id: 'acc-1' });
 
     await service.ban('acc-1');
 
-    expect(prisma.accounts.update).toHaveBeenCalledWith(
+    expect(prismaMock.accounts.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'acc-1' },
         data: { status: UserStatus.BANNED },
@@ -150,8 +142,7 @@ describe('AccountsService', () => {
   });
 
   it('ban returns already banned message when account is already banned', async () => {
-    const prisma: any = moduleRef.get(PrismaService as any);
-    prisma.accounts.findUnique.mockResolvedValue({
+    prismaMock.accounts.findUnique.mockResolvedValue({
       id: 'acc-2',
       status: UserStatus.BANNED,
     });
@@ -161,8 +152,7 @@ describe('AccountsService', () => {
   });
 
   it('ban throws ConflictException for admin accounts', async () => {
-    const prisma: any = moduleRef.get(PrismaService as any);
-    prisma.accounts.findUnique.mockResolvedValue({
+    prismaMock.accounts.findUnique.mockResolvedValue({
       id: 'admin-1',
       role: UserRole.ADMIN,
       status: UserStatus.ACTIVE,
@@ -171,12 +161,11 @@ describe('AccountsService', () => {
     await expect(service.ban('admin-1')).rejects.toBeInstanceOf(
       ConflictException,
     );
-    expect(prisma.accounts.update).not.toHaveBeenCalled();
+    expect(prismaMock.accounts.update).not.toHaveBeenCalled();
   });
 
   it('ban throws NotFoundException when account does not exist', async () => {
-    const prisma: any = moduleRef.get(PrismaService as any);
-    prisma.accounts.findUnique.mockResolvedValue(null);
+    prismaMock.accounts.findUnique.mockResolvedValue(null);
 
     await expect(service.ban('missing')).rejects.toBeInstanceOf(
       NotFoundException,
@@ -184,13 +173,12 @@ describe('AccountsService', () => {
   });
 
   it('findOne returns account when found', async () => {
-    const prisma: any = moduleRef.get(PrismaService as any);
     const account = { id: 'acc-1', email: 'a@example.com' };
-    prisma.accounts.findUnique.mockResolvedValue(account);
+    prismaMock.accounts.findUnique.mockResolvedValue(account);
 
     const res = await service.findOne('acc-1');
     expect(res).toEqual(account);
-    expect(prisma.accounts.findUnique).toHaveBeenCalledWith(
+    expect(prismaMock.accounts.findUnique).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
           id: 'acc-1',
@@ -200,8 +188,7 @@ describe('AccountsService', () => {
   });
 
   it('findOne throws NotFoundException when not found', async () => {
-    const prisma: any = moduleRef.get(PrismaService as any);
-    prisma.accounts.findUnique.mockResolvedValue(null);
+    prismaMock.accounts.findUnique.mockResolvedValue(null);
 
     await expect(service.findOne('missing')).rejects.toBeInstanceOf(
       NotFoundException,
@@ -209,7 +196,6 @@ describe('AccountsService', () => {
   });
 
   it('findMe returns the authenticated account profile', async () => {
-    const prisma: any = moduleRef.get(PrismaService as any);
     const account = {
       id: 'acc-1',
       email: 'a@example.com',
@@ -218,12 +204,12 @@ describe('AccountsService', () => {
       role: UserRole.USER,
       status: UserStatus.ACTIVE,
     };
-    prisma.accounts.findUnique.mockResolvedValue(account);
+    prismaMock.accounts.findUnique.mockResolvedValue(account);
 
     const res = await service.findMe('acc-1');
 
     expect(res).toEqual(account);
-    expect(prisma.accounts.findUnique).toHaveBeenCalledWith(
+    expect(prismaMock.accounts.findUnique).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
           id: 'acc-1',
@@ -242,8 +228,7 @@ describe('AccountsService', () => {
   });
 
   it('findMe throws NotFoundException when the authenticated account is missing', async () => {
-    const prisma: any = moduleRef.get(PrismaService as any);
-    prisma.accounts.findUnique.mockResolvedValue(null);
+    prismaMock.accounts.findUnique.mockResolvedValue(null);
 
     await expect(service.findMe('missing')).rejects.toBeInstanceOf(
       NotFoundException,
@@ -251,15 +236,14 @@ describe('AccountsService', () => {
   });
 
   it('update returns updated account when exists', async () => {
-    const prisma: any = moduleRef.get(PrismaService as any);
-    prisma.accounts.findUnique.mockResolvedValue({ id: 'acc-1' });
+    prismaMock.accounts.findUnique.mockResolvedValue({ id: 'acc-1' });
     const updated = {
       id: 'acc-1',
       email: 'a@example.com',
       name: 'New',
       avatarUrl: 'u',
     };
-    prisma.accounts.update.mockResolvedValue(updated);
+    prismaMock.accounts.update.mockResolvedValue(updated);
 
     const res = await service.update(
       'acc-1',
@@ -270,7 +254,7 @@ describe('AccountsService', () => {
       'acc-1',
     );
     expect(res).toEqual(updated);
-    expect(prisma.accounts.update).toHaveBeenCalledWith(
+    expect(prismaMock.accounts.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'acc-1' },
         data: { name: 'New', avatarUrl: 'u' },
@@ -285,12 +269,11 @@ describe('AccountsService', () => {
   });
 
   it('remove sets status to DELETED and returns message', async () => {
-    const prisma: any = moduleRef.get(PrismaService as any);
-    prisma.accounts.findUnique.mockResolvedValue({ id: 'acc-1' });
-    prisma.accounts.update.mockResolvedValue({ id: 'acc-1' });
+    prismaMock.accounts.findUnique.mockResolvedValue({ id: 'acc-1' });
+    prismaMock.accounts.update.mockResolvedValue({ id: 'acc-1' });
 
     const res = await service.remove('acc-1', 'acc-1');
-    expect(prisma.accounts.update).toHaveBeenCalledWith(
+    expect(prismaMock.accounts.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'acc-1' },
         data: { status: UserStatus.DELETED },

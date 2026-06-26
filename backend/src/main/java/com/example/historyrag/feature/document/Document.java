@@ -67,4 +67,7 @@ public class Document extends BaseEntity {
 
     @Column(name = "uploaded_at", updatable = false)
     private Instant uploadedAt;
+
+    @Column(name = "review_reason", columnDefinition = "TEXT")
+    private String reviewReason;
 }

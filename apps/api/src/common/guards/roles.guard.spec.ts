@@ -1,23 +1,21 @@
-import { ExecutionContext, ForbiddenException } from '@nestjs/common';
+import { ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { RolesGuard } from './roles.guard';
+import { createMockExecutionContext } from '../utils/test-utils';
 
 describe('RolesGuard', () => {
   let guard: RolesGuard;
   const reflector = new Reflector();
 
   beforeEach(() => {
-    guard = new RolesGuard(reflector as any);
+    guard = new RolesGuard(reflector);
     jest.clearAllMocks();
   });
 
-  function mockContext(userRole: any, requiredRoles: any[] | null) {
-    const req: any = { user: { role: userRole } };
-    const ctx: any = {
-      switchToHttp: () => ({ getRequest: () => req }),
-      getHandler: () => ({}),
-      getClass: () => ({}),
-    } as ExecutionContext;
+  function mockContext(userRole: unknown, requiredRoles: unknown[] | null) {
+    const { ctx, req } = createMockExecutionContext({
+      user: { role: userRole },
+    });
 
     jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(requiredRoles);
 

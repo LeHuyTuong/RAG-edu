@@ -1,12 +1,11 @@
 import { User, getUserFromContext } from './user.decorator';
+import { createMockExecutionContext } from '../utils/test-utils';
 
 describe('User decorator', () => {
-  function mockContext(user?: any) {
-    const req: any = { user };
-    const ctx: any = {
-      switchToHttp: () => ({ getRequest: () => req }),
-    } as any;
-
+  function mockContext(user?: unknown) {
+    const { ctx } = createMockExecutionContext(
+      user !== undefined ? { user } : {},
+    );
     return ctx;
   }
 
@@ -14,7 +13,7 @@ describe('User decorator', () => {
     const user = { sub: 'u1', email: 'a@b', role: 'ADMIN' };
     const ctx = mockContext(user);
 
-    const res = getUserFromContext(undefined, ctx as any);
+    const res = getUserFromContext(undefined, ctx);
 
     expect(res).toEqual(user);
   });
@@ -22,7 +21,7 @@ describe('User decorator', () => {
   it('returns undefined when request has no user', () => {
     const ctx = mockContext(undefined);
 
-    const res = getUserFromContext(undefined, ctx as any);
+    const res = getUserFromContext(undefined, ctx);
 
     expect(res).toBeUndefined();
   });

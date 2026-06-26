@@ -37,38 +37,9 @@ import { UPLOAD_ERROR_MESSAGES } from "@/constants/upload.const";
 import { getErrorMessage } from "@/utils/error";
 import type { Subject } from "@/types/document.type";
 import {
-  buildCloudinaryUploadResult,
-  type CloudinaryUploadResult,
-} from "../utils/cloudinary-upload-result";
-
-const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ?? "ddxstobvd";
-const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET ?? "";
-
-/**
- * Uploads a file to Cloudinary using the unsigned preset.
- * Throws a generic Error on failure — the caller maps it to
- * UPLOAD_ERROR_MESSAGES.CLOUDINARY_UPLOAD_FAILED for the user
- * and logs the raw response body for debugging.
- */
-async function uploadToCloudinary(file: File): Promise<CloudinaryUploadResult> {
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("upload_preset", UPLOAD_PRESET);
-
-  const res = await fetch(
-    `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`,
-    { method: "POST", body: formData },
-  );
-
-  if (!res.ok) {
-    const body = await res.text();
-    // Logged for debugging only — never surfaced to the user.
-    throw new Error(`Cloudinary upload failed (${res.status}): ${body}`);
-  }
-
-  const data = await res.json();
-  return buildCloudinaryUploadResult(data, file);
-}
+  uploadFileToCloudinary,
+  UPLOAD_PRESET,
+} from "../utils/cloudinary-upload";
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -136,9 +107,9 @@ export function DocumentUploadForm({
     setSubmitError(null);
 
     // Phase 1 — upload file to Cloudinary
-    let cloudResult: CloudinaryUploadResult;
+    let cloudResult;
     try {
-      cloudResult = await uploadToCloudinary(selectedFile);
+      cloudResult = await uploadFileToCloudinary(selectedFile);
     } catch (err) {
       console.error("Cloudinary upload failed:", err);
       setSubmitError(UPLOAD_ERROR_MESSAGES.CLOUDINARY_UPLOAD_FAILED);

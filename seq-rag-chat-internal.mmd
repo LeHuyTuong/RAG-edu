@@ -1,0 +1,73 @@
+sequenceDiagram
+    participant Caller as :RagClientServiceImpl<br/>(Spring Boot)
+    participant CR as chat_routes.py<br/>(FastAPI Router)
+    participant QR as question_router_service.py
+    participant RS as retrieval_service.py
+    participant EM as embedding_service.py
+    participant VR as vector_repository.py
+    participant Q as Qdrant Cloud
+    participant PS as prompt_service.py
+    participant LLM as llm_service.py
+    participant CS as citation_service.py
+    participant G as Gemini API
+
+    Caller->>+CR: POST /rag/chat { question, folderId, userId, topK=5, temperature=0.2 }
+    CR->>CR: _chat(req)
+
+    %% ── Bước 0: Route — quyết định chiến lược retrieval ──
+    CR->>+QR: route(question, useGraph=false)
+    QR->>QR: MVP — luôn dùng vector, bỏ qua graph (Neo4j chưa impl)
+    QR-->>-CR: { use_vector:true, use_graph:false }
+
+    %% ── Bước 1: Retrieve — embed query + search Qdrant ──
+    CR->>+RS: retrieve(question, topK=5, folderId, userId)
+
+    RS->>+EM: embed_query(question)
+    EM->>EM: genai.Client(api_key) — singleton
+    EM->>G: embed_content(model, [question], task_type=RETRIEVAL_QUERY, dim=768)
+    G-->>EM: embedding[1]
+    EM-->>-RS: query_vector[768]
+
+    RS->>+VR: search(collection, query_vector, topK=5, score_threshold, folderId, userId)
+    VR->>VR: build Filter must=[<br/>  FieldCondition(folderId=folderId),<br/>  FieldCondition(userId=userId)<br/>]
+    VR->>+Q: query_points(collection, query=query_vector, limit=5, filter, score_threshold, with_payload=True)
+    Q-->>-VR: list[ScoredPoint] (cosine similarity)
+    VR->>VR: trả về chỉ những point có score ≥ score_threshold
+    VR-->>-RS: list[ScoredPoint]{ chunkText, pageNumber, score, folderId, ... }
+    RS-->>-CR: hits: list[ScoredPoint]
+
+    %% ── Fallback nếu không có hits ──
+    alt hits rỗng
+        CR-->>Caller: RagChatResponse{ answer:"Dữ liệu chưa đủ...", citations:[], usedVector:true }
+    end
+
+    %% ── Bước 2: Build prompt ──
+    CR->>+PS: load_system_prompt()
+    PS->>PS: Path("prompts/system_prompt.txt").read_text()
+    PS-->>-CR: system_prompt (string)
+
+    CR->>+PS: build_user_message(question, hits)
+    loop mỗi hit (index C1, C2, ...)
+        PS->>PS: _format_hit(i, hit)<br/>→ "[C{i}] sourceType=...; pageNumber=...; score=...\n{chunkText}"
+    end
+    PS->>PS: "CONTEXT:\n{context}\n\nQUESTION:\n{question}\n\nYêu cầu:..."
+    PS-->>-CR: user_message (string)
+
+    %% ── Bước 3: Generate answer ──
+    CR->>+LLM: generate(system_prompt, user_message, temperature=0.2)
+    LLM->>LLM: genai.Client(api_key) — singleton
+    LLM->>G: generate_content(model=gemma, contents=user_message,<br/>  config={system_instruction, temperature=0.2})
+    G-->>LLM: response.text
+    LLM->>LLM: response.text.strip() — raise ValueError nếu rỗng
+    LLM-->>-CR: answer (string)
+
+    %% ── Bước 4: Build citations ──
+    CR->>+CS: to_citations(hits)
+    loop mỗi ScoredPoint
+        CS->>CS: snippet = payload["chunkText"][:300]
+        CS->>CS: Citation{ sourceType, sourceId, documentId, title,<br/>  pageNumber, chunkIndex, score, snippet }
+        CS->>CS: deduplicate theo (sourceType, sourceId, chunkIndex)
+    end
+    CS-->>-CR: list[Citation]
+
+    CR-->>-Caller: RagChatResponse{ answer, citations[], usedVector:true, usedGraph:false }

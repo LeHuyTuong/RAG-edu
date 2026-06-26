@@ -8,6 +8,13 @@ import { Pagination } from "@/components/ui/Pagination";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { SelectField } from "@/components/ui/SelectField";
 import { Table, type TableRow } from "@/components/ui/Table";
+import type { StatusTone } from "@/types";
+
+/** Badge only supports status tones, not semantic UI tones. */
+type BadgeStatusTone = Extract<
+  StatusTone,
+  "success" | "warning" | "error" | "neutral"
+>;
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   banAdminAccount,
@@ -44,10 +51,7 @@ const statusLabels: Record<AdminUserStatus, string> = {
   DELETED: "Đã xóa",
 };
 
-const statusTone: Record<
-  AdminUserStatus,
-  "success" | "warning" | "error" | "neutral"
-> = {
+const statusTone: Record<AdminUserStatus, BadgeStatusTone> = {
   ACTIVE: "success",
   UNVERIFIED: "warning",
   BANNED: "error",

@@ -1,9 +1,14 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import type { StatusTone } from "@/types";
 
-type Tone = "primary" | "secondary" | "tertiary" | "error" | "neutral";
+/** Moderator UI uses semantic UI tones, not status tones. */
+type ModeratorTone = Extract<
+  StatusTone,
+  "primary" | "secondary" | "tertiary" | "error" | "neutral"
+>;
 
-const toneClasses: Record<Tone, string> = {
+const toneClasses: Record<ModeratorTone, string> = {
   primary: "bg-primary-fixed text-on-primary-fixed-variant",
   secondary: "bg-secondary-fixed text-on-secondary-fixed-variant",
   tertiary: "bg-tertiary-fixed text-on-tertiary-fixed-variant",
@@ -37,7 +42,7 @@ export function ModeratorBadge({
   className = "",
 }: {
   readonly children: ReactNode;
-  readonly tone?: Tone;
+  readonly tone?: ModeratorTone;
   readonly className?: string;
 }): React.JSX.Element {
   return (
@@ -74,7 +79,7 @@ export function IconButton({
 }: {
   readonly label: string;
   readonly icon: string;
-  readonly tone?: Tone;
+  readonly tone?: ModeratorTone;
   readonly onClick?: () => void;
   readonly href?: string;
 }): React.JSX.Element {

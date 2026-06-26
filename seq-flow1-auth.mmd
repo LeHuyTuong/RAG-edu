@@ -1,0 +1,49 @@
+sequenceDiagram
+    participant S as Student (Browser)
+    participant AC as :AuthController
+    participant AS as :AuthServiceImpl
+    participant UR as :UserRepository
+    participant RT as :RefreshTokenRepository
+    participant DB as MySQL
+
+    %% ── ĐĂNG KÝ ──
+    S->>+AC: POST /api/v1/auth/register { name, email, password }
+    AC->>+AS: register(RegisterRequest)
+
+    AS->>UR: findByEmail(email)
+    UR->>DB: SELECT * FROM users WHERE email=?
+    DB-->>UR: null (no rows)
+    UR-->>AS: Optional.empty()
+
+    AS->>AS: passwordEncoder.encode(password)
+    AS->>AS: new User(name, email, hashedPwd, STUDENT, ACTIVE)
+
+    AS->>UR: save(user)
+    UR->>DB: INSERT INTO users (name,email,password,role,status) VALUES (...)
+    DB-->>UR: generated id=42
+    UR-->>AS: User{ id=42, email, role=STUDENT }
+
+    AS->>AS: jwtUtil.generateAccessToken(user)
+    AS-->>-AC: RegisterResponse { accessToken, refreshToken }
+    AC-->>-S: 201 { accessToken (JWT), refreshToken }
+
+    %% ── ĐĂNG NHẬP ──
+    S->>+AC: POST /api/v1/auth/login { email, password }
+    AC->>+AS: login(LoginRequest)
+
+    AS->>UR: findByEmail(email)
+    UR->>DB: SELECT * FROM users WHERE email=?
+    DB-->>UR: row
+    UR-->>AS: User entity
+
+    AS->>AS: BCrypt.matches(rawPwd, user.password)
+
+    AS->>AS: new RefreshToken(userId, token, expiresAt)
+    AS->>RT: save(refreshToken)
+    RT->>DB: INSERT INTO refresh_tokens (user_id, token, expires_at) VALUES (...)
+    DB-->>RT: ok
+    RT-->>AS: RefreshToken entity
+
+    AS->>AS: jwtUtil.generateAccessToken(user)
+    AS-->>-AC: LoginResponse { accessToken, refreshToken }
+    AC-->>-S: 200 { accessToken, refreshToken }

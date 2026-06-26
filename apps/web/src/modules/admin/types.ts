@@ -1,11 +1,11 @@
+import type { StatusTone } from "@/types";
+
 export type AdminNavSection = "dashboard" | "users" | "settings";
 
-export type AdminTone =
-  | "primary"
-  | "secondary"
-  | "tertiary"
-  | "error"
-  | "neutral";
+export type AdminTone = Extract<
+  StatusTone,
+  "primary" | "secondary" | "tertiary" | "error" | "neutral"
+>;
 
 export interface AdminStat {
   readonly label: string;

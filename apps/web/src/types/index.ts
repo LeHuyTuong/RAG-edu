@@ -2,6 +2,17 @@
  * Global Types & Interfaces
  */
 
+// Status tone for badges, indicators, and status displays
+// Shared across ui/Badge, admin/, moderator/, and user/ modules
+export type StatusTone =
+  | "primary"
+  | "secondary"
+  | "tertiary"
+  | "success"
+  | "warning"
+  | "error"
+  | "neutral";
+
 // User Types
 export type UserRole = "admin" | "moderator" | "teacher" | "student" | "guest";
 

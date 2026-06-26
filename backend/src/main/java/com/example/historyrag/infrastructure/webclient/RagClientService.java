@@ -2,6 +2,8 @@ package com.example.historyrag.infrastructure.webclient;
 
 import com.example.historyrag.infrastructure.webclient.dto.RagChatRequest;
 import com.example.historyrag.infrastructure.webclient.dto.RagChatResponse;
+import com.example.historyrag.infrastructure.webclient.dto.RagClassifyRequest;
+import com.example.historyrag.infrastructure.webclient.dto.RagClassifyResponse;
 import com.example.historyrag.infrastructure.webclient.dto.RagDeleteResponse;
 import com.example.historyrag.infrastructure.webclient.dto.RagHealthResponse;
 import com.example.historyrag.infrastructure.webclient.dto.RagIngestRequest;
@@ -25,6 +27,8 @@ public interface RagClientService {
             Runnable onComplete);
 
     RagRetrieveResponse retrieve(RagRetrieveRequest request, String traceparent);
+
+    RagClassifyResponse classify(RagClassifyRequest request, String traceparent);
 
     RagIngestResponse ingest(RagIngestRequest request, String traceparent);
 

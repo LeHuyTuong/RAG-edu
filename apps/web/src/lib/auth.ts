@@ -1,5 +1,5 @@
 import type { User } from "@/types";
-import type { UserRole } from "@/shared/types";
+import type { UserRole } from "@/types";
 
 type BackendAuthRole = "USER" | "ADMIN" | "MODERATOR" | "student" | "teacher";
 

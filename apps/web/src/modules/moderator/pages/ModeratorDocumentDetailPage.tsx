@@ -11,6 +11,14 @@ import {
   rejectDocument,
 } from "@/apis/document.api";
 import type { DocumentDetail, DocumentStatus } from "@/types/document.type";
+import type { StatusTone } from "@/types";
+
+/** ModeratorBadge only supports semantic UI tones (no status tones). */
+type DocStatusTone = Extract<
+  StatusTone,
+  "primary" | "secondary" | "tertiary" | "error" | "neutral"
+>;
+
 import { formatDate } from "@/utils";
 import { DocumentPreview } from "@/modules/user/documents/detail/components/DocumentPreview";
 import type { DocumentPreviewData } from "@/modules/user/documents/detail/type";
@@ -31,10 +39,7 @@ const statusLabelMap: Record<DocumentStatus, string> = {
   DELETED: "Đã xóa",
 };
 
-const statusToneMap: Record<
-  DocumentStatus,
-  "primary" | "secondary" | "tertiary" | "error" | "neutral"
-> = {
+const statusToneMap: Record<DocumentStatus, DocStatusTone> = {
   PENDING: "tertiary",
   ACTIVE: "primary",
   REJECTED: "error",

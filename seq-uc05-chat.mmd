@@ -1,0 +1,31 @@
+sequenceDiagram
+    participant S as Student (Browser)
+    participant FC as :FolderController
+    participant FV as :FolderServiceImpl
+    participant FR as :FolderRepository
+    participant DB as MySQL
+    participant RSI as :RagServiceImpl
+    participant RC as :RagClientServiceImpl
+    participant RS as Rag-Service :8002
+
+    S->>+FC: POST /api/v1/folders/{folderId}/chat { question:"..." } | Auth: Bearer JWT
+    FC->>FC: extract userId from @AuthenticationPrincipal Jwt
+
+    FC->>+FV: existsByIdAndOwner(folderId, userId)
+    FV->>FR: existsByIdAndOwnerId(folderId, userId)
+    FR->>DB: SELECT COUNT(*) FROM folders WHERE id=? AND owner_id=?
+    DB-->>FR: 1
+    FR-->>FV: true
+    FV-->>-FC: true
+
+    FC->>FC: build RagChatRequest{ question, folderId, userId, topK=5, temperature=0.2 }
+    FC->>+RSI: chat(RagChatRequest, traceparent)
+    RSI->>+RC: chat(RagChatRequest, traceparent)
+
+    RC->>+RS: POST /rag/chat (WebClient)
+    Note over RS: [Rag-Service internal — xem seq-rag02 + seq-rag03]
+    RS-->>-RC: RagChatResponse{ answer, citations[], usedVector:true }
+
+    RC-->>-RSI: RagChatResponse
+    RSI-->>-FC: RagChatResponse
+    FC-->>-S: 200 { answer:"...", citations:[{ pageNumber:4, snippet:"..." }] }

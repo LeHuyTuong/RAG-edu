@@ -1,0 +1,41 @@
+sequenceDiagram
+    participant S as Student (Browser)
+    participant FC as :FolderController
+    participant FV as :FolderServiceImpl
+    participant FR as :FolderRepository
+    participant DB as MySQL
+    participant RSI as :RagServiceImpl
+    participant RC as :RagClientServiceImpl
+    participant RS as Rag-Service :8002
+    participant Q as Qdrant
+    participant G as Gemini API
+
+    S->>+FC: POST /api/v1/folders/{folderId}/chat { question:"Chiến dịch HCM năm nào?" } | Auth: Bearer JWT
+    FC->>FC: extract userId from @AuthenticationPrincipal Jwt
+
+    FC->>+FV: existsByIdAndOwner(folderId, userId)
+    FV->>FR: existsByIdAndOwnerId(folderId, userId)
+    FR->>DB: SELECT COUNT(*) FROM folders WHERE id=? AND owner_id=?
+    DB-->>FR: 1
+    FR-->>FV: true
+    FV-->>-FC: true
+
+    FC->>FC: build RagChatRequest{ question, folderId, userId, topK=5, temperature=0.2 }
+
+    FC->>+RSI: chat(RagChatRequest, traceparent)
+    RSI->>+RC: chat(RagChatRequest, traceparent)
+    RC->>+RS: POST /rag/chat (WebClient)
+
+    RS->>G: embed_query(question) → vector[768]
+    G-->>RS: query vector
+    RS->>Q: search topK (filter: folderId AND userId)
+    Q-->>RS: ScoredPoint[]{ chunkText, pageNumber, score ≥ 0.5 }
+    RS->>RS: build prompt (system_prompt + context từ chunks + question)
+    RS->>G: generate_content(prompt) → answer text
+    G-->>RS: answer text
+    RS->>RS: build citations[]{ pageNumber, snippet=chunkText[:300], score, documentId }
+
+    RS-->>-RC: RagChatResponse{ answer, citations[], usedVector:true }
+    RC-->>-RSI: RagChatResponse
+    RSI-->>-FC: RagChatResponse
+    FC-->>-S: 200 { answer:"...", citations:[{ pageNumber:4, snippet:"..." }] }

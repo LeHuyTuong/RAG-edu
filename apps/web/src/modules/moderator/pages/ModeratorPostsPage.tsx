@@ -4,6 +4,14 @@ import { Pagination } from "@/components/ui/Pagination";
 import { Table, type TableRow } from "@/components/ui/Table";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import type { StatusTone } from "@/types";
+
+/** ModeratorBadge only supports semantic UI tones (no status tones). */
+type PostStatusTone = Extract<
+  StatusTone,
+  "primary" | "secondary" | "tertiary" | "error" | "neutral"
+>;
+
 import { postModerationItems } from "../mockData";
 import type { PostModerationItem, PostModerationStatus } from "../types";
 
@@ -31,7 +39,7 @@ const statusMeta: Record<
   PostModerationStatus,
   {
     label: string;
-    tone: "primary" | "secondary" | "tertiary" | "error" | "neutral";
+    tone: PostStatusTone;
   }
 > = {
   pending: { label: "Chờ phê duyệt", tone: "secondary" },

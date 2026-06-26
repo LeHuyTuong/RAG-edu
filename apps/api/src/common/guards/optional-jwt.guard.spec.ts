@@ -1,6 +1,7 @@
-import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { OptionalJwtGuard } from './optional-jwt.guard';
+import { createMockExecutionContext } from '../utils/test-utils';
 
 describe('OptionalJwtGuard', () => {
   let guard: OptionalJwtGuard;
@@ -20,11 +21,7 @@ describe('OptionalJwtGuard', () => {
     headers: Record<string, string | undefined>,
     cookies: Record<string, string | undefined> = {},
   ) {
-    const req: any = { headers, cookies };
-    const ctx: any = {
-      switchToHttp: () => ({ getRequest: () => req }),
-    } as ExecutionContext;
-
+    const { ctx, req } = createMockExecutionContext({ headers, cookies });
     return { ctx, req };
   }
 

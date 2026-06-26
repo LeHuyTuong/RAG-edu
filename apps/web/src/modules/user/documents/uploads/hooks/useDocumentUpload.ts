@@ -17,6 +17,10 @@ import { useCallback, useRef, useState } from "react";
 import { validateFile } from "@/utils/validate.file";
 import { createDocument } from "@/apis/document.api";
 import { DEFAULT_UPLOAD_CONFIG } from "@/constants/upload.const";
+import {
+  uploadFileToCloudinary,
+  UPLOAD_PRESET,
+} from "../utils/cloudinary-upload";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -25,20 +29,6 @@ export interface FormValues {
   subjectId: string;
   description: string;
 }
-
-/** Raw JSON shape returned by Cloudinary's upload endpoint. */
-interface CloudinaryResponse {
-  secure_url: string;
-  public_id: string;
-  bytes: number;
-  format: string;
-  resource_type: string;
-}
-
-// ── Cloudinary config (env vars with safe fallbacks) ─────────────────────────
-
-const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ?? "ddxstobvd";
-const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET ?? "";
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
 
@@ -147,33 +137,17 @@ export function useDocumentUpload() {
 
       try {
         // ── Step 1: Upload file to Cloudinary ────────────────────────────
-        const formData = new FormData();
-        formData.append("file", selectedFile);
-        formData.append("upload_preset", UPLOAD_PRESET);
-
-        const cloudRes = await fetch(
-          `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`,
-          { method: "POST", body: formData },
-        );
-
-        if (!cloudRes.ok) {
-          const body = await cloudRes.text();
-          throw new Error(
-            `Cloudinary upload thất bại (${cloudRes.status}): ${body}`,
-          );
-        }
-
-        const cloudData: CloudinaryResponse = await cloudRes.json();
+        const cloudData = await uploadFileToCloudinary(selectedFile);
 
         // ── Step 2: Create document record in the API ─────────────────────
         await createDocument({
           title: formValues.title.trim(),
           description: formValues.description.trim() || undefined,
-          fileUrl: cloudData.secure_url,
-          publicId: cloudData.public_id,
+          fileUrl: cloudData.url,
+          publicId: cloudData.publicId,
           sizeInBytes: cloudData.bytes,
           format: cloudData.format,
-          resourceType: cloudData.resource_type,
+          resourceType: cloudData.resourceType,
           subjectId: formValues.subjectId || undefined,
           isPublic,
         });

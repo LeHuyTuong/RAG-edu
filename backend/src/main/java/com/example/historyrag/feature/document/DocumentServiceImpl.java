@@ -258,8 +258,10 @@ public class DocumentServiceImpl implements DocumentService {
             throw new ResourceNotFoundException("Document", "id", id);
         }
 
-        if (doc.getStatus() != DocumentStatus.FAILED && doc.getStatus() != DocumentStatus.READY) {
-            throw new InvalidRequestException("Chỉ có thể reindex tài liệu ở trạng thái READY hoặc FAILED");
+        if (doc.getStatus() != DocumentStatus.FAILED
+                && doc.getStatus() != DocumentStatus.READY
+                && doc.getStatus() != DocumentStatus.REJECTED) {
+            throw new InvalidRequestException("Chỉ có thể reindex tài liệu ở trạng thái READY, FAILED hoặc REJECTED");
         }
 
         doc.setStatus(DocumentStatus.REINDEXING);

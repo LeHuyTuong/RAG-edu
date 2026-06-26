@@ -1,0 +1,336 @@
+<title>RAG-edu · Sequence Diagram</title>
+<style>
+:root{--ground:#1A1208;--surface:#241C0E;--raised:#2E2314;--text:#EDE8DD;--muted:#9C9080;--accent:#C8971A;--accent-dim:#8A6410;--accent-2:#8B2417;--border:#3A2E1E;--border-bright:#5A4628;--font-display:'Palatino Linotype','Book Antiqua',Palatino,Georgia,serif;--font-body:system-ui,-apple-system,'Segoe UI',sans-serif;--font-mono:'SF Mono','Cascadia Code',Consolas,'Courier New',monospace;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--ground);color:var(--text);font-family:var(--font-body);font-size:15px;line-height:1.6;min-height:100vh;overflow-x:hidden;position:relative;}
+#texture{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:0.4;}
+main{position:relative;z-index:1;max-width:900px;margin:0 auto;padding:48px 32px 96px;}
+.eyebrow{font-family:var(--font-mono);font-size:11px;letter-spacing:0.15em;text-transform:uppercase;color:var(--accent);margin-bottom:20px;opacity:0.9;}
+h1{font-family:var(--font-display);font-size:clamp(40px,7vw,72px);font-weight:400;line-height:1.05;letter-spacing:-0.02em;color:var(--text);margin-bottom:8px;}
+.subtitle{font-family:var(--font-display);font-size:clamp(18px,3vw,26px);font-weight:400;font-style:italic;color:var(--accent);margin-bottom:20px;letter-spacing:0.01em;}
+.meta{font-family:var(--font-mono);font-size:12px;color:var(--muted);letter-spacing:0.08em;margin-bottom:48px;}
+hr.divider{border:none;border-top:1px solid var(--border);margin:40px 0;}
+hr.bright{border-top-color:var(--border-bright);}
+.section-label{font-family:var(--font-mono);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);margin-bottom:20px;}
+.actions{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:48px;}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 24px;font-family:var(--font-mono);font-size:12px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;border:none;transition:all 0.15s ease;}
+.btn-primary{background:var(--accent);color:#1A1208;font-weight:700;}
+.btn-primary:hover{background:#D8A72A;}
+.btn-secondary{background:transparent;color:var(--text);border:1px solid var(--border-bright);}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent);}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:3px;}
+.actors-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:40px;}
+.actor-chip{background:var(--surface);border:1px solid var(--border);padding:6px 14px;font-size:12px;font-family:var(--font-mono);color:var(--text);display:flex;align-items:center;gap:8px;}
+.actor-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.flows-list{display:flex;flex-direction:column;}
+.flow-card{border-top:1px solid var(--border);padding:24px 0;}
+.flow-card:last-child{border-bottom:1px solid var(--border);}
+.flow-header{display:flex;align-items:baseline;gap:16px;margin-bottom:10px;flex-wrap:wrap;}
+.flow-number{font-family:var(--font-mono);font-size:11px;color:var(--accent);letter-spacing:0.1em;flex-shrink:0;}
+.flow-name{font-family:var(--font-display);font-size:20px;font-weight:400;color:var(--text);flex:1;}
+.flow-count{font-family:var(--font-mono);font-size:11px;color:var(--muted);letter-spacing:0.05em;flex-shrink:0;}
+.flow-note{font-size:12px;color:var(--muted);margin-bottom:12px;font-family:var(--font-mono);line-height:1.5;}
+.async-tag{color:#E07A30;background:rgba(224,122,48,0.12);padding:1px 6px;font-size:10px;margin-left:6px;letter-spacing:0.05em;}
+.flow-canvas{display:block;width:100%;height:32px;}
+.source-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.source-wrap{background:var(--surface);border:1px solid var(--border);border-top:2px solid var(--border-bright);}
+.source-pre{overflow:auto;max-height:280px;padding:20px;font-family:var(--font-mono);font-size:11px;line-height:1.6;color:var(--muted);scrollbar-width:thin;scrollbar-color:var(--border-bright) transparent;}
+.source-pre::-webkit-scrollbar{width:4px;height:4px;}
+.source-pre::-webkit-scrollbar-thumb{background:var(--border-bright);}
+#toast{position:fixed;bottom:32px;right:32px;background:var(--accent);color:#1A1208;font-family:var(--font-mono);font-size:12px;letter-spacing:0.08em;padding:10px 20px;opacity:0;transform:translateY(8px);transition:opacity 0.2s,transform 0.2s;pointer-events:none;z-index:100;font-weight:700;}
+#toast.show{opacity:1;transform:translateY(0);}
+@media(max-width:600px){main{padding:32px 20px 64px;}.flow-name{font-size:17px;}}
+@media(prefers-reduced-motion:reduce){#texture{display:none;}.btn{transition:none;}}
+</style>
+
+<canvas id="texture" aria-hidden="true"></canvas>
+
+<main>
+  <header>
+    <p class="eyebrow">RAG-edu · Architecture Specification</p>
+    <h1>Sequence<br>Diagram</h1>
+    <p class="subtitle">Hệ thống Backend RAG-edu</p>
+    <p class="meta">3 luồng nghiệp vụ &amp;nbsp;&amp;middot;&amp;nbsp; 38 bước &amp;nbsp;&amp;middot;&amp;nbsp; 6 actors &amp;nbsp;&amp;middot;&amp;nbsp; Spring Boot :8080 + FastAPI :8002</p>
+  </header>
+
+  <div class="actions">
+    <button class="btn btn-primary" id="downloadBtn">&#8595; Tải xuống .drawio</button>
+    <button class="btn btn-secondary" id="copyBtn">&#9113; Sao ch�p XML</button>
+  </div>
+
+  <hr class="divider bright" />
+
+  <section aria-label="Actors">
+    <p class="section-label">Actors</p>
+    <div class="actors-grid">
+      <div class="actor-chip"><span class="actor-dot" style="background:#7B9BCC"></span>Student (Browser)</div>
+      <div class="actor-chip"><span class="actor-dot" style="background:#C8971A"></span>Backend :8080</div>
+      <div class="actor-chip"><span class="actor-dot" style="background:#52A882"></span>MySQL · TiDB Cloud</div>
+      <div class="actor-chip"><span class="actor-dot" style="background:#C8B41A"></span>Rag-Service :8002</div>
+      <div class="actor-chip"><span class="actor-dot" style="background:#A87CC8"></span>Qdrant · Vector DB</div>
+      <div class="actor-chip"><span class="actor-dot" style="background:#C85C5C"></span>Gemini API · Google</div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <section aria-label="Flows">
+    <p class="section-label">Luồng nghiệp vụ</p>
+    <div class="flows-list">
+      <div class="flow-card">
+        <div class="flow-header">
+          <span class="flow-number">FLOW 01</span>
+          <span class="flow-name">Đăng ký / Đăng nhập</span>
+          <span class="flow-count">9 bước</span>
+        </div>
+        <p class="flow-note">POST /auth/register &#8594; JWT + refreshToken &amp;nbsp;&amp;nbsp; POST /auth/login &#8594; BCrypt verify</p>
+        <canvas class="flow-canvas" data-flow="1" width="800" height="32" aria-hidden="true"></canvas>
+      </div>
+      <div class="flow-card">
+        <div class="flow-header">
+          <span class="flow-number">FLOW 02</span>
+          <span class="flow-name">Upload PDF &#8594; Index &#8594; Ready</span>
+          <span class="flow-count">17 bước</span>
+        </div>
+        <p class="flow-note">POST /documents (multipart) &#8594; pdfplumber &#8594; chunks &#8594; embeddings &#8594; Qdrant<span class="async-tag">ASYNC từ bước 9</span></p>
+        <canvas class="flow-canvas" data-flow="2" width="800" height="32" aria-hidden="true"></canvas>
+      </div>
+      <div class="flow-card">
+        <div class="flow-header">
+          <span class="flow-number">FLOW 03</span>
+          <span class="flow-name">Chat với Folder (RAG)</span>
+          <span class="flow-count">12 bước</span>
+        </div>
+        <p class="flow-note">POST /folders/{id}/chat &#8594; embed_query &#8594; vector search &#8594; generate_content &#8594; citations[]</p>
+        <canvas class="flow-canvas" data-flow="3" width="800" height="32" aria-hidden="true"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider" />
+
+  <section aria-label="XML Source">
+    <div class="source-header">
+      <p class="section-label">XML Source</p>
+      <span style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">draw.io · mxGraph format</span>
+    </div>
+    <div class="source-wrap">
+      <pre class="source-pre"><code id="sourceCode"></code></pre>
+    </div>
+  </section>
+</main>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const XML_CONTENT = `<?xml version="1.0" encoding="UTF-8"?>
+<mxGraphModel dx="1500" dy="900" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="2400" math="0" shadow="0">
+  <root>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
+    <mxCell id="2" value="Student&#xa;(Browser)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=12;" vertex="1" parent="1"><mxGeometry x="20" y="20" width="160" height="44" as="geometry" /></mxCell>
+    <mxCell id="3" value="Backend&#xa;(Spring Boot :8080)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=12;" vertex="1" parent="1"><mxGeometry x="220" y="20" width="160" height="44" as="geometry" /></mxCell>
+    <mxCell id="4" value="MySQL&#xa;(TiDB Cloud)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=12;" vertex="1" parent="1"><mxGeometry x="420" y="20" width="160" height="44" as="geometry" /></mxCell>
+    <mxCell id="5" value="Rag-Service&#xa;(FastAPI :8002)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=12;" vertex="1" parent="1"><mxGeometry x="620" y="20" width="160" height="44" as="geometry" /></mxCell>
+    <mxCell id="6" value="Qdrant&#xa;(Vector DB Cloud)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=12;" vertex="1" parent="1"><mxGeometry x="820" y="20" width="160" height="44" as="geometry" /></mxCell>
+    <mxCell id="7" value="Gemini API&#xa;(Google)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=12;" vertex="1" parent="1"><mxGeometry x="1020" y="20" width="160" height="44" as="geometry" /></mxCell>
+    <mxCell id="10" value="" style="endArrow=none;dashed=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="100" y="64" as="sourcePoint"/><mxPoint x="100" y="1970" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="11" value="" style="endArrow=none;dashed=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="300" y="64" as="sourcePoint"/><mxPoint x="300" y="1970" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="12" value="" style="endArrow=none;dashed=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="500" y="64" as="sourcePoint"/><mxPoint x="500" y="1970" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="13" value="" style="endArrow=none;dashed=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="700" y="64" as="sourcePoint"/><mxPoint x="700" y="1970" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="14" value="" style="endArrow=none;dashed=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="900" y="64" as="sourcePoint"/><mxPoint x="900" y="1970" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="15" value="" style="endArrow=none;dashed=1;strokeColor=#999999;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1100" y="64" as="sourcePoint"/><mxPoint x="1100" y="1970" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="20" value="Flow 1: Dang ky / Dang nhap" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#0066CC;dashed=1;dashPattern=8 4;fontSize=13;fontStyle=1;fontColor=#0066CC;verticalAlign=top;align=left;spacingLeft=10;spacingTop=5;" vertex="1" parent="1"><mxGeometry x="10" y="68" width="1270" height="418" as="geometry" /></mxCell>
+    <mxCell id="21" value="Flow 2: Upload PDF to Index to Ready" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#006600;dashed=1;dashPattern=8 4;fontSize=13;fontStyle=1;fontColor=#006600;verticalAlign=top;align=left;spacingLeft=10;spacingTop=5;" vertex="1" parent="1"><mxGeometry x="10" y="498" width="1270" height="872" as="geometry" /></mxCell>
+    <mxCell id="22" value="Flow 3: Chat voi Folder (RAG)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#660066;dashed=1;dashPattern=8 4;fontSize=13;fontStyle=1;fontColor=#660066;verticalAlign=top;align=left;spacingLeft=10;spacingTop=5;" vertex="1" parent="1"><mxGeometry x="10" y="1382" width="1270" height="588" as="geometry" /></mxCell>
+    <mxCell id="31" value="[1] POST /api/v1/auth/register {name,email,password}" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="100" y="102" as="sourcePoint"/><mxPoint x="300" y="102" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="32" value="[2] INSERT user (role=STUDENT, status=ACTIVE)" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="300" y="142" as="sourcePoint"/><mxPoint x="500" y="142" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="33" value="[3] user row (id, email, role)" style="edgeStyle=none;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="500" y="182" as="sourcePoint"/><mxPoint x="300" y="182" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="34" value="[4] 201 {accessToken (JWT), refreshToken}" style="edgeStyle=none;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="300" y="222" as="sourcePoint"/><mxPoint x="100" y="222" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="35" value="" style="endArrow=none;dashed=1;strokeColor=#BBBBBB;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="15" y="248" as="sourcePoint"/><mxPoint x="1275" y="248" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="35b" value="--- login ---" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=10;fontColor=#AAAAAA;" vertex="1" parent="1"><mxGeometry x="600" y="240" width="80" height="16" as="geometry" /></mxCell>
+    <mxCell id="36" value="[5] POST /api/v1/auth/login {email,password}" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="100" y="268" as="sourcePoint"/><mxPoint x="300" y="268" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="37" value="[6] SELECT user WHERE email=?" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="300" y="308" as="sourcePoint"/><mxPoint x="500" y="308" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="38" value="[7] BCrypt verify password" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="300" y="348" as="sourcePoint"/><mxPoint x="300" y="378" as="targetPoint"/><Array as="points"><mxPoint x="368" y="348"/><mxPoint x="368" y="378"/></Array></mxGeometry></mxCell>
+    <mxCell id="39" value="[8] INSERT refresh_token" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="300" y="418" as="sourcePoint"/><mxPoint x="500" y="418" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="40" value="[9] 200 {accessToken, refreshToken}" style="edgeStyle=none;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="300" y="458" as="sourcePoint"/><mxPoint x="100" y="458" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="51" value="[1] POST /api/v1/documents (multipart: file.pdf,title,folderId,isPublic) Authorization:Bearer JWT" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="100" y="528" as="sourcePoint"/><mxPoint x="300" y="528" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="52" value="[2] validate JWT, extract userId" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="300" y="568" as="sourcePoint"/><mxPoint x="300" y="598" as="targetPoint"/><Array as="points"><mxPoint x="368" y="568"/><mxPoint x="368" y="598"/></Array></mxGeometry></mxCell>
+    <mxCell id="53" value="[3] SELECT folder WHERE id=folderId AND owner_id=userId" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="300" y="638" as="sourcePoint"/><mxPoint x="500" y="638" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="54" value="[4] SELECT setting (allowedTypes, maxSizeMb)" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="300" y="678" as="sourcePoint"/><mxPoint x="500" y="678" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="55" value="[5] validate ext in allowedTypes, size &lt;= maxSizeMb" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="300" y="718" as="sourcePoint"/><mxPoint x="300" y="748" as="targetPoint"/><Array as="points"><mxPoint x="368" y="718"/><mxPoint x="368" y="748"/></Array></mxGeometry></mxCell>
+    <mxCell id="56" value="[6] save file to ./uploads/{uuid}.pdf" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="300" y="788" as="sourcePoint"/><mxPoint x="300" y="818" as="targetPoint"/><Array as="points"><mxPoint x="368" y="788"/><mxPoint x="368" y="818"/></Array></mxGeometry></mxCell>
+    <mxCell id="57" value="[7] INSERT document (status=UPLOADING, fileUrl, publicId, folderId, ownerId)" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="300" y="858" as="sourcePoint"/><mxPoint x="500" y="858" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="58" value="[8] 200 {id, status: UPLOADING}" style="edgeStyle=none;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="300" y="898" as="sourcePoint"/><mxPoint x="100" y="898" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="58b" value="[async sau khi commit DB]" style="text;html=1;strokeColor=#d6b656;fillColor=#fff2cc;align=center;verticalAlign=middle;fontSize=10;fontColor=#CC6600;rounded=1;" vertex="1" parent="1"><mxGeometry x="420" y="912" width="200" height="20" as="geometry" /></mxCell>
+    <mxCell id="59" value="[9] UPDATE document SET status=INDEXING  [async @TransactionalEventListener]" style="edgeStyle=none;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#FF8000;fontColor=#CC5500;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="300" y="945" as="sourcePoint"/><mxPoint x="500" y="945" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="60" value="[10] POST /ingest {sourceId=docId, filePath=/app/uploads/{uuid}.pdf, metadata:{folderId,userId}}" style="edgeStyle=none;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#FF8000;fontColor=#CC5500;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="300" y="988" as="sourcePoint"/><mxPoint x="700" y="988" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="61" value="[11] extract text (pdfplumber) pages[]" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#FF8000;fontColor=#CC5500;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="700" y="1028" as="sourcePoint"/><mxPoint x="700" y="1058" as="targetPoint"/><Array as="points"><mxPoint x="768" y="1028"/><mxPoint x="768" y="1058"/></Array></mxGeometry></mxCell>
+    <mxCell id="62" value="[12] chunk text (size=800,overlap=120) chunks[]" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#FF8000;fontColor=#CC5500;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="700" y="1098" as="sourcePoint"/><mxPoint x="700" y="1128" as="targetPoint"/><Array as="points"><mxPoint x="768" y="1098"/><mxPoint x="768" y="1128"/></Array></mxGeometry></mxCell>
+    <mxCell id="63" value="[13] embed_documents(chunks[].text) vectors[768]" style="edgeStyle=none;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#FF8000;fontColor=#CC5500;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="700" y="1168" as="sourcePoint"/><mxPoint x="1100" y="1168" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="64" value="[14] upsert points {sourceId,folderId,userId,pageNumber,chunkText}" style="edgeStyle=none;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#FF8000;fontColor=#CC5500;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="700" y="1208" as="sourcePoint"/><mxPoint x="900" y="1208" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="65" value="[15] OK" style="edgeStyle=none;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#FF8000;fontColor=#CC5500;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="900" y="1248" as="sourcePoint"/><mxPoint x="700" y="1248" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="66" value="[16] {status: COMPLETED, chunks: [...]}" style="edgeStyle=none;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#FF8000;fontColor=#CC5500;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="700" y="1288" as="sourcePoint"/><mxPoint x="300" y="1288" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="67" value="[17] UPDATE document SET status=READY, chunkCount=N" style="edgeStyle=none;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#FF8000;fontColor=#CC5500;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="300" y="1335" as="sourcePoint"/><mxPoint x="500" y="1335" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="81" value="[1] POST /api/v1/folders/{folderId}/chat {question} Authorization:Bearer JWT" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="100" y="1412" as="sourcePoint"/><mxPoint x="300" y="1412" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="82" value="[2] validate JWT, extract userId" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="300" y="1452" as="sourcePoint"/><mxPoint x="300" y="1482" as="targetPoint"/><Array as="points"><mxPoint x="368" y="1452"/><mxPoint x="368" y="1482"/></Array></mxGeometry></mxCell>
+    <mxCell id="83" value="[3] SELECT folder WHERE id=folderId AND owner_id=userId" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="300" y="1522" as="sourcePoint"/><mxPoint x="500" y="1522" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="84" value="[4] POST /rag/chat {question,folderId,userId,topK=5,temperature=0.2}" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="300" y="1562" as="sourcePoint"/><mxPoint x="700" y="1562" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="85" value="[5] embed_query(question) vector[768]" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="700" y="1602" as="sourcePoint"/><mxPoint x="1100" y="1602" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="86" value="[6] search topK (filter: folderId AND userId)" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="700" y="1642" as="sourcePoint"/><mxPoint x="900" y="1642" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="87" value="[7] ScoredPoint[] chunkText,pageNumber,score &gt;= 0.5" style="edgeStyle=none;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="900" y="1682" as="sourcePoint"/><mxPoint x="700" y="1682" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="88" value="[8] build prompt (system_prompt + context + question)" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="700" y="1722" as="sourcePoint"/><mxPoint x="700" y="1752" as="targetPoint"/><Array as="points"><mxPoint x="768" y="1722"/><mxPoint x="768" y="1752"/></Array></mxGeometry></mxCell>
+    <mxCell id="89" value="[9] generate_content(prompt) answer text" style="edgeStyle=none;html=1;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="700" y="1792" as="sourcePoint"/><mxPoint x="1100" y="1792" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="90" value="[10] build citations[] {pageNumber,snippet=chunkText[:300],score,documentId}" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=block;endFill=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="700" y="1832" as="sourcePoint"/><mxPoint x="700" y="1862" as="targetPoint"/><Array as="points"><mxPoint x="768" y="1832"/><mxPoint x="768" y="1862"/></Array></mxGeometry></mxCell>
+    <mxCell id="91" value="[11] {answer, citations[], usedVector: true}" style="edgeStyle=none;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="700" y="1902" as="sourcePoint"/><mxPoint x="300" y="1902" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="92" value="[12] 200 {answer, citations:[{pageNumber:4,snippet:...}]}" style="edgeStyle=none;html=1;endArrow=open;endFill=0;dashed=1;strokeColor=#000000;fontSize=11;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="300" y="1942" as="sourcePoint"/><mxPoint x="100" y="1942" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="200" value="Legend" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=12;fontStyle=1;" vertex="1" parent="1"><mxGeometry x="1300" y="75" width="200" height="20" as="geometry" /></mxCell>
+    <mxCell id="201" value="" style="endArrow=block;endFill=1;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1300" y="112" as="sourcePoint"/><mxPoint x="1400" y="112" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="201b" value="sync call" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=10;" vertex="1" parent="1"><mxGeometry x="1408" y="105" width="120" height="16" as="geometry" /></mxCell>
+    <mxCell id="202" value="" style="endArrow=open;endFill=0;dashed=1;strokeColor=#000000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1300" y="136" as="sourcePoint"/><mxPoint x="1400" y="136" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="202b" value="response (sync)" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=10;" vertex="1" parent="1"><mxGeometry x="1408" y="129" width="120" height="16" as="geometry" /></mxCell>
+    <mxCell id="203" value="" style="endArrow=open;endFill=0;dashed=1;strokeColor=#FF8000;" edge="1" parent="1"><mxGeometry relative="1" as="geometry"><mxPoint x="1300" y="160" as="sourcePoint"/><mxPoint x="1400" y="160" as="targetPoint"/></mxGeometry></mxCell>
+    <mxCell id="203b" value="async (orange)" style="text;html=1;strokeColor=none;fillColor=none;align=left;fontSize=10;fontColor=#CC5500;" vertex="1" parent="1"><mxGeometry x="1408" y="153" width="140" height="16" as="geometry" /></mxCell>
+  </root>
+</mxGraphModel>
+`;
+
+document.getElementById('sourceCode').textContent = XML_CONTENT;
+
+(function initTexture(){
+  var canvas=document.getElementById('texture');
+  var ctx=canvas.getContext('2d');
+  function resize(){
+    canvas.width=window.innerWidth;
+    canvas.height=window.innerHeight;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    var count=Math.floor((canvas.width*canvas.height)/900);
+    for(var i=0;i<count;i++){
+      var x=Math.random()*canvas.width;
+      var y=Math.random()*canvas.height;
+      var r=Math.random()*1.2+0.3;
+      var alpha=Math.random()*0.1+0.02;
+      ctx.beginPath();
+      ctx.arc(x,y,r,0,Math.PI*2);
+      ctx.fillStyle='rgba(200,151,26,'+alpha+')';
+      ctx.fill();
+    }
+  }
+  resize();
+  window.addEventListener('resize',resize,{passive:true});
+})();
+
+(function drawFlows(){
+  var actorColors=['#7B9BCC','#C8971A','#52A882','#C8B41A','#A87CC8','#C85C5C'];
+  var flows={
+    1:[[0,1],[1,2],[2,1],[1,0],[0,1],[1,2],[1,1],[1,2],[1,0]],
+    2:[[0,1],[1,1],[1,2],[1,2],[1,1],[1,1],[1,2],[1,0],[1,2],[1,3],[3,3],[3,3],[3,5],[3,4],[4,3],[3,1],[1,2]],
+    3:[[0,1],[1,1],[1,2],[1,3],[3,5],[3,4],[4,3],[3,3],[3,5],[3,3],[3,1],[1,0]]
+  };
+  document.querySelectorAll('.flow-canvas').forEach(function(canvas){
+    var flowId=parseInt(canvas.dataset.flow);
+    var steps=flows[flowId];
+    var ctx=canvas.getContext('2d');
+    var W=canvas.parentElement.offsetWidth||800;
+    canvas.width=W;
+    canvas.height=32;
+    var H=32;
+    var nActors=6;
+    var margin=20;
+    function actorX(i){return margin+(i/(nActors-1))*(W-2*margin);}
+    ctx.strokeStyle='rgba(90,70,40,0.35)';
+    ctx.lineWidth=1;
+    ctx.beginPath();
+    ctx.moveTo(margin,H/2);
+    ctx.lineTo(W-margin,H/2);
+    ctx.stroke();
+    for(var i=0;i<nActors;i++){
+      ctx.beginPath();
+      ctx.arc(actorX(i),H/2,3,0,Math.PI*2);
+      ctx.fillStyle=actorColors[i];
+      ctx.globalAlpha=0.35;
+      ctx.fill();
+      ctx.globalAlpha=1;
+    }
+    steps.forEach(function(step,idx){
+      var from=step[0],to=step[1];
+      if(from===to){
+        var x=actorX(from);
+        ctx.beginPath();
+        ctx.arc(x+9,H/2-4,7,Math.PI*0.75,Math.PI*2.25);
+        ctx.strokeStyle=actorColors[from];
+        ctx.globalAlpha=0.45;
+        ctx.lineWidth=1;
+        ctx.stroke();
+        ctx.globalAlpha=1;
+      } else {
+        var x1=actorX(from),x2=actorX(to);
+        var isAsync=(flowId===2&&idx>=8);
+        var color=isAsync?'#E07A30':actorColors[from];
+        var mid=(x1+x2)/2;
+        var span=Math.abs(x2-x1);
+        var arcH=Math.min(span*0.38,H/2-3);
+        ctx.beginPath();
+        ctx.moveTo(x1,H/2);
+        ctx.quadraticCurveTo(mid,H/2-arcH,x2,H/2);
+        ctx.strokeStyle=color;
+        ctx.globalAlpha=isAsync?0.7:0.55;
+        ctx.lineWidth=isAsync?1.5:1;
+        ctx.setLineDash(isAsync?[3,2]:[]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.globalAlpha=1;
+      }
+    });
+    var activeSet=new Set(steps.flat());
+    activeSet.forEach(function(i){
+      ctx.beginPath();
+      ctx.arc(actorX(i),H/2,4.5,0,Math.PI*2);
+      ctx.fillStyle=actorColors[i];
+      ctx.globalAlpha=0.9;
+      ctx.fill();
+      ctx.globalAlpha=1;
+    });
+  });
+})();
+
+document.getElementById('downloadBtn').addEventListener('click',function(){
+  var blob=new Blob([XML_CONTENT],{type:'application/xml'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url;
+  a.download='rag-edu-sequence.drawio';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Đã tải xuống rag-edu-sequence.drawio');
+});
+
+document.getElementById('copyBtn').addEventListener('click',function(){
+  function fallback(){
+    var ta=document.createElement('textarea');
+    ta.value=XML_CONTENT;
+    ta.style.cssText='position:fixed;opacity:0;';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('XML đã được sao chép');
+  }
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(XML_CONTENT).then(function(){showToast('XML đã được sao chép');}).catch(fallback);
+  } else {
+    fallback();
+  }
+});
+
+function showToast(msg){
+  var toast=document.getElementById('toast');
+  toast.textContent=msg;
+  toast.classList.add('show');
+  clearTimeout(toast._t);
+  toast._t=setTimeout(function(){toast.classList.remove('show');},2200);
+}
+</script>

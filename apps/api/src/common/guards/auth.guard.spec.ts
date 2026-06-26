@@ -1,7 +1,8 @@
-import { ExecutionContext, UnauthorizedException } from '@nestjs/common';
+import { UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { JwtService } from '@nestjs/jwt';
 import { AuthGuard } from './auth.guard';
+import { createMockExecutionContext } from '../utils/test-utils';
 
 describe('AuthGuard', () => {
   let guard: AuthGuard;
@@ -11,7 +12,7 @@ describe('AuthGuard', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    guard = new AuthGuard(jwtService, jwtConfig as any, reflector as any);
+    guard = new AuthGuard(jwtService, jwtConfig, reflector);
   });
 
   function mockContext(
@@ -19,12 +20,7 @@ describe('AuthGuard', () => {
     isPublic = false,
     cookies: Record<string, string | undefined> = {},
   ) {
-    const req: any = { headers, cookies };
-    const ctx: any = {
-      switchToHttp: () => ({ getRequest: () => req }),
-      getHandler: () => ({}),
-      getClass: () => ({}),
-    } as ExecutionContext;
+    const { ctx, req } = createMockExecutionContext({ headers, cookies });
 
     if (isPublic) {
       jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(true);

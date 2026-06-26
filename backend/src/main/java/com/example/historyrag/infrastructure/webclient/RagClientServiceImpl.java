@@ -2,6 +2,8 @@ package com.example.historyrag.infrastructure.webclient;
 
 import com.example.historyrag.infrastructure.webclient.dto.RagChatRequest;
 import com.example.historyrag.infrastructure.webclient.dto.RagChatResponse;
+import com.example.historyrag.infrastructure.webclient.dto.RagClassifyRequest;
+import com.example.historyrag.infrastructure.webclient.dto.RagClassifyResponse;
 import com.example.historyrag.infrastructure.webclient.dto.RagDeleteResponse;
 import com.example.historyrag.infrastructure.webclient.dto.RagHealthResponse;
 import com.example.historyrag.infrastructure.webclient.dto.RagIngestRequest;
@@ -35,27 +37,49 @@ public class RagClientServiceImpl implements RagClientService {
         this.requestTimeout = requestTimeout;
     }
 
-    @Override
-    public RagHealthResponse getHealth(String traceparent) {
-        return webClient.get()
-                .uri("/rag/health")
-                .headers(headers -> setTraceparent(headers, traceparent))
-                .retrieve()
-                .bodyToMono(RagHealthResponse.class)
-                .block(requestTimeout);
-    }
+    // ── Generic request helpers ─────────────────────────────────────────────
 
-    @Override
-    public RagChatResponse chat(RagChatRequest request, String traceparent) {
+    private <T, R> R post(String uri, T request, String traceparent, Class<R> responseType) {
         return webClient.post()
-                .uri("/rag/chat")
+                .uri(uri)
                 .contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.APPLICATION_JSON)
                 .headers(headers -> setTraceparent(headers, traceparent))
                 .bodyValue(request)
                 .retrieve()
-                .bodyToMono(RagChatResponse.class)
+                .bodyToMono(responseType)
                 .block(requestTimeout);
+    }
+
+    private <R> R get(String uri, String traceparent, Class<R> responseType) {
+        return webClient.get()
+                .uri(uri)
+                .headers(headers -> setTraceparent(headers, traceparent))
+                .retrieve()
+                .bodyToMono(responseType)
+                .block(requestTimeout);
+    }
+
+    private <R> R delete(String uri, String traceparent, Class<R> responseType) {
+        return webClient.delete()
+                .uri(uri)
+                .accept(MediaType.APPLICATION_JSON)
+                .headers(headers -> setTraceparent(headers, traceparent))
+                .retrieve()
+                .bodyToMono(responseType)
+                .block(requestTimeout);
+    }
+
+    // ── Interface implementation ────────────────────────────────────────────
+
+    @Override
+    public RagHealthResponse getHealth(String traceparent) {
+        return get("/rag/health", traceparent, RagHealthResponse.class);
+    }
+
+    @Override
+    public RagChatResponse chat(RagChatRequest request, String traceparent) {
+        return post("/rag/chat", request, traceparent, RagChatResponse.class);
     }
 
     @Override
@@ -82,39 +106,23 @@ public class RagClientServiceImpl implements RagClientService {
 
     @Override
     public RagRetrieveResponse retrieve(RagRetrieveRequest request, String traceparent) {
-        return webClient.post()
-                .uri("/rag/retrieve")
-                .contentType(MediaType.APPLICATION_JSON)
-                .accept(MediaType.APPLICATION_JSON)
-                .headers(headers -> setTraceparent(headers, traceparent))
-                .bodyValue(request)
-                .retrieve()
-                .bodyToMono(RagRetrieveResponse.class)
-                .block(requestTimeout);
+        return post("/rag/retrieve", request, traceparent, RagRetrieveResponse.class);
+    }
+
+    @Override
+    public RagClassifyResponse classify(RagClassifyRequest request, String traceparent) {
+        return post("/rag/classify", request, traceparent, RagClassifyResponse.class);
     }
 
     @Override
     public RagIngestResponse ingest(RagIngestRequest request, String traceparent) {
-        return webClient.post()
-                .uri("/rag/ingest")
-                .contentType(MediaType.APPLICATION_JSON)
-                .accept(MediaType.APPLICATION_JSON)
-                .headers(headers -> setTraceparent(headers, traceparent))
-                .bodyValue(request)
-                .retrieve()
-                .bodyToMono(RagIngestResponse.class)
-                .block(requestTimeout);
+        return post("/rag/ingest", request, traceparent, RagIngestResponse.class);
     }
 
     @Override
     public RagDeleteResponse deleteSource(Long sourceId, String traceparent) {
-        return webClient.delete()
-                .uri(uriBuilder -> uriBuilder.path("/rag/delete").queryParam("sourceId", sourceId).build())
-                .accept(MediaType.APPLICATION_JSON)
-                .headers(headers -> setTraceparent(headers, traceparent))
-                .retrieve()
-                .bodyToMono(RagDeleteResponse.class)
-                .block(requestTimeout);
+        String uri = "/rag/delete?sourceId=" + sourceId;
+        return delete(uri, traceparent, RagDeleteResponse.class);
     }
 
     private void setTraceparent(HttpHeaders headers, String traceparent) {

@@ -15,9 +15,6 @@ section "Health"
 HEALTH_RAW=$(curl -s "http://localhost:8080/actuator/health" 2>/dev/null)
 echo "$HEALTH_RAW" | grep -q '"status":"UP"' && ok "actuator/health = UP" || fail "actuator/health = $HEALTH_RAW"
 
-RAG_HEALTH_RAW=$(curl -s "$BASE/rag/health" 2>/dev/null)
-echo "$RAG_HEALTH_RAW" | grep -q '"status":"ok"' && ok "rag/health = ok" || fail "rag/health = $RAG_HEALTH_RAW"
-
 # ── 1. Register ──────────────────────────────────────────
 section "Auth"
 REG=$(curl -s -X POST "$BASE/auth/register" \
@@ -39,12 +36,16 @@ TOKEN=$(echo "$LOGIN" | jq -r '.data.accessToken' 2>/dev/null)
 
 AUTH="Authorization: Bearer $TOKEN"
 
-# ── 3. Get Me ────────────────────────────────────────────
+# ── 3. RAG Health (authenticated) ────────────────────────
+RAG_HEALTH_RAW=$(curl -s "$BASE/rag/health" -H "$AUTH" 2>/dev/null)
+echo "$RAG_HEALTH_RAW" | grep -q '"status":"ok"' && ok "rag/health = ok" || fail "rag/health = $RAG_HEALTH_RAW"
+
+# ── 4. Get Me ────────────────────────────────────────────
 ME=$(curl -s "$BASE/auth/me" -H "$AUTH")
 ROLE=$(echo "$ME" | jq -r '.data.role' 2>/dev/null)
-[ "$ROLE" = "STUDENT" ] && ok "getMe → role=STUDENT" || fail "getMe → role=$ROLE"
+[ "$ROLE" = "ROLE_USER" ] && ok "getMe → role=ROLE_USER" || fail "getMe → role=$ROLE"
 
-# ── 4. Create Folder ─────────────────────────────────────
+# ── 5. Create Folder ─────────────────────────────────────
 section "Folder"
 FOLDER=$(curl -s -X POST "$BASE/folders" \
   -H "$AUTH" -H "Content-Type: application/json" \
@@ -58,7 +59,7 @@ FOLDERS=$(curl -s "$BASE/folders" -H "$AUTH")
 FOLDER_COUNT=$(echo "$FOLDERS" | jq '.data | length' 2>/dev/null)
 [ "$FOLDER_COUNT" -ge 1 ] 2>/dev/null && ok "list folders → $FOLDER_COUNT folder(s)" || fail "list folders empty"
 
-# ── 5. Upload Document ───────────────────────────────────
+# ── 6. Upload Document ───────────────────────────────────
 section "Document"
 # Dùng 1 PDF nhỏ test (tạo tạm nếu không có)
 TEST_PDF="/tmp/e2e-test.pdf"
@@ -77,7 +78,7 @@ DOC_ID=$(echo "$DOC" | jq -r '.data.id' 2>/dev/null)
 DOC_STATUS=$(echo "$DOC" | jq -r '.data.status' 2>/dev/null)
 [ -n "$DOC_ID" ] && [ "$DOC_ID" != "null" ] && ok "upload document → id=$DOC_ID status=$DOC_STATUS" || fail "upload document: $(echo $DOC | jq -r '.message')"
 
-# ── 6. Poll document status → READY ──────────────────────
+# ── 7. Poll document status → READY ──────────────────────
 section "Indexing (poll 60s)"
 READY=0
 for i in $(seq 1 12); do
@@ -93,7 +94,7 @@ for i in $(seq 1 12); do
 done
 [ "$READY" = "1" ] && ok "document READY after indexing" || fail "document NOT ready (status=$STATUS)"
 
-# ── 7. Chat with folder ───────────────────────────────────
+# ── 8. Chat with folder ───────────────────────────────────
 section "RAG Chat"
 if [ -n "$FOLDER_ID" ] && [ "$FOLDER_ID" != "null" ]; then
   CHAT=$(curl -s -X POST "$BASE/folders/$FOLDER_ID/chat" \
@@ -107,7 +108,7 @@ if [ -n "$FOLDER_ID" ] && [ "$FOLDER_ID" != "null" ]; then
   [ "$CITATIONS" -ge 0 ] 2>/dev/null && ok "chat → $CITATIONS citation(s)" || fail "chat → citations error"
 fi
 
-# ── 8. Soft delete + restore ──────────────────────────────
+# ── 9. Soft delete + restore ──────────────────────────────
 section "Lifecycle"
 curl -s -X DELETE "$BASE/documents/$DOC_ID" -H "$AUTH" > /dev/null
 SOFT_STATUS=$(curl -s "$BASE/documents/$DOC_ID" -H "$AUTH" | jq -r '.data.status' 2>/dev/null)
@@ -117,12 +118,12 @@ curl -s -X POST "$BASE/documents/$DOC_ID/restore" -H "$AUTH" > /dev/null
 RESTORED_STATUS=$(curl -s "$BASE/documents/$DOC_ID" -H "$AUTH" | jq -r '.data.status' 2>/dev/null)
 [ "$RESTORED_STATUS" = "READY" ] && ok "restore → READY" || fail "restore → $RESTORED_STATUS"
 
-# ── 9. Hard delete ────────────────────────────────────────
+# ── 10. Hard delete ───────────────────────────────────────
 curl -s -X DELETE "$BASE/documents/$DOC_ID/hard" -H "$AUTH" > /dev/null
 HARD_STATUS=$(curl -s "$BASE/documents/$DOC_ID" -H "$AUTH" | jq -r '.statusCode' 2>/dev/null)
 [ "$HARD_STATUS" = "404" ] && ok "hardDelete → 404" || fail "hardDelete: still exists ($HARD_STATUS)"
 
-# ── 10. Delete folder ─────────────────────────────────────
+# ── 11. Delete folder ─────────────────────────────────────
 section "Cleanup"
 curl -s -X DELETE "$BASE/folders/$FOLDER_ID" -H "$AUTH" > /dev/null
 ok "folder deleted"

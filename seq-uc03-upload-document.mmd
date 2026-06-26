@@ -1,0 +1,38 @@
+sequenceDiagram
+    participant S as Student (Browser)
+    participant DC as :DocumentController
+    participant DS as :DocumentServiceImpl
+    participant FR as :FolderRepository
+    participant AR as :AppSettingRepository
+    participant LFS as :LocalFileStorageService
+    participant DR as :DocumentRepository
+    participant DB as MySQL
+
+    S->>+DC: POST /api/v1/documents (multipart: file.pdf + {title,folderId,isPublic}) | Auth: Bearer JWT
+    DC->>DC: extract userId from @AuthenticationPrincipal Jwt
+    DC->>+DS: create(file, CreateDocumentRequest, userId)
+
+    DS->>FR: findByIdAndOwnerId(folderId, userId)
+    FR->>DB: SELECT * FROM folders WHERE id=? AND owner_id=?
+    DB-->>FR: row
+    FR-->>DS: Folder entity
+
+    DS->>AR: findFirst()
+    AR->>DB: SELECT * FROM app_settings LIMIT 1
+    DB-->>AR: row
+    AR-->>DS: AppSetting{ allowedTypes, maxSizeMb }
+
+    DS->>DS: validate ext ∈ allowedTypes AND size ≤ maxSizeMb
+
+    DS->>LFS: store(file)
+    LFS-->>DS: StoredFile{ filePath="./uploads/{uuid}.pdf", publicId }
+
+    DS->>DS: new Document(title, fileUrl, publicId, UPLOADING, folderId, ownerId)
+    DS->>DR: save(document)
+    DR->>DB: INSERT INTO documents (title,file_url,status,...) VALUES (...)
+    DB-->>DR: generated id
+    DR-->>DS: Document{ id, status=UPLOADING }
+
+    DS->>DS: publishEvent(DocumentIngestRequested{ docId })
+    DS-->>-DC: DocumentResponse{ id, status:"UPLOADING" }
+    DC-->>-S: 200 { id, status:"UPLOADING" }

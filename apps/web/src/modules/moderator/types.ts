@@ -1,3 +1,5 @@
+import type { StatusTone } from "@/types";
+
 export type ModeratorNavSection = "dashboard" | "documents" | "posts";
 
 export type ReviewAction =
@@ -24,12 +26,30 @@ export type PostModerationStatus =
   | "restored"
   | "flagged";
 
+/** Moderator stats use semantic UI tones (no status tones). */
+export type ModeratorStatTone = Extract<
+  StatusTone,
+  "primary" | "secondary" | "tertiary" | "error" | "neutral"
+>;
+
+/** Moderator activities use a narrower subset (no neutral). */
+export type ModeratorActivityTone = Extract<
+  StatusTone,
+  "primary" | "secondary" | "tertiary" | "error"
+>;
+
+/** Document review checks use status tones only. */
+export type ReviewCheckTone = Extract<
+  StatusTone,
+  "success" | "warning" | "error" | "neutral"
+>;
+
 export interface ModeratorStat {
   label: string;
   value: string;
   caption: string;
   icon: string;
-  tone: "primary" | "secondary" | "tertiary" | "error" | "neutral";
+  tone: ModeratorStatTone;
   trend?: string;
 }
 
@@ -38,7 +58,7 @@ export interface ModeratorActivity {
   title: string;
   description: string;
   time: string;
-  tone: "primary" | "secondary" | "error" | "tertiary";
+  tone: ModeratorActivityTone;
 }
 
 export interface DocumentReviewItem {
@@ -63,7 +83,7 @@ export interface DocumentReviewItem {
   checks: readonly {
     label: string;
     value: string;
-    tone: "success" | "warning" | "error" | "neutral";
+    tone: ReviewCheckTone;
   }[];
   versions: readonly {
     version: string;

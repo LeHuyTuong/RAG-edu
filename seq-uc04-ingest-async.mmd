@@ -1,0 +1,40 @@
+sequenceDiagram
+    participant DIL as :DocumentIngestListener
+    participant DR as :DocumentRepository
+    participant DB as MySQL
+    participant RC as :RagClientServiceImpl
+    participant RS as Rag-Service :8002
+    participant Q as Qdrant Cloud
+    participant G as Gemini API
+
+    Note over DIL,G: Trigger: @TransactionalEventListener(AFTER_COMMIT) + @Async
+    Note over DIL,G: Sau khi DocumentServiceImpl.create() commit → Spring fires event
+
+    activate DIL
+    DIL->>DR: findById(docId)
+    DR->>DB: SELECT * FROM documents WHERE id=?
+    DB-->>DR: row
+    DR-->>DIL: Document entity
+
+    DIL->>DR: save(doc{ status=INDEXING })
+    DR->>DB: UPDATE documents SET status='INDEXING' WHERE id=?
+    DB-->>DR: ok
+
+    DIL->>+RC: ingest(RagIngestRequest{ sourceId=docId, filePath, metadata })
+    RC->>+RS: POST /ingest (WebClient)
+
+    Note over RS,G: [Rag-Service internal pipeline — xem seq-rag01-ingest.mmd]
+    RS->>RS: extract text (pypdf) → pages[]
+    RS->>RS: chunk text (size=800, overlap=120) → chunks[]
+    RS->>G: embed_documents(chunks[].text) → vectors[768]
+    G-->>RS: embeddings[]
+    RS->>Q: upsert points{ sourceId, folderId, userId, pageNumber, chunkText }
+    Q-->>RS: OK
+
+    RS-->>-RC: RagIngestResponse{ status:"COMPLETED", chunks:[...] }
+    RC-->>-DIL: RagIngestResponse
+
+    DIL->>DR: save(doc{ status=READY, chunkCount=N })
+    DR->>DB: UPDATE documents SET status='READY', chunk_count=N WHERE id=?
+    DB-->>DR: ok
+    deactivate DIL

@@ -1,0 +1,66 @@
+sequenceDiagram
+    participant Caller as :RagClientServiceImpl<br/>(Spring Boot)
+    participant IR as ingest_routes.py<br/>(FastAPI Router)
+    participant IS as ingest_service.py<br/>(Orchestrator)
+    participant EX as extract_service.py
+    participant CK as chunk_service.py
+    participant EM as embedding_service.py
+    participant VR as vector_repository.py
+    participant QC as qdrant_client.py
+    participant Q as Qdrant Cloud
+    participant G as Gemini API
+
+    Caller->>+IR: POST /ingest { sourceId, filePath, sourceType, metadata:{folderId,userId} }
+    IR->>+IS: ingest(RagIngestRequest)
+
+    %% ── Bước 1: Extract text từ file ──
+    IS->>+EX: extract(file_path="./uploads/{uuid}.pdf")
+    EX->>EX: Path(file_path).exists() — check file
+    EX->>EX: _extract_pdf(file_path)
+    EX->>EX: PdfReader(file_path) — pypdf
+    loop mỗi trang PDF
+        EX->>EX: page.extract_text().strip()
+        EX->>EX: PageText(page_number=i, text=text)
+    end
+    EX-->>-IS: list[PageText] (mỗi trang = 1 PageText)
+
+    %% ── Bước 2: Chunk text ──
+    IS->>+CK: chunk(pages, chunk_size=800, chunk_overlap=120)
+    loop mỗi PageText
+        CK->>CK: _chunk_text(text, page_number, size, overlap)
+        CK->>CK: step = chunk_size - chunk_overlap = 680
+        loop sliding window (pos += 680)
+            CK->>CK: chunk_text = text[pos : pos+800]
+            CK->>CK: sha256(chunk_text)[:16] → content_hash
+            CK->>CK: ChunkData(chunk_index, text, page_number, content_hash)
+        end
+    end
+    CK-->>-IS: list[ChunkData] — N chunks
+
+    %% ── Bước 3: Embed documents ──
+    IS->>+EM: embed_documents([chunk.text for chunk in chunks])
+    EM->>EM: genai.Client(api_key) — singleton
+    loop batch 100 texts/lần
+        EM->>G: embed_content(model, texts, task_type=RETRIEVAL_DOCUMENT, dim=768)
+        G-->>EM: embeddings[batch] — list[list[float]]
+    end
+    EM-->>-IS: list[vector[768]] — 1 vector / chunk
+
+    %% ── Bước 4: Upsert vào Qdrant ──
+    IS->>QC: ensure_collection(collection_name)
+    QC->>Q: get_collection() — kiểm tra tồn tại
+    Q-->>QC: ok / not found
+    QC->>Q: recreate_collection(size=768, distance=Cosine) nếu chưa có
+    Q-->>QC: ok
+
+    IS->>IS: delete_by_source_id(collection, sourceId) — xóa vector cũ trước re-ingest
+
+    IS->>+VR: upsert(collection, ids, vectors, payloads)
+    note over IS,VR: ids = [uuid5("source:{id}:chunk:{i}") for each chunk]<br/>payloads = {sourceId, folderId, userId, pageNumber, chunkText, chunkIndex, ...}
+    VR->>VR: [PointStruct(id, vector, payload) for each chunk]
+    VR->>+Q: upsert(collection, points, wait=True)
+    Q-->>-VR: ok (wait=True — ghi xong mới trả về)
+    VR-->>-IS: None
+
+    IS-->>-IR: RagIngestResponse{ status:"COMPLETED", sourceId, chunks:[{chunkIndex, qdrantPointId, contentHash}] }
+    IR-->>-Caller: 200 RagIngestResponse

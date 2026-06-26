@@ -1,10 +1,12 @@
 package com.example.historyrag.feature.document;
 
 import com.example.historyrag.feature.document.event.DocumentIngestRequested;
+import com.example.historyrag.infrastructure.webclient.RagClientService;
+import com.example.historyrag.infrastructure.webclient.dto.RagClassifyRequest;
+import com.example.historyrag.infrastructure.webclient.dto.RagClassifyResponse;
 import com.example.historyrag.infrastructure.webclient.dto.RagIngestMetadata;
 import com.example.historyrag.infrastructure.webclient.dto.RagIngestRequest;
 import com.example.historyrag.infrastructure.webclient.dto.RagIngestResponse;
-import com.example.historyrag.infrastructure.webclient.RagClientService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,13 +25,16 @@ public class DocumentIngestListener {
     private final DocumentRepository documentRepository;
     private final RagClientService ragClientService;
     private final String uploadBasePath;
+    private final boolean reviewEnabled;
 
     public DocumentIngestListener(DocumentRepository documentRepository,
                                    RagClientService ragClientService,
-                                   @Value("${app.upload.base-path:./uploads}") String uploadBasePath) {
+                                   @Value("${app.upload.base-path:./uploads}") String uploadBasePath,
+                                   @Value("${app.document.review.enabled:true}") boolean reviewEnabled) {
         this.documentRepository = documentRepository;
         this.ragClientService = ragClientService;
         this.uploadBasePath = Paths.get(uploadBasePath).toAbsolutePath().normalize().toString();
+        this.reviewEnabled = reviewEnabled;
     }
 
     @Async
@@ -44,6 +49,32 @@ public class DocumentIngestListener {
         }
 
         try {
+            String filePath = uploadBasePath + "/" + doc.getPublicId();
+
+            // Bước 1: AI duyệt nội dung (có thể tắt qua app.document.review.enabled=false)
+            if (reviewEnabled) {
+                doc.setStatus(DocumentStatus.REVIEWING);
+                documentRepository.save(doc);
+                log.info("Document {} status set to REVIEWING", docId);
+
+                RagClassifyRequest classifyRequest = new RagClassifyRequest(
+                        docId, doc.getTitle(), filePath, null, null);
+                RagClassifyResponse verdict = ragClientService.classify(classifyRequest, null);
+
+                if (verdict != null && !Boolean.TRUE.equals(verdict.isHistory())) {
+                    doc.setStatus(DocumentStatus.REJECTED);
+                    doc.setReviewReason(verdict.reason());
+                    documentRepository.save(doc);
+                    log.warn("Document {} REJECTED by AI review: label={}, reason={}",
+                            docId, verdict.label(), verdict.reason());
+                    return;
+                }
+                log.info("Document {} passed AI review: label={}, confidence={}",
+                        docId, verdict != null ? verdict.label() : "UNKNOWN",
+                        verdict != null ? verdict.confidence() : 0.0);
+            }
+
+            // Bước 2: Index vào Qdrant
             doc.setStatus(DocumentStatus.INDEXING);
             documentRepository.save(doc);
             log.info("Document {} status set to INDEXING", docId);
@@ -53,9 +84,6 @@ public class DocumentIngestListener {
                     java.util.List.of(), java.util.List.of(),
                     doc.getFolderId(), doc.getOwnerId()
             );
-
-            // filePath tuyệt đối trên filesystem chung (shared Docker volume /app/uploads)
-            String filePath = uploadBasePath + "/" + doc.getPublicId();
 
             RagIngestRequest ingestRequest = new RagIngestRequest(
                     docId,

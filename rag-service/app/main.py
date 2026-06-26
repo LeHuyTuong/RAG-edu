@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.chat_routes import router as chat_router
+from app.api.classify_routes import router as classify_router
 from app.api.ingest_routes import router as ingest_router
 from app.api.retrieve_routes import router as retrieve_router
 
@@ -26,5 +27,6 @@ app.add_middleware(
 )
 
 app.include_router(chat_router, prefix="/rag")
+app.include_router(classify_router, prefix="/rag")
 app.include_router(ingest_router, prefix="/rag")
 app.include_router(retrieve_router, prefix="/rag")

@@ -20,6 +20,7 @@ public record DocumentResponse(
         Boolean isPublic,
         Integer pageCount,
         Integer chunkCount,
+        String reviewReason,
         Instant uploadedAt,
         Instant createdAt,
         Instant updatedAt
@@ -40,6 +41,7 @@ public record DocumentResponse(
                 doc.getIsPublic(),
                 doc.getPageCount(),
                 doc.getChunkCount(),
+                doc.getReviewReason(),
                 doc.getUploadedAt(),
                 doc.getCreatedAt(),
                 doc.getUpdatedAt()

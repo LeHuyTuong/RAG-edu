@@ -1,0 +1,33 @@
+sequenceDiagram
+    participant CR as chat_routes.py
+    participant QR as question_router_service.py
+    participant RS as retrieval_service.py
+    participant EM as embedding_service.py
+    participant VR as vector_repository.py
+    participant Q as Qdrant Cloud
+    participant G as Gemini API
+
+    Note over CR,G: Phần 1/2 — Route + Retrieve (embed query → search Qdrant)
+
+    CR->>+QR: route(question, useGraph=false)
+    QR->>QR: MVP: luôn use_vector=true, use_graph=false
+    QR-->>-CR: { use_vector:true, use_graph:false }
+
+    CR->>+RS: retrieve(question, topK=5, folderId, userId)
+
+    RS->>+EM: embed_query(question)
+    EM->>G: embed_content(model, [question], task_type=RETRIEVAL_QUERY, dim=768)
+    G-->>EM: embedding[768]
+    EM-->>-RS: query_vector[768]
+
+    RS->>+VR: search(collection, query_vector, topK=5, score_threshold, folderId, userId)
+    VR->>VR: Filter must=[folderId=?, userId=?]
+    VR->>+Q: query_points(collection, query_vector, limit=5, filter, with_payload=True)
+    Q-->>-VR: list[ScoredPoint] (cosine similarity)
+    VR-->>-RS: ScoredPoint[]{ chunkText, pageNumber, score ≥ threshold }
+
+    RS-->>-CR: hits: list[ScoredPoint]
+
+    alt hits rỗng
+        CR-->>CR: return RagChatResponse{ answer:"Dữ liệu chưa đủ...", citations:[] }
+    end

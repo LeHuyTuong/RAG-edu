@@ -1,6 +1,7 @@
 package com.example.historyrag.feature.document;
 
 import com.example.historyrag.shared.ApiResponse;
+import com.example.historyrag.shared.JwtUtils;
 import com.example.historyrag.shared.ResultPaginationDTO;
 import com.example.historyrag.feature.document.dto.CreateDocumentRequest;
 import com.example.historyrag.feature.document.dto.DocumentResponse;
@@ -33,7 +34,7 @@ public class DocumentController {
             @RequestPart("file") MultipartFile file,
             @Valid @RequestPart("data") CreateDocumentRequest request,
             @AuthenticationPrincipal Jwt jwt) {
-        Long ownerId = jwt.getClaim("userId");
+        Long ownerId = JwtUtils.getUserId(jwt);
         DocumentResponse response = documentService.create(file, request, ownerId);
         URI location = URI.create("/api/v1/documents/" + response.id());
         return ResponseEntity.created(location)
@@ -48,7 +49,7 @@ public class DocumentController {
             @RequestParam(defaultValue = "false") boolean onlyMine,
             @ParameterObject Pageable pageable,
             @AuthenticationPrincipal Jwt jwt) {
-        Long ownerId = jwt.getClaim("userId");
+        Long ownerId = JwtUtils.getUserId(jwt);
         ResultPaginationDTO result = documentService.filter(
                 search, folderId, status, ownerId, onlyMine, pageable);
         return ResponseEntity.ok(ApiResponse.success(result));
@@ -57,7 +58,7 @@ public class DocumentController {
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<List<DocumentResponse>>> getMyDocuments(
             @AuthenticationPrincipal Jwt jwt) {
-        Long ownerId = jwt.getClaim("userId");
+        Long ownerId = JwtUtils.getUserId(jwt);
         return ResponseEntity.ok(ApiResponse.success(documentService.getMyDocuments(ownerId)));
     }
 
@@ -65,7 +66,7 @@ public class DocumentController {
     public ResponseEntity<ApiResponse<DocumentResponse>> getById(
             @PathVariable Long id,
             @AuthenticationPrincipal Jwt jwt) {
-        Long currentUserId = jwt.getClaim("userId");
+        Long currentUserId = JwtUtils.getUserId(jwt);
         return ResponseEntity.ok(ApiResponse.success(documentService.getById(id, currentUserId)));
     }
 
@@ -74,7 +75,7 @@ public class DocumentController {
             @PathVariable Long id,
             @Valid @RequestBody UpdateDocumentRequest request,
             @AuthenticationPrincipal Jwt jwt) {
-        Long ownerId = jwt.getClaim("userId");
+        Long ownerId = JwtUtils.getUserId(jwt);
         DocumentResponse response = documentService.update(id, request, ownerId);
         return ResponseEntity.ok(ApiResponse.success("Cập nhật tài liệu thành công", response));
     }
@@ -83,7 +84,7 @@ public class DocumentController {
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable Long id,
             @AuthenticationPrincipal Jwt jwt) {
-        Long ownerId = jwt.getClaim("userId");
+        Long ownerId = JwtUtils.getUserId(jwt);
         documentService.delete(id, ownerId);
         return ResponseEntity.ok(ApiResponse.success("Xóa tài liệu thành công", null));
     }
@@ -92,7 +93,7 @@ public class DocumentController {
     public ResponseEntity<ApiResponse<Void>> restore(
             @PathVariable Long id,
             @AuthenticationPrincipal Jwt jwt) {
-        Long ownerId = jwt.getClaim("userId");
+        Long ownerId = JwtUtils.getUserId(jwt);
         documentService.restore(id, ownerId);
         return ResponseEntity.ok(ApiResponse.success("Khôi phục tài liệu thành công", null));
     }
@@ -101,7 +102,7 @@ public class DocumentController {
     public ResponseEntity<ApiResponse<Void>> hardDelete(
             @PathVariable Long id,
             @AuthenticationPrincipal Jwt jwt) {
-        Long ownerId = jwt.getClaim("userId");
+        Long ownerId = JwtUtils.getUserId(jwt);
         documentService.hardDelete(id, ownerId);
         return ResponseEntity.ok(ApiResponse.success("Xóa vĩnh viễn tài liệu thành công", null));
     }
@@ -110,7 +111,7 @@ public class DocumentController {
     public ResponseEntity<ApiResponse<Void>> reindex(
             @PathVariable Long id,
             @AuthenticationPrincipal Jwt jwt) {
-        Long ownerId = jwt.getClaim("userId");
+        Long ownerId = JwtUtils.getUserId(jwt);
         documentService.reindex(id, ownerId);
         return ResponseEntity.ok(ApiResponse.success("Yêu cầu reindex đã được gửi", null));
     }

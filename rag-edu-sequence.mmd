@@ -1,0 +1,141 @@
+sequenceDiagram
+    participant S as Student (Browser)
+    participant AC as :AuthController
+    participant AS as :AuthServiceImpl
+    participant UR as :UserRepository
+    participant RT as :RefreshTokenRepository
+    participant DC as :DocumentController
+    participant DS as :DocumentServiceImpl
+    participant FR as :FolderRepository
+    participant AR as :AppSettingRepository
+    participant LFS as :LocalFileStorageService
+    participant DR as :DocumentRepository
+    participant DIL as :DocumentIngestListener
+    participant RC as :RagClientServiceImpl
+    participant FC as :FolderController
+    participant FV as :FolderServiceImpl
+    participant RSI as :RagServiceImpl
+    participant RS as Rag-Service :8002
+    participant Q as Qdrant
+    participant G as Gemini API
+
+    %% ══════════════════════════════════════════════════════
+    %%  Flow 1 — ĐĂNG KÝ / ĐĂNG NHẬP
+    %% ══════════════════════════════════════════════════════
+    rect rgb(219, 234, 254)
+        Note over S,G: Flow 1 — ĐĂNG KÝ / ĐĂNG NHẬP
+
+        %% register
+        S->>+AC: POST /api/v1/auth/register { name, email, password }
+        AC->>+AS: register(RegisterRequest)
+        AS->>UR: findByEmail(email) — check duplicate
+        UR-->>AS: Optional.empty()
+        AS->>AS: passwordEncoder.encode(password)
+        AS->>UR: save(User{role=STUDENT, status=ACTIVE})
+        UR-->>AS: User entity (id, email, role)
+        AS->>AS: jwtUtil.generateAccessToken(user)
+        AS-->>-AC: RegisterResponse { accessToken, refreshToken }
+        AC-->>-S: 201 { accessToken (JWT), refreshToken }
+
+        %% login
+        S->>+AC: POST /api/v1/auth/login { email, password }
+        AC->>+AS: login(LoginRequest)
+        AS->>UR: findByEmail(email)
+        UR-->>AS: User entity
+        AS->>AS: BCrypt verify password
+        AS->>RT: save(RefreshToken{ userId, token, expiresAt })
+        RT-->>AS: RefreshToken entity
+        AS->>AS: jwtUtil.generateAccessToken(user)
+        AS-->>-AC: LoginResponse { accessToken, refreshToken }
+        AC-->>-S: 200 { accessToken, refreshToken }
+    end
+
+    %% ══════════════════════════════════════════════════════
+    %%  Flow 2 — UPLOAD PDF → INDEX → READY
+    %% ══════════════════════════════════════════════════════
+    rect rgb(254, 243, 199)
+        Note over S,G: Flow 2 — UPLOAD PDF → INDEX → READY
+
+        S->>+DC: POST /api/v1/documents (multipart: file.pdf + {title, folderId, isPublic}) | Auth: Bearer JWT
+        DC->>DC: extract userId from @AuthenticationPrincipal Jwt
+        DC->>+DS: create(file, CreateDocumentRequest, userId)
+
+        DS->>FR: findByIdAndOwnerId(folderId, userId)
+        FR-->>DS: Folder entity
+
+        DS->>AR: findFirst()
+        AR-->>DS: AppSetting { allowedTypes, maxSizeMb }
+
+        DS->>DS: validate ext ∈ allowedTypes && size ≤ maxSizeMb
+
+        DS->>LFS: store(file)
+        LFS-->>DS: StoredFile { filePath, publicId }
+
+        DS->>DR: save(Document{ status=UPLOADING, fileUrl, publicId, folderId, ownerId })
+        DR-->>DS: Document entity { id }
+
+        DS->>DS: publishEvent(DocumentIngestRequested{ docId })
+        DS-->>-DC: DocumentResponse { id, status: "UPLOADING" }
+        DC-->>-S: 200 { id, status: "UPLOADING" }
+
+        Note over DIL,G: [async — @TransactionalEventListener(AFTER_COMMIT) + @Async]
+
+        activate DIL
+        DIL->>DR: findById(docId)
+        DR-->>DIL: Document entity
+
+        DIL->>DR: save(doc{ status=INDEXING })
+        DR-->>DIL: ok
+
+        DIL->>+RC: ingest(RagIngestRequest{ sourceId=docId, filePath, metadata:{folderId,userId} })
+        RC->>+RS: POST /ingest (WebClient)
+
+        RS->>RS: extract text (pdfplumber) → pages[]
+        RS->>RS: chunk text (size=800, overlap=120) → chunks[]
+        RS->>G: embed_documents(chunks[].text) → vectors[768]
+        G-->>RS: embeddings[]
+        RS->>Q: upsert points { sourceId, folderId, userId, pageNumber, chunkText }
+        Q-->>RS: OK
+
+        RS-->>-RC: RagIngestResponse { status: "COMPLETED", chunks: [...] }
+        RC-->>-DIL: RagIngestResponse
+
+        DIL->>DR: save(doc{ status=READY, chunkCount=N })
+        DR-->>DIL: ok
+        deactivate DIL
+    end
+
+    %% ══════════════════════════════════════════════════════
+    %%  Flow 3 — CHAT VỚI FOLDER (RAG)
+    %% ══════════════════════════════════════════════════════
+    rect rgb(220, 252, 231)
+        Note over S,G: Flow 3 — CHAT VỚI FOLDER (RAG)
+
+        S->>+FC: POST /api/v1/folders/{folderId}/chat { question: "Chiến dịch Hồ Chí Minh năm nào?" } | Auth: Bearer JWT
+        FC->>FC: extract userId from @AuthenticationPrincipal Jwt
+
+        FC->>+FV: existsByIdAndOwner(folderId, userId)
+        FV->>FR: existsByIdAndOwnerId(folderId, userId)
+        FR-->>FV: true
+        FV-->>-FC: true
+
+        FC->>FC: build RagChatRequest { question, folderId, userId, topK=5, temperature=0.2 }
+
+        FC->>+RSI: chat(RagChatRequest, traceparent)
+        RSI->>+RC: chat(RagChatRequest, traceparent)
+        RC->>+RS: POST /rag/chat (WebClient)
+
+        RS->>G: embed_query(question) → vector[768]
+        G-->>RS: query vector
+        RS->>Q: search topK (filter: folderId AND userId)
+        Q-->>RS: ScoredPoint[] (chunkText, pageNumber, score ≥ 0.5)
+        RS->>RS: build prompt (system_prompt + context từ chunks + question)
+        RS->>G: generate_content(prompt) → answer text
+        G-->>RS: answer text
+        RS->>RS: build citations[] { pageNumber, snippet=chunkText[:300], score, documentId }
+
+        RS-->>-RC: RagChatResponse { answer, citations[], usedVector: true }
+        RC-->>-RSI: RagChatResponse
+        RSI-->>-FC: RagChatResponse
+        FC-->>-S: 200 { answer: "...", citations: [{ pageNumber:4, snippet:"..." }] }
+    end

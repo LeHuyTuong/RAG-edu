@@ -2,6 +2,7 @@ package com.example.historyrag.feature.rag;
 
 import com.example.historyrag.exception.InvalidRequestException;
 import com.example.historyrag.exception.ResourceNotFoundException;
+import com.example.historyrag.shared.JwtUtils;
 import com.example.historyrag.feature.document.DocumentRepository;
 import com.example.historyrag.feature.document.DocumentStatus;
 import com.example.historyrag.feature.folder.FolderRepository;
@@ -185,10 +186,6 @@ public class RagController {
     }
 
     private Long currentUserId(Jwt jwt) {
-        Object rawUserId = jwt.getClaim("userId");
-        if (rawUserId instanceof Number number) {
-            return number.longValue();
-        }
-        throw new InvalidRequestException("Token không chứa userId hợp lệ");
+        return JwtUtils.getUserId(jwt);
     }
 }

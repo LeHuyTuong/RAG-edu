@@ -49,5 +49,8 @@ app:
   soft-delete:
     retention-days: ${SOFT_DELETE_RETENTION_DAYS:30}
     cron: ${SOFT_DELETE_CRON:0 0 2 * * *}
+  document:
+    review:
+      enabled: ${DOCUMENT_REVIEW_ENABLED:true}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
