@@ -3,6 +3,7 @@ package com.example.historyrag.feature.folder;
 import com.example.historyrag.shared.ApiResponse;
 import com.example.historyrag.exception.ResourceNotFoundException;
 import com.example.historyrag.feature.folder.dto.FolderChatRequest;
+import com.example.historyrag.feature.folder.dto.FolderRequest;
 import com.example.historyrag.feature.folder.dto.FolderResponse;
 import com.example.historyrag.feature.rag.RagService;
 import com.example.historyrag.infrastructure.webclient.dto.RagChatRequest;
@@ -14,7 +15,6 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1/folders")
@@ -30,10 +30,10 @@ public class FolderController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<FolderResponse>> create(
-            @RequestBody Map<String, String> body,
+            @Valid @RequestBody FolderRequest request,
             @AuthenticationPrincipal Jwt jwt) {
         Long ownerId = jwt.getClaim("userId");
-        FolderResponse response = folderService.create(body.get("folderName"), ownerId);
+        FolderResponse response = folderService.create(request.folderName(), ownerId);
         return ResponseEntity.ok(ApiResponse.success("Tạo folder thành công", response));
     }
 
@@ -47,10 +47,10 @@ public class FolderController {
     @PatchMapping("/{id}")
     public ResponseEntity<ApiResponse<FolderResponse>> rename(
             @PathVariable Long id,
-            @RequestBody Map<String, String> body,
+            @Valid @RequestBody FolderRequest request,
             @AuthenticationPrincipal Jwt jwt) {
         Long ownerId = jwt.getClaim("userId");
-        FolderResponse response = folderService.rename(id, body.get("folderName"), ownerId);
+        FolderResponse response = folderService.rename(id, request.folderName(), ownerId);
         return ResponseEntity.ok(ApiResponse.success("Đổi tên folder thành công", response));
     }
 

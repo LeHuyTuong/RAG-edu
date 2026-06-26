@@ -4,7 +4,7 @@ Administrative feature. Keep controllers, service interface, service implementat
 
 ## Dashboard
 
-- `GET /api/v1/dashboard` is an admin-only summary endpoint.
+- `GET /api/v1/admin/dashboard` is an admin-only summary endpoint.
 - Dashboard metrics use Spring Data JPA repository methods: built-in `count()` plus enum-based derived `countBy...` methods.
 - `AdminDashboardServiceImpl` injects the related repositories directly and assembles the dashboard response.
 - The service reads aggregate counts only; it does not create or mutate dashboard state.
