@@ -1,8 +1,6 @@
 services:
   mysql:
     image: mysql:8
-    profiles:
-      - local
     ports:
       - "3307:3306"
     environment:
@@ -48,6 +46,8 @@ services:
     volumes:
       - uploaded_files:/app/uploads
     depends_on:
+      mysql:
+        condition: service_healthy
       rag-service:
         condition: service_started
 

@@ -31,6 +31,7 @@ import java.time.Instant;
 import java.util.Map;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -48,7 +49,7 @@ class AuthControllerTest {
 
     @BeforeEach
     void setUp() {
-        AuthController controller = new AuthController(authService, 259200);
+        AuthController controller = new AuthController(authService, 259200, false);
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
 
@@ -82,6 +83,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.data.refreshToken").value("refresh-token"))
                 .andExpect(header().string("Set-Cookie", containsString("refresh_token=refresh-token")))
                 .andExpect(header().string("Set-Cookie", containsString("HttpOnly")))
+                .andExpect(header().string("Set-Cookie", not(containsString("Secure"))))
                 .andExpect(header().string("Set-Cookie", containsString("Max-Age=259200")));
     }
 
@@ -197,6 +199,22 @@ class AuthControllerTest {
                 .andExpect(header().string("Set-Cookie", containsString("Max-Age=0")));
 
         verify(authService).logout("refresh-token");
+    }
+
+    @Test
+    @DisplayName("Should still clear refresh cookie when logout token is invalid")
+    void logout_invalidCookieToken_clearsCookie() throws Exception {
+        doThrow(new com.example.historyrag.exception.InvalidTokenException("Refresh token không hợp lệ"))
+                .when(authService).logout("invalid-refresh-token");
+
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .cookie(new Cookie("refresh_token", "invalid-refresh-token")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.statusCode").value(200))
+                .andExpect(header().string("Set-Cookie", containsString("refresh_token=")))
+                .andExpect(header().string("Set-Cookie", containsString("Max-Age=0")));
+
+        verify(authService).logout("invalid-refresh-token");
     }
 
     @Test

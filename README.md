@@ -8,15 +8,15 @@ Qdrant, and answers questions with citations.
 
 ## Current Stack
 
-| Layer | Technology | Purpose |
-| --- | --- | --- |
-| Web app | Next.js, React, Tailwind CSS | Student/admin/moderator user interface |
-| Main backend | Spring Boot, Java 21, Spring Security, JPA | Auth, users, folders, documents, settings, RAG gateway |
-| RAG service | FastAPI, Python 3.12 | Extraction, chunking, embeddings, retrieval, LLM answers |
-| Database | MySQL | Users, refresh tokens, folders, documents, settings |
-| Vector store | Qdrant | Embedded document chunks for retrieval |
-| AI provider | Google GenAI | Embeddings and answer generation |
-| Local runtime | Docker Compose | MySQL, Spring backend, RAG service |
+| Layer         | Technology                                 | Purpose                                                  |
+| ------------- | ------------------------------------------ | -------------------------------------------------------- |
+| Web app       | Next.js, React, Tailwind CSS               | Student/admin/moderator user interface                   |
+| Main backend  | Spring Boot, Java 21, Spring Security, JPA | Auth, users, folders, documents, settings, RAG gateway   |
+| RAG service   | FastAPI, Python 3.12                       | Extraction, chunking, embeddings, retrieval, LLM answers |
+| Database      | MySQL                                      | Users, refresh tokens, folders, documents, settings      |
+| Vector store  | Qdrant                                     | Embedded document chunks for retrieval                   |
+| AI provider   | Google GenAI                               | Embeddings and answer generation                         |
+| Local runtime | Docker Compose                             | MySQL, Spring backend, RAG service                       |
 
 ## Main Flow
 
@@ -62,17 +62,17 @@ cp .env.example .env
 
 Important variables:
 
-| Variable | Description |
-| --- | --- |
-| `MYSQL_URL` | Spring datasource URL |
-| `MYSQL_USER` / `MYSQL_PASSWORD` | MySQL credentials |
-| `JWT_SECRET_KEY` | HS384 JWT signing key |
-| `RAG_SERVICE_URL` | Spring -> FastAPI base URL |
-| `QDRANT_URL` / `QDRANT_API_KEY` | Qdrant endpoint and key |
-| `QDRANT_COLLECTION` | Vector collection name |
-| `GOOGLE_API_KEY` | Google GenAI key |
-| `UPLOAD_BASE_PATH` | Local upload directory shared by Spring/RAG |
-| `CORS_ALLOWED_ORIGINS` | Allowed frontend origins |
+| Variable                        | Description                                 |
+| ------------------------------- | ------------------------------------------- |
+| `MYSQL_URL`                     | Spring datasource URL                       |
+| `MYSQL_USER` / `MYSQL_PASSWORD` | MySQL credentials                           |
+| `JWT_SECRET_KEY`                | HS384 JWT signing key                       |
+| `RAG_SERVICE_URL`               | Spring -> FastAPI base URL                  |
+| `QDRANT_URL` / `QDRANT_API_KEY` | Qdrant endpoint and key                     |
+| `QDRANT_COLLECTION`             | Vector collection name                      |
+| `GOOGLE_API_KEY`                | Google GenAI key                            |
+| `UPLOAD_BASE_PATH`              | Local upload directory shared by Spring/RAG |
+| `CORS_ALLOWED_ORIGINS`          | Allowed frontend origins                    |
 
 ## Local Development
 
@@ -84,12 +84,12 @@ docker compose up --build
 
 Default local services:
 
-| Service | URL |
-| --- | --- |
-| Spring Boot API | `http://localhost:8080` |
-| API base path | `http://localhost:8080/api/v1` |
-| RAG service | `http://localhost:8001` |
-| MySQL | `localhost:3307` |
+| Service         | URL                            |
+| --------------- | ------------------------------ |
+| Spring Boot API | `http://localhost:8080`        |
+| API base path   | `http://localhost:8080/api/v1` |
+| RAG service     | `http://localhost:8001`        |
+| MySQL           | `localhost:3307`               |
 
 Health checks:
 
@@ -103,14 +103,15 @@ curl http://localhost:8001/rag/health
 
 ```bash
 cd backend
-./mvnw spring-boot:run
+mvn spring-boot:run
 ```
 
-On Windows, use:
+This requires Maven on the host. If Maven is not installed, use Docker Compose
+instead.
 
 ```powershell
 cd backend
-mvnw.cmd spring-boot:run
+mvn spring-boot:run
 ```
 
 ### Run the RAG service directly
@@ -145,14 +146,14 @@ on frontend integration, set `NEXT_PUBLIC_API_URL=http://localhost:8080`.
 
 ## Useful Commands
 
-| Command | Description |
-| --- | --- |
+| Command                     | Description                                       |
+| --------------------------- | ------------------------------------------------- |
 | `docker compose up --build` | Start MySQL, Spring Boot backend, and RAG service |
-| `cd backend && ./mvnw test` | Run Spring tests |
-| `cd rag-service && pytest` | Run RAG service tests |
-| `pnpm --filter web dev` | Start the Next.js web app |
-| `pnpm --filter web test` | Run web tests |
-| `./e2e-test.sh` | Run Spring/RAG smoke flow after services are up |
+| `cd backend && mvn test`    | Run Spring tests when Maven is installed locally  |
+| `cd rag-service && pytest`  | Run RAG service tests                             |
+| `pnpm --filter web dev`     | Start the Next.js web app                         |
+| `pnpm --filter web test`    | Run web tests                                     |
+| `./e2e-test.sh`             | Run Spring/RAG smoke flow after services are up   |
 
 ## API Overview
 
