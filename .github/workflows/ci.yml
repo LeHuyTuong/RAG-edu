@@ -18,6 +18,17 @@ jobs:
         with:
           node-version: "24"
 
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Enable corepack
         run: corepack enable
 
@@ -39,17 +50,25 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Generate Prisma client
-        run: pnpm --filter api db:generate
-
-      - name: Lint
+      - name: Web lint
         run: pnpm lint
 
-      - name: Type check
+      - name: Web type check
         run: pnpm check-types
 
-      - name: Unit tests
+      - name: Web unit tests
         run: pnpm test
 
-      - name: Build
+      - name: Web build
         run: pnpm build
+
+      - name: Spring Boot tests
+        working-directory: backend
+        run: mvn test
+
+      - name: RAG service tests
+        working-directory: rag-service
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pytest

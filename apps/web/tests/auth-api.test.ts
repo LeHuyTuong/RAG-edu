@@ -90,7 +90,7 @@ describe("web auth api helpers", () => {
       data: { accessToken: "access-token" },
     });
 
-    expect(clientMock.post).toHaveBeenCalledWith("/api/v1/auth/signin", {
+    expect(clientMock.post).toHaveBeenCalledWith("/api/v1/auth/login", {
       email: "student@example.com",
       password: "Password123!",
       deviceId: "device-1",

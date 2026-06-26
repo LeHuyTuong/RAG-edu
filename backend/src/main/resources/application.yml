@@ -38,6 +38,9 @@ management:
         include: health,info
 
 app:
+  auth:
+    refresh-cookie:
+      secure: ${REFRESH_COOKIE_SECURE:false}
   rag:
     base-url: ${RAG_SERVICE_URL:http://localhost:8001}
     request-timeout: ${RAG_SERVICE_REQUEST_TIMEOUT:60s}
@@ -47,4 +50,4 @@ app:
     retention-days: ${SOFT_DELETE_RETENTION_DAYS:30}
     cron: ${SOFT_DELETE_CRON:0 0 2 * * *}
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}

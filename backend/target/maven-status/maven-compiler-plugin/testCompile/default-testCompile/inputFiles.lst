@@ -1,8 +1,0 @@
-/Users/lehuytuong/Documents/Dev/RAG-edu/backend/src/test/java/com/example/historyrag/feature/admin/AdminDashboardControllerTest.java
-/Users/lehuytuong/Documents/Dev/RAG-edu/backend/src/test/java/com/example/historyrag/feature/admin/AdminDashboardServiceImplTest.java
-/Users/lehuytuong/Documents/Dev/RAG-edu/backend/src/test/java/com/example/historyrag/feature/auth/AuthControllerTest.java
-/Users/lehuytuong/Documents/Dev/RAG-edu/backend/src/test/java/com/example/historyrag/feature/auth/AuthServiceImplTest.java
-/Users/lehuytuong/Documents/Dev/RAG-edu/backend/src/test/java/com/example/historyrag/feature/rag/RagChatRequestValidationTest.java
-/Users/lehuytuong/Documents/Dev/RAG-edu/backend/src/test/java/com/example/historyrag/feature/rag/RagControllerTest.java
-/Users/lehuytuong/Documents/Dev/RAG-edu/backend/src/test/java/com/example/historyrag/feature/rag/RagServiceImplTest.java
-/Users/lehuytuong/Documents/Dev/RAG-edu/backend/src/test/java/com/example/historyrag/infrastructure/webclient/RagClientServiceImplTest.java

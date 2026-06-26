@@ -19,4 +19,8 @@ public interface DocumentRepository extends JpaRepository<Document, Long>, JpaSp
     long countByStatus(DocumentStatus status);
 
     List<Document> findByStatusAndUpdatedAtBefore(DocumentStatus status, Instant cutoff);
+
+    boolean existsByIdAndOwnerIdAndStatusNot(Long id, Long ownerId, DocumentStatus status);
+
+    long countByIdInAndOwnerIdAndStatusNot(List<Long> ids, Long ownerId, DocumentStatus status);
 }
