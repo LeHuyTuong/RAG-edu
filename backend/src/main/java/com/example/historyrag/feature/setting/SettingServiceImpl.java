@@ -27,10 +27,10 @@ public class SettingServiceImpl implements SettingService {
     public SettingResponse updateConfig(SettingUpdateRequest request) {
         AppSetting config = getOrDefault();
         if (request.allowedTypes() != null) {
-            config.setAllowedTypes(request.allowedTypes());
+            config.setAllowedTypes(request.allowedTypes().trim().toLowerCase());
         }
         if (request.maxSizeMb() != null) {
-            config.setMaxSizeMb(Integer.parseInt(request.maxSizeMb()));
+            config.setMaxSizeMb(request.maxSizeMb());
         }
         appSettingRepository.save(config);
         return new SettingResponse(config.getAllowedTypes(), String.valueOf(config.getMaxSizeMb()));

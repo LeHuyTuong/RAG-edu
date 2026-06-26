@@ -37,7 +37,7 @@ class AdminDashboardControllerTest {
         when(adminDashboardService.getDashboard())
                 .thenReturn(new DashboardResponse(42L, 40L, 2L, 10L, 1L, 2L, 0L, 6L, 1L, List.of()));
 
-        mockMvc.perform(get("/api/v1/dashboard"))
+        mockMvc.perform(get("/api/v1/admin/dashboard"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.statusCode").value(200))
                 .andExpect(jsonPath("$.message").value("Lấy thông tin dashboard thành công"))

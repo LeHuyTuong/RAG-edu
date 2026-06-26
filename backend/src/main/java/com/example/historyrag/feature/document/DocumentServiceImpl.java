@@ -21,11 +21,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.PredicateSpecification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -33,6 +36,12 @@ import java.util.stream.Collectors;
 public class DocumentServiceImpl implements DocumentService {
 
     private static final Logger log = LoggerFactory.getLogger(DocumentServiceImpl.class);
+    private static final Map<String, Set<String>> CONTENT_TYPES_BY_EXTENSION = Map.of(
+            "pdf", Set.of("application/pdf"),
+            "docx", Set.of("application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+            "txt", Set.of("text/plain"),
+            "md", Set.of("text/markdown", "text/plain")
+    );
 
     private final DocumentRepository documentRepository;
     private final FolderService folderService;
@@ -65,24 +74,11 @@ public class DocumentServiceImpl implements DocumentService {
             }
         }
 
-        // Validate format + size via Config
         SettingResponse cfg = settingService.getConfig();
-        String allowedTypes = cfg.allowedTypes();
-        Set<String> allowed = Arrays.stream(allowedTypes.split(","))
-                .map(String::trim).map(String::toLowerCase).collect(Collectors.toSet());
+        String ext = validateUploadFile(file, cfg);
 
-        String ext = extractExt(file.getOriginalFilename());
-        if (!allowed.contains(ext)) {
-            throw new InvalidRequestException("Định dạng file không được hỗ trợ. Chấp nhận: " + allowedTypes);
-        }
-
-        long maxBytes = Long.parseLong(cfg.maxSizeMb()) * 1_048_576L;
-        if (file.getSize() > maxBytes) {
-            throw new InvalidRequestException("File vượt quá kích thước tối đa (" + cfg.maxSizeMb() + "MB)");
-        }
-
-        // Lưu file xuống disk
         StoredFile stored = fileStorageService.store(file);
+        registerStoredFileCleanupOnRollback(stored.storedName());
 
         Document document = new Document();
         document.setTitle(request.title());
@@ -98,7 +94,7 @@ public class DocumentServiceImpl implements DocumentService {
         document.setIsPublic(request.isPublic());
         document.setUploadedAt(Instant.now());
 
-        Document saved = documentRepository.save(document);
+        Document saved = documentRepository.saveAndFlush(document);
         eventPublisher.publishEvent(new DocumentIngestRequested(saved.getId()));
 
         log.info("Document created: id={}, file={}, status=UPLOADING", saved.getId(), stored.storedName());
@@ -108,6 +104,61 @@ public class DocumentServiceImpl implements DocumentService {
     private String extractExt(String filename) {
         if (filename == null || !filename.contains(".")) return "bin";
         return filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
+    }
+
+    private String validateUploadFile(MultipartFile file, SettingResponse cfg) {
+        if (file == null || file.isEmpty()) {
+            throw new InvalidRequestException("File không được để trống");
+        }
+
+        String allowedTypes = cfg.allowedTypes();
+        Set<String> allowed = Arrays.stream(allowedTypes.split(","))
+                .map(String::trim)
+                .map(value -> value.startsWith(".") ? value.substring(1) : value)
+                .map(String::toLowerCase)
+                .filter(value -> !value.isBlank())
+                .collect(Collectors.toSet());
+
+        String ext = extractExt(file.getOriginalFilename());
+        if (!allowed.contains(ext)) {
+            throw new InvalidRequestException("Định dạng file không được hỗ trợ. Chấp nhận: " + allowedTypes);
+        }
+
+        long maxBytes;
+        try {
+            maxBytes = Long.parseLong(cfg.maxSizeMb()) * 1_048_576L;
+        } catch (NumberFormatException ex) {
+            throw new InvalidRequestException("Cấu hình kích thước file không hợp lệ");
+        }
+        if (file.getSize() > maxBytes) {
+            throw new InvalidRequestException("File vượt quá kích thước tối đa (" + cfg.maxSizeMb() + "MB)");
+        }
+
+        String contentType = file.getContentType();
+        Set<String> expectedContentTypes = CONTENT_TYPES_BY_EXTENSION.get(ext);
+        if (contentType != null
+                && !contentType.isBlank()
+                && expectedContentTypes != null
+                && !expectedContentTypes.contains(contentType.toLowerCase())) {
+            throw new InvalidRequestException("Content-Type không khớp với định dạng file");
+        }
+
+        return ext;
+    }
+
+    private void registerStoredFileCleanupOnRollback(String storedName) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status != STATUS_COMMITTED) {
+                    fileStorageService.delete(storedName);
+                }
+            }
+        });
     }
 
     @Override
