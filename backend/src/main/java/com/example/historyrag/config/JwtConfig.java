@@ -22,6 +22,15 @@ public class JwtConfig {
     @Value("${jwt.secret-key}")
     private String jwtSecret;
 
+    private SecretKey jwtSecretKey() {
+        byte[] secretBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
+        if (secretBytes.length < 48) {
+            throw new IllegalStateException(
+                    "JWT_SECRET_KEY must be at least 48 bytes for HS384 signing");
+        }
+        return new SecretKeySpec(secretBytes, "HmacSHA384");
+    }
+
     @Bean
     JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
@@ -35,15 +44,13 @@ public class JwtConfig {
 
     @Bean
     JwtDecoder jwtDecoder() {
-        SecretKey secretKey = new SecretKeySpec(jwtSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA384");
-        return NimbusJwtDecoder.withSecretKey(secretKey)
+        return NimbusJwtDecoder.withSecretKey(jwtSecretKey())
                 .macAlgorithm(MacAlgorithm.HS384)
                 .build();
     }
 
     @Bean
     JwtEncoder jwtEncoder() {
-        SecretKey secretKey = new SecretKeySpec(jwtSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA384");
-        return new NimbusJwtEncoder(new ImmutableSecret<>(secretKey));
+        return new NimbusJwtEncoder(new ImmutableSecret<>(jwtSecretKey()));
     }
 }

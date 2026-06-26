@@ -127,6 +127,9 @@ public class DocumentServiceImpl implements DocumentService {
             doc.setDescription(request.description());
         }
         if (request.folderId() != null) {
+            if (!folderService.existsByIdAndOwner(request.folderId(), ownerId)) {
+                throw new ResourceNotFoundException("Folder", "id", request.folderId());
+            }
             doc.setFolderId(request.folderId());
         }
         if (request.isPublic() != null) {

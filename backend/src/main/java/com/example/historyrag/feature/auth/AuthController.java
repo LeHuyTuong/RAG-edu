@@ -18,6 +18,8 @@ import com.example.historyrag.feature.auth.dto.LoginResponse;
 import com.example.historyrag.feature.auth.dto.RefreshRequest;
 import com.example.historyrag.feature.auth.dto.RegisterRequest;
 import com.example.historyrag.feature.auth.dto.RegisterResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 
@@ -25,16 +27,20 @@ import java.util.Arrays;
 @RequestMapping("/api/v1/auth")
 public class AuthController {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
     private static final String REFRESH_TOKEN_COOKIE_NAME = "refresh_token";
     private static final String COOKIE_PATH = "/api/v1/auth";
 
     private final AuthService authService;
     private final long refreshTokenExpiration;
+    private final boolean refreshCookieSecure;
 
     public AuthController(AuthService authService,
-            @Value("${jwt.refresh-token-expiration}") long refreshTokenExpiration) {
+            @Value("${jwt.refresh-token-expiration}") long refreshTokenExpiration,
+            @Value("${app.auth.refresh-cookie.secure:false}") boolean refreshCookieSecure) {
         this.authService = authService;
         this.refreshTokenExpiration = refreshTokenExpiration;
+        this.refreshCookieSecure = refreshCookieSecure;
     }
 
     @PostMapping("/login")
@@ -85,7 +91,11 @@ public class AuthController {
 
         String rawRefreshToken = extractRefreshTokenFromCookie(httpRequest);
         if (rawRefreshToken != null) {
-            authService.logout(rawRefreshToken);
+            try {
+                authService.logout(rawRefreshToken);
+            } catch (InvalidTokenException ex) {
+                log.warn("Ignoring invalid refresh token during logout: {}", ex.getMessage());
+            }
         }
         clearRefreshTokenCookie(httpResponse);
 
@@ -127,12 +137,19 @@ public class AuthController {
     private void setRefreshTokenCookie(HttpServletResponse response, String rawToken) {
         response.setHeader("Set-Cookie",
                 REFRESH_TOKEN_COOKIE_NAME + "=" + rawToken
-                        + "; HttpOnly; Secure; SameSite=Lax; Path=" + COOKIE_PATH
+                        + "; HttpOnly" + secureCookieAttribute()
+                        + "; SameSite=Lax; Path=" + COOKIE_PATH
                         + "; Max-Age=" + refreshTokenExpiration);
     }
 
     private void clearRefreshTokenCookie(HttpServletResponse response) {
-        response.setHeader("Set-Cookie", REFRESH_TOKEN_COOKIE_NAME + "=; Max-Age=0; Path=" + COOKIE_PATH);
+        response.setHeader("Set-Cookie",
+                REFRESH_TOKEN_COOKIE_NAME + "=; HttpOnly" + secureCookieAttribute()
+                        + "; SameSite=Lax; Path=" + COOKIE_PATH + "; Max-Age=0");
+    }
+
+    private String secureCookieAttribute() {
+        return refreshCookieSecure ? "; Secure" : "";
     }
 
     private String extractClientIp(HttpServletRequest request) {

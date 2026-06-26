@@ -1,148 +1,192 @@
-# Hệ thống Quản lý Tài liệu Học tập AI (AI Study Hub)
+# RAG-edu - History RAG Learning Platform
 
-## Project Overview
+RAG-edu is a document-learning platform focused on Vietnamese history study
+materials. The current backend direction is Spring Boot plus a FastAPI RAG
+service: users upload documents, the Spring API stores metadata and files, then
+the RAG service extracts content, chunks it, embeds it, stores vectors in
+Qdrant, and answers questions with citations.
 
-AI Study Hub is a web platform that centralizes students' learning documents and enables fast retrieval and AI-assisted Q&A. It addresses scattered storage, poor organization, and the difficulty of quickly finding or asking about previous materials. The system targets both students and development teams building a real-world fullstack workflow.
+## Current Stack
 
-Core scope:
+| Layer         | Technology                                 | Purpose                                                  |
+| ------------- | ------------------------------------------ | -------------------------------------------------------- |
+| Web app       | Next.js, React, Tailwind CSS               | Student/admin/moderator user interface                   |
+| Main backend  | Spring Boot, Java 21, Spring Security, JPA | Auth, users, folders, documents, settings, RAG gateway   |
+| RAG service   | FastAPI, Python 3.12                       | Extraction, chunking, embeddings, retrieval, LLM answers |
+| Database      | MySQL                                      | Users, refresh tokens, folders, documents, settings      |
+| Vector store  | Qdrant                                     | Embedded document chunks for retrieval                   |
+| AI provider   | Google GenAI                               | Embeddings and answer generation                         |
+| Local runtime | Docker Compose                             | MySQL, Spring backend, RAG service                       |
 
-- Authentication: sign up, sign in/out, password recovery, profile updates
-- Document management: upload, list, download, delete, edit metadata, view details
-- Search and filtering: search documents, filter by subject
-- Cloud storage: upload to cloud, upload status, file preview
-- AI chatbot: ask questions about documents, receive AI answers, view chat history
+## Main Flow
 
-## Tech Stack
-
-| Category             | Technology              | Purpose                                                         |
-| -------------------- | ----------------------- | --------------------------------------------------------------- |
-| Backend framework    | NestJS                  | API server, modular backend and business logic                  |
-| Frontend framework   | Next.js                 | Web app and documentation site (SSR/SSG)                        |
-| Language             | TypeScript              | Typesafe JavaScript development across stack                    |
-| Monorepo tooling     | Turborepo               | Manage builds, caching and task orchestration in the monorepo   |
-| Package manager      | pnpm                    | Fast, disk-efficient workspace installs                         |
-| Runtime              | Node.js >= 18           | JavaScript runtime for servers and tooling                      |
-| Database             | MongoDB                 | Document database used by the app (local via Docker Compose)    |
-| Containerization     | Docker & Docker Compose | Run local services and isolate environments                     |
-| Linting & formatting | ESLint, Prettier        | Enforce code quality and consistent formatting                  |
-| Testing              | Vitest & Jest           | Unit and integration testing for frontend, backend and packages |
-
-## Local Development
-
-```sh
-# 1. Clone repository
-git clone <repository-url>
-cd ai-study-hub
-
-# 2. Install dependencies
-pnpm install
-
-# 3. Setup environment (required)
-# Copy the example env and edit values locally. Do NOT commit your .env.
-cp .env.example .env
-
-# 4. Setup MongoDB Replica Set and Prisma (one command!)
-# This initializes the 3-node replica set, syncs the schema, and seeds data
-pnpm db:setup
-
-# 5. Start the app
-pnpm dev
-```
-
-## Commands
-
-| Command            | Description                                                                                       |
-| ------------------ | ------------------------------------------------------------------------------------------------- |
-| `pnpm dev`         | Start development mode for the workspace (runs app servers and watchers defined by the monorepo). |
-| `pnpm test`        | Run unit and integration tests across the workspace.                                              |
-| `pnpm build`       | Build production artifacts for all apps (Next.js, NestJS, packages).                              |
-| `pnpm lint`        | Run ESLint across packages and apps to catch style and correctness issues.                        |
-| `pnpm check-types` | Run TypeScript type checks (`tsc --build` or equivalent) across the repo.                         |
-| `pnpm format`      | Format codebase with Prettier.                                                                    |
-| `pnpm db:setup`    | **One-command setup:** Start Docker, initialize MongoDB Replica Set, sync schema, seed data.      |
-| `pnpm db:init`     | Initialize MongoDB Replica Set (runs automatically in `db:setup`).                                |
-| `pnpm db:sync`     | Sync the Prisma schema to local MongoDB Replica Set and generate Prisma Client.                   |
-| `pnpm db:seed`     | Seed local MongoDB with deterministic development data.                                           |
-| `pnpm db:clean`    | Delete local API database records.                                                                |
-| `pnpm db:reseed`   | Clean the local database and seed it again.                                                       |
-
-Usage examples
-
-```bash
-# start local services and app in dev mode
-cp .env.example .env
-docker compose up -d
-test -f apps/api/.env || cp apps/api/.env.example apps/api/.env
-pnpm db:sync
-pnpm db:seed
-pnpm dev
-
-# run tests
-pnpm test
-
-# build for production
-pnpm build
-```
+1. A user registers or logs in through the Spring Boot API.
+2. The user creates folders and uploads PDF/DOCX/TXT documents.
+3. Spring Boot stores the file locally and creates a document record.
+4. After the DB transaction commits, Spring Boot calls the RAG service to
+   ingest the file.
+5. FastAPI extracts text, chunks it, creates embeddings, and upserts vectors to
+   Qdrant.
+6. Users ask questions against a folder or the RAG gateway.
+7. The RAG service retrieves relevant chunks and returns an answer with
+   citations.
 
 ## Project Structure
 
-The repository follows a monorepo layout with apps and shared packages.
-
-```
-ai-study-hub/
-├─ apps/
-│  ├─ api/                # NestJS backend
-│  │  ├─ src/
-│  │  │  ├─ main.ts
-│  │  │  ├─ app.module.ts
-│  │  │  ├─ app.controller.ts
-│  │  │  └─ app.service.ts
-	│  │
-│  │  └─ (package.json, tsconfig, tests)
-│  ├─ web/                # Next.js frontend
-│  │  ├─ app/
-│  │  │  ├─ layout.tsx
-│  │  │  ├─ page.tsx
-│  │  │  └─ globals.css
-│  │  └─ (package.json, tsconfig)
-│  └─ docs/               # Documentation site / markdown
-├─ mobile/                # Expo React Native app (mobile)
-│  ├─ src/                # app source code (screens, components, hooks)
-│  ├─ assets/             # images, icons and other static assets
-│  ├─ package.json
-  │  └─ README.md
-├─ packages/              # Shared packages and config
-│  ├─ tokens/             # Shared design tokens and semantic aliases
-│  ├─ ui/                 # Shared React UI components
-│  │  ├─ src/
-│  │  │  ├─ button.tsx
-│  │  │  └─ card.tsx
-│  ├─ eslint-config/      # ESLint shareable configs
-│  └─ typescript-config/  # TSConfig presets for packages/apps
-├─ docker-compose.yaml    # Local services (MongoDB)
-├─ .env.example           # Example environment variables
-├─ package.json           # Workspace scripts and tooling
-├─ pnpm-workspace.yaml    # pnpm workspace configuration
-└─ turbo.json             # Turborepo configuration
+```text
+RAG-edu/
+├─ backend/                 # Spring Boot API
+│  ├─ src/main/java/        # Auth, documents, folders, settings, RAG gateway
+│  ├─ src/main/resources/   # application.yml and Flyway migrations
+│  └─ src/test/java/        # Spring unit/controller tests
+├─ rag-service/             # FastAPI RAG service
+│  ├─ app/api/              # /rag chat, ingest, retrieve endpoints
+│  ├─ app/services/         # extraction, chunking, embedding, retrieval, LLM
+│  ├─ app/vectorstore/      # Qdrant client/repository
+│  └─ tests/                # Python unit/API tests
+├─ apps/web/                # Next.js frontend
+├─ apps/test-files/         # Small sample files for upload/manual testing
+├─ packages/                # Shared frontend tokens/config packages
+├─ docker-compose.yaml      # Local MySQL + backend + RAG service
+├─ e2e-test.sh              # Spring/RAG smoke test script
+└─ .env.example             # Environment variable template
 ```
 
-Notes
+## Environment
 
-- Each `apps/*` folder is an independently runnable application. Use `pnpm dev` at workspace root to run the dev flow defined in this monorepo.
-- Put local secrets in `.env` (copy from `.env.example`) and do not commit `.env`.
+Copy the root template and fill in secrets:
 
-## API Docs
+```bash
+cp .env.example .env
+```
 
-To be added.
+Important variables:
 
-## Team Docs
+| Variable                        | Description                                 |
+| ------------------------------- | ------------------------------------------- |
+| `MYSQL_URL`                     | Spring datasource URL                       |
+| `MYSQL_USER` / `MYSQL_PASSWORD` | MySQL credentials                           |
+| `JWT_SECRET_KEY`                | HS384 JWT signing key                       |
+| `RAG_SERVICE_URL`               | Spring -> FastAPI base URL                  |
+| `QDRANT_URL` / `QDRANT_API_KEY` | Qdrant endpoint and key                     |
+| `QDRANT_COLLECTION`             | Vector collection name                      |
+| `GOOGLE_API_KEY`                | Google GenAI key                            |
+| `UPLOAD_BASE_PATH`              | Local upload directory shared by Spring/RAG |
+| `CORS_ALLOWED_ORIGINS`          | Allowed frontend origins                    |
 
-- Contributing Guide: [apps/docs/CONTRIBUTING.md](apps/docs/CONTRIBUTING.md)
-- Naming Conventions: [apps/docs/NAMING_CONVENTIONS.md](apps/docs/NAMING_CONVENTIONS.md)
-- Shared Tokens: [apps/docs/SHARED_TOKENS.md](apps/docs/SHARED_TOKENS.md)
-- Testing: [apps/docs/TESTING.md](apps/docs/TESTING.md)
-- Web app README: [apps/web/README.md](apps/web/README.md)
+## Local Development
 
-## Team Members
+### Run the backend stack with Docker
 
-To be added.
+```bash
+docker compose up --build
+```
+
+Default local services:
+
+| Service         | URL                            |
+| --------------- | ------------------------------ |
+| Spring Boot API | `http://localhost:8080`        |
+| API base path   | `http://localhost:8080/api/v1` |
+| RAG service     | `http://localhost:8001`        |
+| MySQL           | `localhost:3307`               |
+
+Health checks:
+
+```bash
+curl http://localhost:8080/actuator/health
+curl http://localhost:8080/api/v1/rag/health
+curl http://localhost:8001/rag/health
+```
+
+### Run Spring Boot directly
+
+```bash
+cd backend
+mvn spring-boot:run
+```
+
+This requires Maven on the host. If Maven is not installed, use Docker Compose
+instead.
+
+```powershell
+cd backend
+mvn spring-boot:run
+```
+
+### Run the RAG service directly
+
+```bash
+cd rag-service
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8001
+```
+
+On Windows PowerShell:
+
+```powershell
+cd rag-service
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8001
+```
+
+### Run the web app
+
+```bash
+pnpm install
+pnpm --filter web dev
+```
+
+The web app is still being aligned to the Spring Boot API contract. When working
+on frontend integration, set `NEXT_PUBLIC_API_URL=http://localhost:8080`.
+
+## Useful Commands
+
+| Command                     | Description                                       |
+| --------------------------- | ------------------------------------------------- |
+| `docker compose up --build` | Start MySQL, Spring Boot backend, and RAG service |
+| `cd backend && mvn test`    | Run Spring tests when Maven is installed locally  |
+| `cd rag-service && pytest`  | Run RAG service tests                             |
+| `pnpm --filter web dev`     | Start the Next.js web app                         |
+| `pnpm --filter web test`    | Run web tests                                     |
+| `./e2e-test.sh`             | Run Spring/RAG smoke flow after services are up   |
+
+## API Overview
+
+Spring Boot exposes versioned APIs under `/api/v1`.
+
+Key groups:
+
+- `POST /api/v1/auth/register`
+- `POST /api/v1/auth/login`
+- `POST /api/v1/auth/refresh`
+- `GET /api/v1/auth/me`
+- `GET/POST /api/v1/folders`
+- `POST /api/v1/folders/{id}/chat`
+- `GET/POST /api/v1/documents`
+- `PATCH /api/v1/documents/{id}`
+- `DELETE /api/v1/documents/{id}`
+- `POST /api/v1/documents/{id}/restore`
+- `POST /api/v1/documents/{id}/reindex`
+- `GET/PATCH /api/v1/admin/config`
+- `GET /api/v1/dashboard`
+- `POST /api/v1/rag/chat`
+- `POST /api/v1/rag/chat/stream`
+- `POST /api/v1/rag/retrieve`
+- `POST /api/v1/rag/ingest`
+
+FastAPI RAG endpoints are mounted under `/rag`.
+
+## Notes For Contributors
+
+- Treat `backend/` and `rag-service/` as the source of truth for backend work.
+- The removed NestJS/MongoDB backend artifacts are no longer part of the active
+  backend direction.
+- Keep generated folders out of git: `.next/`, `target/`, `__pycache__/`,
+  `.pytest_cache/`, `.venv/`, and uploaded local files.
+- Before changing API contracts, update the web integration code and the E2E
+  script together.
