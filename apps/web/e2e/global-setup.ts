@@ -25,6 +25,7 @@ interface LoginResponse {
 
 const API_URL = process.env.E2E_API_URL || "http://localhost:8080";
 const AUTH_URL = `${API_URL}/api/v1/auth`;
+const E2E_PASSWORD = process.env.E2E_USER_PASSWORD || "changeme";
 
 // ─── Test users ───
 interface TestUser {
@@ -38,19 +39,19 @@ export const TEST_USERS: Record<string, TestUser> = {
   user: {
     name: "E2E User",
     email: "e2e-user@test.edu.vn",
-    password: "E2eTest@123",
+    password: E2E_PASSWORD,
     role: "user",
   },
   moderator: {
     name: "E2E Moderator",
     email: "e2e-moderator@test.edu.vn",
-    password: "E2eTest@123",
+    password: E2E_PASSWORD,
     role: "moderator",
   },
   admin: {
     name: "E2E Admin",
     email: "e2e-admin@test.edu.vn",
-    password: "E2eTest@123",
+    password: E2E_PASSWORD,
     role: "admin",
   },
 };

@@ -20,7 +20,7 @@ echo "$HEALTH_RAW" | grep -q '"status":"UP"' && ok "actuator/health = UP" || fai
 section "Auth"
 REG=$(curl -s -X POST "$BASE/auth/register" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Test Student","email":"e2e@test.com","password":"password123"}')
+  -d '{"name":"Test Student","email":"e2e@test.com","password":"${E2E_USER_PASSWORD:-changeme}"}')
 
 REG_STATUS=$(echo "$REG" | jq -r '.statusCode' 2>/dev/null)
 [ "$REG_STATUS" = "201" ] && ok "register → 201 (new)" || \
@@ -30,7 +30,7 @@ fail "register → $REG_STATUS"
 # ── 2. Login ─────────────────────────────────────────────
 LOGIN=$(curl -s -X POST "$BASE/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"email":"e2e@test.com","password":"password123"}')
+  -d '{"email":"e2e@test.com","password":"${E2E_USER_PASSWORD:-changeme}"}')
 
 TOKEN=$(echo "$LOGIN" | jq -r '.data.accessToken' 2>/dev/null)
 [ -n "$TOKEN" ] && [ "$TOKEN" != "null" ] && ok "login → accessToken OK" || fail "login failed: $(echo $LOGIN | jq -r '.message')"
@@ -141,7 +141,7 @@ section "Admin"
 # Login as admin
 ADMIN_LOGIN=$(curl -s -X POST "$BASE/auth/login" \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@historyrag.edu.vn","password":"Admin@123"}')
+  -d '{"email":"admin@historyrag.edu.vn","password":"${E2E_ADMIN_PASSWORD:-changeme}"}')
 ADMIN_TOKEN=$(echo "$ADMIN_LOGIN" | jq -r '.data.accessToken' 2>/dev/null)
 ADMIN_AUTH="Authorization: Bearer $ADMIN_TOKEN"
 

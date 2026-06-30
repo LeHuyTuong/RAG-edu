@@ -95,20 +95,22 @@ export async function waitForToast(page: Page, timeout = 8_000) {
 // ─── Test User Credentials ───
 // Must match what global-setup.ts registers
 
+const E2E_PASSWORD = process.env.E2E_USER_PASSWORD || "changeme";
+
 export const TEST_USERS = {
   user: {
     name: "E2E User",
     email: "e2e-user@test.edu.vn",
-    password: "E2eTest@123",
+    password: E2E_PASSWORD,
   },
   moderator: {
     name: "E2E Moderator",
     email: "e2e-moderator@test.edu.vn",
-    password: "E2eTest@123",
+    password: E2E_PASSWORD,
   },
   admin: {
     name: "E2E Admin",
     email: "e2e-admin@test.edu.vn",
-    password: "E2eTest@123",
+    password: E2E_PASSWORD,
   },
 } as const;
