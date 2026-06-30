@@ -12,7 +12,6 @@ type PostStatusTone = Extract<
   "primary" | "secondary" | "tertiary" | "error" | "neutral"
 >;
 
-import { postModerationItems } from "../mockData";
 import type { PostModerationItem, PostModerationStatus } from "../types";
 
 import {
@@ -59,7 +58,14 @@ function updatePostStatus(
 }
 
 export default function ModeratorPostsPage(): React.JSX.Element {
-  const [posts, setPosts] = useState(postModerationItems);
+  const [posts, setPosts] = useState<PostModerationItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Backend chưa có post entity — dùng empty state
+    setLoading(false);
+  }, []);
+
   const [activeTab, setActiveTab] = useState<ModerationTab>("pending");
   const [currentPage, setCurrentPage] = useState(1);
 

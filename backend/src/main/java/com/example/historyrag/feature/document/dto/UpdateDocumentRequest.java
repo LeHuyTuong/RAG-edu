@@ -11,5 +11,7 @@ public record UpdateDocumentRequest(
 
         Long folderId,
 
+        Long subjectId,
+
         Boolean isPublic
 ) {}

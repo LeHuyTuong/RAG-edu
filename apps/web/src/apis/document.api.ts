@@ -17,6 +17,11 @@ import type {
   UpdateDocumentPayload,
 } from "@/types/document.type";
 
+export interface ShareLinkResponse {
+  shareToken: string;
+  shareUrl: string;
+}
+
 /**
  * Fetch a paginated list of public documents.
  * Supports optional subjectId / authorId / page / limit filters.
@@ -133,4 +138,22 @@ export const fetchSubjects = async (
     params: { page: 1, limit },
   });
   return result as unknown as SubjectsListResponse;
+};
+
+export const createShareLink = async (
+  id: string,
+): Promise<ShareLinkResponse> => {
+  const result = await apiClient.post(API_ENDPOINTS.DOCUMENTS.SHARE(id));
+  return result as unknown as ShareLinkResponse;
+};
+
+export const revokeShareLink = async (id: string): Promise<void> => {
+  await apiClient.delete(API_ENDPOINTS.DOCUMENTS.SHARE(id));
+};
+
+export const fetchSharedDocument = async (
+  token: string,
+): Promise<DocumentDetail> => {
+  const result = await apiClient.get(API_ENDPOINTS.DOCUMENTS.SHARED(token));
+  return result as unknown as DocumentDetail;
 };

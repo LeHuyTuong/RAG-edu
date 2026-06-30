@@ -1,0 +1,3 @@
+ALTER TABLE document
+    ADD COLUMN share_token VARCHAR(36) UNIQUE,
+    ADD COLUMN share_enabled BOOLEAN NOT NULL DEFAULT FALSE;

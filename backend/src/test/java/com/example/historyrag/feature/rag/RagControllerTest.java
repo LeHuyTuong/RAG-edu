@@ -9,9 +9,8 @@ import com.example.historyrag.infrastructure.webclient.dto.RagIngestMetadata;
 import com.example.historyrag.infrastructure.webclient.dto.RagIngestResponse;
 import com.example.historyrag.infrastructure.webclient.dto.RagRetrieveRequest;
 import com.example.historyrag.infrastructure.webclient.dto.RagRetrieveResponse;
-import com.example.historyrag.feature.document.DocumentRepository;
-import com.example.historyrag.feature.document.DocumentStatus;
-import com.example.historyrag.feature.folder.FolderRepository;
+import com.example.historyrag.feature.document.DocumentService;
+import com.example.historyrag.feature.folder.FolderService;
 import com.example.historyrag.exception.GlobalExceptionHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
@@ -50,9 +49,9 @@ class RagControllerTest {
     @Mock
     private RagService ragService;
     @Mock
-    private DocumentRepository documentRepository;
+    private DocumentService documentService;
     @Mock
-    private FolderRepository folderRepository;
+    private FolderService folderService;
 
     private MockMvc mockMvc;
 
@@ -61,7 +60,7 @@ class RagControllerTest {
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
         mockMvc = MockMvcBuilders
-                .standaloneSetup(new RagController(ragService, documentRepository, folderRepository))
+                .standaloneSetup(new RagController(ragService, documentService, folderService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setValidator(validator)
                 .setCustomArgumentResolvers(new JwtArgumentResolver())
@@ -135,7 +134,7 @@ class RagControllerTest {
                 new RagIngestMetadata(null, null, null, List.of(), List.of(), List.of(), null, 10L),
                 null
         );
-        when(documentRepository.existsByIdAndOwnerIdAndStatusNot(7L, 10L, DocumentStatus.SOFT_DELETED))
+        when(documentService.existsByIdAndOwner(7L, 10L))
                 .thenReturn(true);
         when(ragService.ingest(eq(securedRequest), eq(null)))
                 .thenReturn(new RagIngestResponse(7L, "COMPLETED", "history", "embed", List.of()));
@@ -171,7 +170,7 @@ class RagControllerTest {
 
     @Test
     void deleteSourceReturnsApiResponseWrapper() throws Exception {
-        when(documentRepository.existsByIdAndOwnerIdAndStatusNot(7L, 10L, DocumentStatus.SOFT_DELETED))
+        when(documentService.existsByIdAndOwner(7L, 10L))
                 .thenReturn(true);
         when(ragService.deleteSource(7L, "00-trace")).thenReturn(new RagDeleteResponse("deleted", 7L));
 
@@ -183,7 +182,7 @@ class RagControllerTest {
 
     @Test
     void deleteSourceRejectsDocumentOwnedByAnotherUser() throws Exception {
-        when(documentRepository.existsByIdAndOwnerIdAndStatusNot(7L, 10L, DocumentStatus.SOFT_DELETED))
+        when(documentService.existsByIdAndOwner(7L, 10L))
                 .thenReturn(false);
 
         mockMvc.perform(delete("/api/v1/rag/sources/7"))

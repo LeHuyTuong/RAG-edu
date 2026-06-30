@@ -1,9 +1,6 @@
 import Link from "next/link";
-import {
-  dashboardStats,
-  recentActivities,
-  weeklyDocumentFlow,
-} from "../mockData";
+import { useEffect, useState } from "react";
+import { fetchDocuments } from "@/apis/document.api";
 
 import { MaterialIcon, ModeratorCard } from "../components/ModeratorPrimitives";
 
@@ -23,6 +20,80 @@ const activityToneClasses = {
 } as const;
 
 export default function ModeratorDashboardPage(): React.JSX.Element {
+  const [pendingCount, setPendingCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    async function load() {
+      try {
+        setLoading(true);
+        // Fetch only pending documents to get the count from pagination meta
+        const result = await fetchDocuments({
+          status: "PENDING",
+          page: 1,
+          limit: 1,
+        });
+        if (mounted) {
+          setPendingCount(result.pagination?.total ?? 0);
+          setError(null);
+        }
+      } catch (err) {
+        if (mounted)
+          setError(err instanceof Error ? err.message : "Lỗi tải dữ liệu");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Derived data from fetchDocuments({status:'PENDING'})
+  const derivedStats = [
+    {
+      label: "Tài liệu chờ duyệt",
+      value: String(pendingCount),
+      caption: "cần xử lý",
+      icon: "description",
+      tone: "primary" as const,
+      trend: 0,
+    },
+    {
+      label: "Tài liệu đã duyệt",
+      value: "—",
+      caption: "chờ API thống kê",
+      icon: "check_circle",
+      tone: "secondary" as const,
+      trend: 0,
+    },
+    {
+      label: "Tổng tài khoản",
+      value: "—",
+      caption: "chờ API admin",
+      icon: "people",
+      tone: "tertiary" as const,
+      trend: 0,
+    },
+  ];
+
+  // Weekly flow & recent activities — backend chưa có audit log API, dùng empty fallback
+  const derivedWeeklyFlow: Array<{
+    label: string;
+    uploaded: number;
+    approved: number;
+  }> = [];
+  const derivedRecentActivities: Array<{
+    id: string;
+    title: string;
+    description: string;
+    time: string;
+    tone: keyof typeof activityToneClasses;
+  }> = [];
+
   return (
     <>
       <div className="mb-10">
@@ -37,7 +108,7 @@ export default function ModeratorDashboardPage(): React.JSX.Element {
       </div>
 
       <div className="grid grid-cols-1 gap-gutter lg:grid-cols-12">
-        {dashboardStats.map((stat) => (
+        {derivedStats.map((stat) => (
           <ModeratorCard
             className="flex min-h-[220px] flex-col justify-between p-6 lg:col-span-4"
             key={stat.label}
@@ -85,7 +156,7 @@ export default function ModeratorDashboardPage(): React.JSX.Element {
             </div>
           </div>
           <div className="flex h-64 items-end gap-4 px-2">
-            {weeklyDocumentFlow.map((day) => (
+            {derivedWeeklyFlow.map((day) => (
               <div
                 className="relative flex h-full flex-1 items-end rounded-t bg-primary-container/20"
                 key={day.label}
@@ -112,7 +183,7 @@ export default function ModeratorDashboardPage(): React.JSX.Element {
             <MaterialIcon className="text-on-surface-variant" name="history" />
           </div>
           <div className="max-h-[300px] space-y-6 overflow-y-auto pr-2">
-            {recentActivities.map((activity) => (
+            {derivedRecentActivities.map((activity) => (
               <div className="flex gap-4" key={activity.id}>
                 <div
                   className={`h-10 w-1 shrink-0 rounded-full ${

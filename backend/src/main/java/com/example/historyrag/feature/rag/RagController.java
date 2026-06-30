@@ -3,9 +3,8 @@ package com.example.historyrag.feature.rag;
 import com.example.historyrag.exception.InvalidRequestException;
 import com.example.historyrag.exception.ResourceNotFoundException;
 import com.example.historyrag.shared.JwtUtils;
-import com.example.historyrag.feature.document.DocumentRepository;
-import com.example.historyrag.feature.document.DocumentStatus;
-import com.example.historyrag.feature.folder.FolderRepository;
+import com.example.historyrag.feature.document.DocumentService;
+import com.example.historyrag.feature.folder.FolderService;
 import com.example.historyrag.shared.ApiResponse;
 import com.example.historyrag.infrastructure.webclient.dto.RagChatRequest;
 import com.example.historyrag.infrastructure.webclient.dto.RagChatResponse;
@@ -37,16 +36,16 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 public class RagController {
 
     private final RagService ragService;
-    private final DocumentRepository documentRepository;
-    private final FolderRepository folderRepository;
+    private final DocumentService documentService;
+    private final FolderService folderService;
 
     public RagController(
             RagService ragService,
-            DocumentRepository documentRepository,
-            FolderRepository folderRepository) {
+            DocumentService documentService,
+            FolderService folderService) {
         this.ragService = ragService;
-        this.documentRepository = documentRepository;
-        this.folderRepository = folderRepository;
+        this.documentService = documentService;
+        this.folderService = folderService;
     }
 
     @GetMapping("/health")
@@ -160,13 +159,13 @@ public class RagController {
     }
 
     private void validateFolderId(Long folderId, Long userId) {
-        if (folderId != null && !folderRepository.existsByIdAndOwnerId(folderId, userId)) {
+        if (folderId != null && !folderService.existsByIdAndOwner(folderId, userId)) {
             throw new ResourceNotFoundException("Folder", "id", folderId);
         }
     }
 
     private void validateSourceId(Long sourceId, Long userId) {
-        if (!documentRepository.existsByIdAndOwnerIdAndStatusNot(sourceId, userId, DocumentStatus.SOFT_DELETED)) {
+        if (!documentService.existsByIdAndOwner(sourceId, userId)) {
             throw new ResourceNotFoundException("Document", "id", sourceId);
         }
     }
@@ -175,12 +174,7 @@ public class RagController {
         if (sourceIds == null || sourceIds.isEmpty()) {
             return;
         }
-        List<Long> distinctIds = sourceIds.stream().distinct().toList();
-        long ownedCount = documentRepository.countByIdInAndOwnerIdAndStatusNot(
-                distinctIds,
-                userId,
-                DocumentStatus.SOFT_DELETED);
-        if (ownedCount != distinctIds.size()) {
+        if (!documentService.allExistByIdsAndOwner(sourceIds, userId)) {
             throw new ResourceNotFoundException("Document", "id", sourceIds);
         }
     }

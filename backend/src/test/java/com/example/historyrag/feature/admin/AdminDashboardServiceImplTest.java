@@ -3,6 +3,7 @@ package com.example.historyrag.feature.admin;
 import com.example.historyrag.feature.admin.dto.DashboardResponse;
 import com.example.historyrag.feature.document.DocumentService;
 import com.example.historyrag.feature.document.DocumentStatus;
+import com.example.historyrag.feature.subject.SubjectService;
 import com.example.historyrag.feature.user.User;
 import com.example.historyrag.feature.user.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,11 +26,14 @@ class AdminDashboardServiceImplTest {
     @Mock
     private DocumentService documentService;
 
+    @Mock
+    private SubjectService subjectService;
+
     private AdminDashboardServiceImpl adminDashboardService;
 
     @BeforeEach
     void setUp() {
-        adminDashboardService = new AdminDashboardServiceImpl(userService, documentService);
+        adminDashboardService = new AdminDashboardServiceImpl(userService, documentService, subjectService);
     }
 
     @Test
@@ -38,6 +42,8 @@ class AdminDashboardServiceImplTest {
         when(userService.countAll()).thenReturn(42L);
         when(userService.countByRole(User.UserRole.STUDENT)).thenReturn(40L);
         when(userService.countByRole(User.UserRole.ADMIN)).thenReturn(2L);
+        when(userService.countByStatus(User.UserStatus.ACTIVE)).thenReturn(40L);
+        when(userService.countByStatus(User.UserStatus.LOCKED)).thenReturn(2L);
 
         when(documentService.countAll()).thenReturn(10L);
         when(documentService.countByStatus(DocumentStatus.UPLOADING)).thenReturn(1L);
@@ -45,15 +51,19 @@ class AdminDashboardServiceImplTest {
         when(documentService.countByStatus(DocumentStatus.REINDEXING)).thenReturn(0L);
         when(documentService.countByStatus(DocumentStatus.READY)).thenReturn(6L);
         when(documentService.countByStatus(DocumentStatus.FAILED)).thenReturn(1L);
+        when(documentService.countByStatus(DocumentStatus.REJECTED)).thenReturn(0L);
+
+        when(subjectService.countAll()).thenReturn(3L);
 
         DashboardResponse response = adminDashboardService.getDashboard();
 
-        assertEquals(42L, response.totalUsers());
-        assertEquals(40L, response.totalStudents());
-        assertEquals(2L, response.totalAdmins());
-        assertEquals(10L, response.totalDocuments());
-        assertEquals(6L, response.readyDocs());
-        assertEquals(1L, response.failedDocs());
+        assertEquals(42L, response.accounts().total());
+        assertEquals(40L, response.accounts().active());
+        assertEquals(2L, response.accounts().banned());
+        assertEquals(10L, response.documents().total());
+        assertEquals(6L, response.documents().active());
+        assertEquals(4L, response.documents().pending()); // 1+2+0+1 = 4
+        assertEquals(3L, response.subjects().total());
         assertFalse(response.activities().isEmpty());
     }
 }

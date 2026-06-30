@@ -3,15 +3,16 @@ package com.example.historyrag.feature.document;
 import com.example.historyrag.shared.ResultPaginationDTO;
 import com.example.historyrag.exception.InvalidRequestException;
 import com.example.historyrag.exception.ResourceNotFoundException;
-import com.example.historyrag.feature.setting.SettingService;
-import com.example.historyrag.feature.setting.dto.SettingResponse;
 import com.example.historyrag.feature.document.dto.CreateDocumentRequest;
 import com.example.historyrag.feature.document.dto.DocumentResponse;
+import com.example.historyrag.feature.document.dto.SubjectDto;
 import com.example.historyrag.feature.document.dto.UpdateDocumentRequest;
 import com.example.historyrag.feature.document.event.DocumentIngestRequested;
 import com.example.historyrag.feature.folder.FolderService;
+import com.example.historyrag.feature.subject.SubjectService;
+import com.example.historyrag.feature.user.UserService;
+import com.example.historyrag.feature.user.dto.AccountResponse;
 import com.example.historyrag.infrastructure.file.FileStorageService;
-import com.example.historyrag.infrastructure.file.StoredFile;
 import com.example.historyrag.infrastructure.webclient.RagClientService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,73 +22,45 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.PredicateSpecification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 
 @Service
+@RequiredArgsConstructor
 public class DocumentServiceImpl implements DocumentService {
 
     private static final Logger log = LoggerFactory.getLogger(DocumentServiceImpl.class);
-    private static final Map<String, Set<String>> CONTENT_TYPES_BY_EXTENSION = Map.of(
-            "pdf", Set.of("application/pdf"),
-            "docx", Set.of("application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
-            "txt", Set.of("text/plain"),
-            "md", Set.of("text/markdown", "text/plain")
-    );
 
     private final DocumentRepository documentRepository;
     private final FolderService folderService;
-    private final SettingService settingService;
-    private final FileStorageService fileStorageService;
+    private final UserService userService;
+    private final SubjectService subjectService;
     private final RagClientService ragClientService;
+    private final FileStorageService fileStorageService;
     private final ApplicationEventPublisher eventPublisher;
-
-    public DocumentServiceImpl(
-            DocumentRepository documentRepository,
-            FolderService folderService,
-            SettingService settingService,
-            FileStorageService fileStorageService,
-            RagClientService ragClientService,
-            ApplicationEventPublisher eventPublisher) {
-        this.documentRepository = documentRepository;
-        this.folderService = folderService;
-        this.settingService = settingService;
-        this.fileStorageService = fileStorageService;
-        this.ragClientService = ragClientService;
-        this.eventPublisher = eventPublisher;
-    }
 
     @Override
     @Transactional
-    public DocumentResponse create(MultipartFile file, CreateDocumentRequest request, Long ownerId) {
+    public DocumentResponse create(CreateDocumentRequest request, Long ownerId) {
         if (request.folderId() != null) {
             if (!folderService.existsByIdAndOwner(request.folderId(), ownerId)) {
                 throw new ResourceNotFoundException("Folder", "id", request.folderId());
             }
         }
 
-        SettingResponse cfg = settingService.getConfig();
-        String ext = validateUploadFile(file, cfg);
-
-        StoredFile stored = fileStorageService.store(file);
-        registerStoredFileCleanupOnRollback(stored.storedName());
-
         Document document = new Document();
         document.setTitle(request.title());
         document.setDescription(request.description());
-        document.setPublicId(stored.storedName());
-        document.setFileUrl("/uploads/" + stored.storedName());
-        document.setSizeInBytes(stored.sizeInBytes());
-        document.setFormat(stored.format());
-        document.setResourceType("file");
+        document.setFileUrl(request.fileUrl());
+        document.setPublicId(request.publicId());
+        document.setSizeInBytes(request.sizeInBytes());
+        document.setFormat(request.format());
+        document.setResourceType(request.resourceType());
+        document.setSubjectId(request.subjectId());
         document.setStatus(DocumentStatus.UPLOADING);
         document.setFolderId(request.folderId());
         document.setOwnerId(ownerId);
@@ -97,68 +70,11 @@ public class DocumentServiceImpl implements DocumentService {
         Document saved = documentRepository.saveAndFlush(document);
         eventPublisher.publishEvent(new DocumentIngestRequested(saved.getId()));
 
-        log.info("Document created: id={}, file={}, status=UPLOADING", saved.getId(), stored.storedName());
-        return DocumentResponse.fromEntity(saved);
-    }
+        SubjectDto subject = buildSubjectDto(request.subjectId());
+        AccountResponse author = userService.findById(ownerId).orElse(null);
 
-    private String extractExt(String filename) {
-        if (filename == null || !filename.contains(".")) return "bin";
-        return filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
-    }
-
-    private String validateUploadFile(MultipartFile file, SettingResponse cfg) {
-        if (file == null || file.isEmpty()) {
-            throw new InvalidRequestException("File không được để trống");
-        }
-
-        String allowedTypes = cfg.allowedTypes();
-        Set<String> allowed = Arrays.stream(allowedTypes.split(","))
-                .map(String::trim)
-                .map(value -> value.startsWith(".") ? value.substring(1) : value)
-                .map(String::toLowerCase)
-                .filter(value -> !value.isBlank())
-                .collect(Collectors.toSet());
-
-        String ext = extractExt(file.getOriginalFilename());
-        if (!allowed.contains(ext)) {
-            throw new InvalidRequestException("Định dạng file không được hỗ trợ. Chấp nhận: " + allowedTypes);
-        }
-
-        long maxBytes;
-        try {
-            maxBytes = Long.parseLong(cfg.maxSizeMb()) * 1_048_576L;
-        } catch (NumberFormatException ex) {
-            throw new InvalidRequestException("Cấu hình kích thước file không hợp lệ");
-        }
-        if (file.getSize() > maxBytes) {
-            throw new InvalidRequestException("File vượt quá kích thước tối đa (" + cfg.maxSizeMb() + "MB)");
-        }
-
-        String contentType = file.getContentType();
-        Set<String> expectedContentTypes = CONTENT_TYPES_BY_EXTENSION.get(ext);
-        if (contentType != null
-                && !contentType.isBlank()
-                && expectedContentTypes != null
-                && !expectedContentTypes.contains(contentType.toLowerCase())) {
-            throw new InvalidRequestException("Content-Type không khớp với định dạng file");
-        }
-
-        return ext;
-    }
-
-    private void registerStoredFileCleanupOnRollback(String storedName) {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            return;
-        }
-
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCompletion(int status) {
-                if (status != STATUS_COMMITTED) {
-                    fileStorageService.delete(storedName);
-                }
-            }
-        });
+        log.info("Document created: id={}, cloudinary={}, status=UPLOADING", saved.getId(), request.publicId());
+        return DocumentResponse.fromEntity(saved, toUserEntity(author), subject);
     }
 
     @Override
@@ -183,11 +99,16 @@ public class DocumentServiceImpl implements DocumentService {
             }
             doc.setFolderId(request.folderId());
         }
+        if (request.subjectId() != null) {
+            doc.setSubjectId(request.subjectId());
+        }
         if (request.isPublic() != null) {
             doc.setIsPublic(request.isPublic());
         }
 
-        return DocumentResponse.fromEntity(documentRepository.save(doc));
+        AccountResponse author = userService.findById(doc.getOwnerId()).orElse(null);
+        SubjectDto subject = buildSubjectDto(doc.getSubjectId());
+        return DocumentResponse.fromEntity(documentRepository.save(doc), toUserEntity(author), subject);
     }
 
     @Override
@@ -203,15 +124,22 @@ public class DocumentServiceImpl implements DocumentService {
             }
         }
 
-        return DocumentResponse.fromEntity(doc);
+        AccountResponse author = userService.findById(doc.getOwnerId()).orElse(null);
+        SubjectDto subject = buildSubjectDto(doc.getSubjectId());
+        return DocumentResponse.fromEntity(doc, toUserEntity(author), subject);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<DocumentResponse> getMyDocuments(Long ownerId) {
+        AccountResponse author = userService.findById(ownerId).orElse(null);
+        com.example.historyrag.feature.user.User authorEntity = toUserEntity(author);
         return documentRepository.findByOwnerIdOrderByCreatedAtDesc(ownerId).stream()
                 .filter(doc -> doc.getStatus() != DocumentStatus.SOFT_DELETED)
-                .map(DocumentResponse::fromEntity)
+                .map(doc -> {
+                    SubjectDto subject = buildSubjectDto(doc.getSubjectId());
+                    return DocumentResponse.fromEntity(doc, authorEntity, subject);
+                })
                 .collect(Collectors.toList());
     }
 
@@ -223,7 +151,11 @@ public class DocumentServiceImpl implements DocumentService {
                 search, folderId, status, Boolean.TRUE.equals(onlyMine) ? ownerId : null);
 
         Page<DocumentResponse> pageResult = documentRepository.findBy(spec, q -> q.page(pageable))
-                .map(DocumentResponse::fromEntity);
+                .map(doc -> {
+                    AccountResponse author = userService.findById(doc.getOwnerId()).orElse(null);
+                    SubjectDto subject = buildSubjectDto(doc.getSubjectId());
+                    return DocumentResponse.fromEntity(doc, toUserEntity(author), subject);
+                });
         return ResultPaginationDTO.fromPage(pageResult);
     }
 
@@ -304,11 +236,8 @@ public class DocumentServiceImpl implements DocumentService {
             log.warn("Failed to delete vectors for document {}: {}", id, e.getMessage());
         }
 
-        // Xóa file vật lý khỏi disk
-        fileStorageService.delete(doc.getPublicId());
-
         documentRepository.delete(doc);
-        log.info("Document {} hard deleted (file + vectors + db)", id);
+        log.info("Document {} hard deleted (vectors + db)", id);
     }
 
     @Override
@@ -324,8 +253,140 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     @Override
+    @Transactional
+    public void approve(Long id, Long userId) {
+        Document doc = documentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
+        doc.setStatus(DocumentStatus.READY);
+        doc.setIsPublic(true);
+        doc.setReviewedById(userId);
+        doc.setReviewedAt(Instant.now());
+        documentRepository.save(doc);
+        log.info("Document {} approved by userId={}", id, userId);
+    }
+
+    @Override
+    @Transactional
+    public void reject(Long id, String reason, Long userId) {
+        Document doc = documentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
+        doc.setStatus(DocumentStatus.REJECTED);
+        doc.setReviewReason(reason);
+        doc.setReviewedById(userId);
+        doc.setReviewedAt(Instant.now());
+        documentRepository.save(doc);
+        log.info("Document {} rejected by userId={}, reason={}", id, userId, reason);
+    }
+
+    @Override
+    @Transactional
+    public String enableShare(Long id, Long ownerId) {
+        Document doc = documentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
+
+        if (!doc.getOwnerId().equals(ownerId)) {
+            throw new ResourceNotFoundException("Document", "id", id);
+        }
+
+        if (doc.getShareToken() == null) {
+            doc.setShareToken(UUID.randomUUID().toString());
+        }
+        doc.setShareEnabled(true);
+        documentRepository.save(doc);
+        log.info("Share enabled for document {} token={}", id, doc.getShareToken());
+        return doc.getShareToken();
+    }
+
+    @Override
+    @Transactional
+    public void disableShare(Long id, Long ownerId) {
+        Document doc = documentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
+
+        if (!doc.getOwnerId().equals(ownerId)) {
+            throw new ResourceNotFoundException("Document", "id", id);
+        }
+
+        doc.setShareEnabled(false);
+        documentRepository.save(doc);
+        log.info("Share disabled for document {}", id);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DocumentResponse getByShareToken(String token) {
+        Document doc = documentRepository.findByShareTokenAndShareEnabledTrue(token)
+                .orElseThrow(() -> new ResourceNotFoundException("Document", "shareToken", token));
+
+        AccountResponse author = userService.findById(doc.getOwnerId()).orElse(null);
+        SubjectDto subject = buildSubjectDto(doc.getSubjectId());
+        return DocumentResponse.fromEntity(doc, toUserEntity(author), subject);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public long countActiveByFolderId(Long folderId) {
         return documentRepository.countByFolderIdAndStatusNot(folderId, DocumentStatus.SOFT_DELETED);
+    }
+
+    @Override
+    @Transactional
+    public void purgeExpiredSoftDeleted(Instant cutoff) {
+        List<Document> expired = documentRepository
+                .findByStatusAndUpdatedAtBefore(DocumentStatus.SOFT_DELETED, cutoff);
+
+        if (expired.isEmpty()) {
+            log.debug("Soft-delete cleanup: nothing to purge");
+            return;
+        }
+
+        log.info("Soft-delete cleanup: purging {} document(s) older than cutoff={}", expired.size(), cutoff);
+
+        for (Document doc : expired) {
+            try {
+                ragClientService.deleteSource(doc.getId(), null);
+            } catch (Exception e) {
+                log.warn("Failed to delete Qdrant vectors for doc {}: {}", doc.getId(), e.getMessage());
+            }
+            fileStorageService.delete(doc.getPublicId());
+            documentRepository.delete(doc);
+            log.info("Purged document id={} title={}", doc.getId(), doc.getTitle());
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsByIdAndOwner(Long id, Long ownerId) {
+        return documentRepository.existsByIdAndOwnerIdAndStatusNot(id, ownerId, DocumentStatus.SOFT_DELETED);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean allExistByIdsAndOwner(List<Long> ids, Long ownerId) {
+        if (ids == null || ids.isEmpty()) {
+            return true;
+        }
+        List<Long> distinctIds = ids.stream().distinct().toList();
+        long ownedCount = documentRepository.countByIdInAndOwnerIdAndStatusNot(
+                distinctIds, ownerId, DocumentStatus.SOFT_DELETED);
+        return ownedCount == distinctIds.size();
+    }
+
+    // --- helpers ---
+
+    private SubjectDto buildSubjectDto(Long subjectId) {
+        if (subjectId == null) return null;
+        return subjectService.findOptionalById(subjectId)
+                .map(s -> new SubjectDto(s.id(), s.name(), s.code()))
+                .orElse(null);
+    }
+
+    private com.example.historyrag.feature.user.User toUserEntity(AccountResponse dto) {
+        if (dto == null) return null;
+        com.example.historyrag.feature.user.User user = new com.example.historyrag.feature.user.User();
+        user.setId(dto.id());
+        user.setFullName(dto.name());
+        user.setAvatarUrl(dto.avatarUrl());
+        return user;
     }
 }
