@@ -94,8 +94,8 @@ class AuthServiceImplTest {
         RegisterResponse response = authService.register(request);
 
         assertEquals(10L, response.id());
-        assertEquals("nva", response.username());
-        assertEquals("STUDENT", response.role());
+        assertEquals("Nguyen Van A", response.name());
+        assertEquals("student", response.role());
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(captor.capture());
@@ -179,7 +179,7 @@ class AuthServiceImplTest {
         AuthUserResponse response = authService.getMe("admin@example.com", "ADMIN");
 
         assertEquals(99L, response.id());
-        assertEquals("ADMIN", response.role());
+        assertEquals("admin", response.role());
     }
 
     // ── helpers ──────────────────────────────────────────────────────

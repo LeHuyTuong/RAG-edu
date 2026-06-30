@@ -32,12 +32,20 @@ class Settings(BaseSettings):
     qdrant_api_key: str
     qdrant_collection: str = "history_chunks"
 
-    # Google AI Studio — dùng chung 1 key cho cả embedding (Gemini) và LLM (Gemma)
+    # Google AI Studio — dùng cho embedding (Gemini)
     google_api_key: str = Field(validation_alias=AliasChoices("GOOGLE_API_KEY", "LLM_API_KEY"))
-    llm_model: str = "gemma-4-31b-it"
     embedding_model: str = "gemini-embedding-001"
     # embedding_dim phải khớp với collection đã tạo trong Qdrant — đổi model thì phải tạo lại collection
     embedding_dim: int = 768
+
+    # LLM provider — "google" (Gemma) or "cerebras" (OpenAI-compatible)
+    llm_provider: str = "cerebras"
+    # Google LLM (Gemma) — fallback nếu llm_provider=google
+    llm_model: str = "gemma-4-31b-it"
+    # Cerebras — chat LLM chính
+    cerebras_api_key: str = ""
+    cerebras_model: str = "gpt-oss-120b"
+    cerebras_base_url: str = "https://api.cerebras.ai/v1"
 
     # Giá trị mặc định cho pipeline — request có thể override
     default_chunk_size: int = 800

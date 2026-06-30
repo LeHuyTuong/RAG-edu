@@ -44,7 +44,8 @@ public class SecurityConfig {
             "/api/v1/auth/logout",
             "/uploads/**",
             "/actuator/health",
-            "/api/v1/rag/health"
+            "/api/v1/rag/health",
+            "/api/v1/documents/share/**"
     };
 
     @Bean

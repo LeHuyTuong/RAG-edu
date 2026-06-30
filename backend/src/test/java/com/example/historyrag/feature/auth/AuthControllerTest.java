@@ -108,11 +108,11 @@ class AuthControllerTest {
         when(authService.register(any(RegisterRequest.class)))
                 .thenReturn(new RegisterResponse(
                         1L,
-                        "member",
                         "member@example.com",
                         "Member Name",
+                        null,
                         User.UserStatus.ACTIVE,
-                        "STUDENT",
+                        "student",
                         Instant.parse("2026-06-09T00:00:00Z")
                 ));
 
@@ -130,7 +130,6 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.statusCode").value(201))
                 .andExpect(jsonPath("$.message").value("Đăng ký thành công"))
                 .andExpect(jsonPath("$.data.id").value(1))
-                .andExpect(jsonPath("$.data.username").value("member"))
                 .andExpect(jsonPath("$.data.status").value("ACTIVE"));
     }
 
@@ -223,11 +222,11 @@ class AuthControllerTest {
         when(authService.getMe("member@example.com", "MEMBER"))
                 .thenReturn(new AuthUserResponse(
                         1L,
-                        "member",
                         "member@example.com",
                         "Member Name",
+                        null,
                         User.UserStatus.ACTIVE,
-                        "STUDENT",
+                        "student",
                         Instant.parse("2026-06-09T00:00:00Z")
                 ));
 
@@ -235,7 +234,7 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.statusCode").value(200))
                 .andExpect(jsonPath("$.data.email").value("member@example.com"))
-                .andExpect(jsonPath("$.data.role").value("STUDENT"));
+                .andExpect(jsonPath("$.data.role").value("student"));
     }
 
     private static class JwtArgumentResolver implements HandlerMethodArgumentResolver {

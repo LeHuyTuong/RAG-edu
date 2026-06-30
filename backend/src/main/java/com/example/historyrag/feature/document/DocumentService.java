@@ -5,13 +5,13 @@ import com.example.historyrag.feature.document.dto.CreateDocumentRequest;
 import com.example.historyrag.feature.document.dto.DocumentResponse;
 import com.example.historyrag.feature.document.dto.UpdateDocumentRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.web.multipart.MultipartFile;
 
+import java.time.Instant;
 import java.util.List;
 
 public interface DocumentService {
 
-    DocumentResponse create(MultipartFile file, CreateDocumentRequest request, Long ownerId);
+    DocumentResponse create(CreateDocumentRequest request, Long ownerId);
 
     DocumentResponse update(Long id, UpdateDocumentRequest request, Long ownerId);
 
@@ -30,9 +30,25 @@ public interface DocumentService {
 
     void reindex(Long id, Long ownerId);
 
+    void approve(Long id, Long userId);
+
+    void reject(Long id, String reason, Long userId);
+
     long countAll();
 
     long countByStatus(DocumentStatus status);
 
     long countActiveByFolderId(Long folderId);
+
+    void purgeExpiredSoftDeleted(Instant cutoff);
+
+    boolean existsByIdAndOwner(Long id, Long ownerId);
+
+    boolean allExistByIdsAndOwner(List<Long> ids, Long ownerId);
+
+    String enableShare(Long id, Long ownerId);
+
+    void disableShare(Long id, Long ownerId);
+
+    DocumentResponse getByShareToken(String token);
 }

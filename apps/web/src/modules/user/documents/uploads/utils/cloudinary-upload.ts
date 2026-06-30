@@ -1,14 +1,8 @@
 /**
- * Shared Cloudinary upload utility.
- *
- * Consolidates the Cloudinary unsigned-preset upload logic that was
- * duplicated across DocumentUploadForm, useDocumentUpload, and useFileUpload.
- *
- * Usage:
- *   import { uploadFileToCloudinary } from "../utils/cloudinary-upload";
- *   const result = await uploadFileToCloudinary(file);
+ * Upload utility — tries Cloudinary first, falls back to backend server.
  */
 
+import { apiClient } from "@/lib/axios";
 import {
   buildCloudinaryUploadResult,
   type CloudinaryUploadResult,
@@ -19,20 +13,26 @@ const UPLOAD_PRESET = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET ?? "";
 
 export { UPLOAD_PRESET };
 
-/**
- * Uploads a file to Cloudinary using the unsigned preset.
- *
- * @throws Error with a descriptive message if the upload fails.
- *   Callers should log `err.message` for debugging and map to a
- *   user-facing message before displaying it.
- */
-export async function uploadFileToCloudinary(
-  file: File,
-): Promise<CloudinaryUploadResult> {
-  if (!UPLOAD_PRESET) {
-    throw new Error("Cloudinary upload preset is not configured.");
-  }
+async function uploadToServer(file: File): Promise<CloudinaryUploadResult> {
+  const formData = new FormData();
+  formData.append("file", file);
 
+  const result = await apiClient.post("/api/v1/upload", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+
+  const data = result as unknown as Record<string, unknown>;
+
+  return {
+    url: (data.fileUrl as string) ?? "",
+    publicId: (data.storedName as string) ?? "",
+    bytes: (data.sizeInBytes as number) ?? file.size,
+    format: (data.format as string) ?? "pdf",
+    resourceType: (data.resourceType as string) ?? "local",
+  };
+}
+
+async function uploadToCloudinary(file: File): Promise<CloudinaryUploadResult> {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("upload_preset", UPLOAD_PRESET);
@@ -51,4 +51,13 @@ export async function uploadFileToCloudinary(
 
   const data = await res.json();
   return buildCloudinaryUploadResult(data, file);
+}
+
+export async function uploadFileToCloudinary(
+  file: File,
+): Promise<CloudinaryUploadResult> {
+  if (UPLOAD_PRESET && UPLOAD_PRESET !== "PLACE_HOLDER") {
+    return uploadToCloudinary(file);
+  }
+  return uploadToServer(file);
 }

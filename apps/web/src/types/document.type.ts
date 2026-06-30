@@ -22,10 +22,17 @@ export interface DocumentSubject {
 export interface LibraryDocument {
   id: string;
   title: string;
+  description?: string | null;
   /** Cloudinary public ID — usable for thumbnail generation */
   publicId: string;
+  fileUrl: string;
+  format: string;
+  sizeInBytes: number;
+  ragStatus?: DocumentStatus;
   status: DocumentStatus;
   isPublic: boolean;
+  pageCount?: number | null;
+  folderId?: number | null;
   createdAt: string;
   updatedAt: string;
   reviewedById?: string | null;
@@ -78,6 +85,7 @@ export interface CreateDocumentPayload {
   resourceType: string;
   subjectId?: string;
   isPublic: boolean;
+  folderId?: number;
 }
 
 export interface UpdateDocumentPayload {
@@ -85,6 +93,7 @@ export interface UpdateDocumentPayload {
   description?: string;
   subjectId?: string;
   isPublic?: boolean;
+  folderId?: number;
 }
 
 export interface RejectDocumentPayload {
@@ -113,9 +122,14 @@ export interface DocumentDetail {
   /** File extension as stored by Cloudinary, e.g. "pdf", "docx" */
   format: string;
   sizeInBytes: number;
+  pageCount?: number | null;
   createdAt: string;
   status?: DocumentStatus;
   isPublic?: boolean;
+  ownerId?: number;
+  folderId?: number | null;
+  shareToken?: string | null;
+  shareEnabled?: boolean;
   reviewedById?: string | null;
   reviewedAt?: string | null;
   rejectionReason?: string | null;

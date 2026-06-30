@@ -166,3 +166,30 @@ export const updateAdminSubject = async (
 export const deleteAdminSubject = async (id: string): Promise<unknown> => {
   return apiClient.delete(API_ENDPOINTS.SUBJECTS.DETAIL(id));
 };
+
+// ─── Admin Config ───
+
+export interface AdminConfig {
+  siteName: string;
+  siteDescription: string;
+  requireEmailVerification: boolean;
+  allowRegistration: boolean;
+  maxUploadSizeMb: number;
+  allowedFileTypes: string[];
+  maintenanceMode: boolean;
+  maintenanceMessage: string;
+  defaultUserRole: string;
+  sessionTimeoutMinutes: number;
+}
+
+export async function fetchAdminConfig(): Promise<AdminConfig> {
+  const result = await apiClient.get(API_ENDPOINTS.ADMIN.CONFIG);
+  return result as unknown as AdminConfig;
+}
+
+export async function updateAdminConfig(
+  payload: Partial<AdminConfig>,
+): Promise<AdminConfig> {
+  const result = await apiClient.patch(API_ENDPOINTS.ADMIN.CONFIG, payload);
+  return result as unknown as AdminConfig;
+}

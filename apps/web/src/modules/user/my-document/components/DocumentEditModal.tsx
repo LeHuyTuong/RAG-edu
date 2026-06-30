@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { InputField } from "@/components/ui/InputField";
+import { listFolders, type FolderResponse } from "@/apis/folder.api";
 import type {
   LibraryDocument,
   Subject,
@@ -33,6 +34,8 @@ export function DocumentEditModal({
   const [title, setTitle] = useState("");
   const [subjectId, setSubjectId] = useState("");
   const [isPublic, setIsPublic] = useState(false);
+  const [folderId, setFolderId] = useState("");
+  const [folders, setFolders] = useState<FolderResponse[]>([]);
 
   useEffect(() => {
     if (!document) return;
@@ -40,7 +43,14 @@ export function DocumentEditModal({
     setTitle(document.title);
     setSubjectId(document.subject?.id ?? "");
     setIsPublic(document.isPublic);
+    setFolderId(document.folderId ? String(document.folderId) : "");
   }, [document]);
+
+  useEffect(() => {
+    listFolders()
+      .then((data) => setFolders(data))
+      .catch(() => {});
+  }, []);
 
   if (!isOpen || !document) return null;
 
@@ -52,6 +62,7 @@ export function DocumentEditModal({
       title: nextTitle,
       subjectId: subjectId || undefined,
       isPublic,
+      folderId: folderId ? Number(folderId) : undefined,
     });
   };
 
@@ -97,6 +108,25 @@ export function DocumentEditModal({
               {subjects.map((subject) => (
                 <option key={subject.id} value={subject.id}>
                   {subject.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-on-surface-variant">
+              Thư mục
+            </span>
+            <select
+              value={folderId}
+              onChange={(event) => setFolderId(event.target.value)}
+              disabled={isSaving}
+              className="w-full rounded-xl border border-outline bg-surface py-2 pl-3 pr-8 text-sm text-on-surface focus:border-2 focus:border-primary focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="">Không có thư mục</option>
+              {folders.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.folderName}
                 </option>
               ))}
             </select>

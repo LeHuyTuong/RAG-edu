@@ -14,6 +14,8 @@ export const API_ENDPOINTS = {
     REFRESH: "/api/v1/auth/refresh",
     ME: "/api/v1/auth/me",
     CHANGE_PASSWORD: "/api/v1/auth/change-password",
+    FORGOT_PASSWORD: "/api/v1/auth/forgot-password",
+    RESET_PASSWORD: "/api/v1/auth/reset-password",
   },
   ACCOUNTS: {
     BASE: "/api/v1/accounts",
@@ -22,16 +24,33 @@ export const API_ENDPOINTS = {
   },
   ADMIN: {
     DASHBOARD: "/api/v1/admin/dashboard",
+    CONFIG: "/api/v1/admin/config",
   },
   DOCUMENTS: {
     BASE: "/api/v1/documents",
     DETAIL: (id: string) => `/api/v1/documents/${id}`,
     APPROVE: (id: string) => `/api/v1/documents/${id}/approve`,
     REJECT: (id: string) => `/api/v1/documents/${id}/reject`,
+    SHARE: (id: string) => `/api/v1/documents/${id}/share`,
+    SHARED: (token: string) => `/api/v1/documents/share/${token}`,
   },
   SUBJECTS: {
     BASE: "/api/v1/subjects",
     DETAIL: (id: string) => `/api/v1/subjects/${id}`,
+  },
+  FOLDERS: {
+    BASE: "/api/v1/folders",
+    DETAIL: (id: string) => `/api/v1/folders/${id}`,
+    CHAT: (id: string) => `/api/v1/folders/${id}/chat`,
+  },
+  RAG: {
+    BASE: "/api/v1/rag",
+    HEALTH: "/api/v1/rag/health",
+    CHAT: "/api/v1/rag/chat",
+    CHAT_STREAM: "/api/v1/rag/chat/stream",
+    RETRIEVE: "/api/v1/rag/retrieve",
+    INGEST: "/api/v1/rag/ingest",
+    SOURCE: (id: string) => `/api/v1/rag/sources/${id}`,
   },
 } as const;
 

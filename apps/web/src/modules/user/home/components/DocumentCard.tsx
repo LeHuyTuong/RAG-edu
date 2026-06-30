@@ -10,8 +10,8 @@ interface DocumentCardProps {
   id: string;
   title: string;
   subtitle: string;
-  coverImage: string;
-  pageCount: number;
+  coverImage?: string;
+  pageCount?: number;
   className?: string;
 }
 
@@ -36,11 +36,11 @@ export const DocumentCard: FC<DocumentCardProps> = ({
           select-none
           snap-start
           ${className}
-  `}
+      `}
       >
         <div className="flex h-[420px] flex-col">
           <div className="relative flex-[2] overflow-hidden rounded-2xl bg-surface-variant">
-            {!imageFailed ? (
+            {!imageFailed && coverImage ? (
               <Image
                 src={coverImage}
                 alt={title}
@@ -63,11 +63,13 @@ export const DocumentCard: FC<DocumentCardProps> = ({
 
             <div className="absolute inset-0 bg-black/10" />
 
-            <div className="absolute bottom-2 right-2">
-              <Badge className="bg-white text-black shadow-sm">
-                {pageCount} pages
-              </Badge>
-            </div>
+            {pageCount !== undefined && (
+              <div className="absolute bottom-2 right-2">
+                <Badge className="bg-white text-black shadow-sm">
+                  {pageCount} pages
+                </Badge>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-[1] flex-col justify-center px-1 pt-3">

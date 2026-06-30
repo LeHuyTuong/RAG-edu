@@ -4,6 +4,7 @@ import com.example.historyrag.feature.admin.dto.DashboardActivityResponse;
 import com.example.historyrag.feature.admin.dto.DashboardResponse;
 import com.example.historyrag.feature.document.DocumentService;
 import com.example.historyrag.feature.document.DocumentStatus;
+import com.example.historyrag.feature.subject.SubjectService;
 import com.example.historyrag.feature.user.User;
 import com.example.historyrag.feature.user.UserService;
 import org.springframework.stereotype.Service;
@@ -11,18 +12,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 @Service
+@RequiredArgsConstructor
 public class AdminDashboardServiceImpl implements AdminDashboardService {
 
     private final UserService userService;
     private final DocumentService documentService;
-
-    public AdminDashboardServiceImpl(UserService userService,
-                                     DocumentService documentService) {
-        this.userService = userService;
-        this.documentService = documentService;
-    }
+    private final SubjectService subjectService;
 
     @Override
     @Transactional(readOnly = true)
@@ -30,24 +28,24 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         long totalUsers = userService.countAll();
         long totalStudents = userService.countByRole(User.UserRole.STUDENT);
         long totalAdmins = userService.countByRole(User.UserRole.ADMIN);
+        long activeUsers = userService.countByStatus(User.UserStatus.ACTIVE);
+        long lockedUsers = userService.countByStatus(User.UserStatus.LOCKED);
 
         long totalDocuments = documentService.countAll();
+        long readyDocs = documentService.countByStatus(DocumentStatus.READY);
+        long rejectedDocs = documentService.countByStatus(DocumentStatus.REJECTED);
         long uploadingDocs = documentService.countByStatus(DocumentStatus.UPLOADING);
         long indexingDocs = documentService.countByStatus(DocumentStatus.INDEXING);
         long reindexingDocs = documentService.countByStatus(DocumentStatus.REINDEXING);
-        long readyDocs = documentService.countByStatus(DocumentStatus.READY);
         long failedDocs = documentService.countByStatus(DocumentStatus.FAILED);
+        // PENDING = all processing states (uploading + indexing + reindexing + failed)
+        long pendingDocs = uploadingDocs + indexingDocs + reindexingDocs + failedDocs;
+        long subjectCount = subjectService.countAll();
 
         return new DashboardResponse(
-                totalUsers,
-                totalStudents,
-                totalAdmins,
-                totalDocuments,
-                uploadingDocs,
-                indexingDocs,
-                reindexingDocs,
-                readyDocs,
-                failedDocs,
+                new DashboardResponse.AccountStats(totalUsers, activeUsers, lockedUsers, totalStudents),
+                new DashboardResponse.DocumentStats(totalDocuments, readyDocs, pendingDocs, rejectedDocs),
+                new DashboardResponse.SubjectStats(subjectCount),
                 buildActivities(totalStudents, readyDocs, failedDocs)
         );
     }

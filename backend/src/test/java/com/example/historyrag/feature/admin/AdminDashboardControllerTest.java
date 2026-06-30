@@ -34,15 +34,19 @@ class AdminDashboardControllerTest {
     @Test
     @DisplayName("Should return dashboard response wrapper")
     void getDashboard_existingSummary_returnsDashboardResponse() throws Exception {
+        var accounts = new DashboardResponse.AccountStats(42L, 40L, 2L, 0L);
+        var documents = new DashboardResponse.DocumentStats(10L, 6L, 4L, 0L);
+        var subjects = new DashboardResponse.SubjectStats(0L);
         when(adminDashboardService.getDashboard())
-                .thenReturn(new DashboardResponse(42L, 40L, 2L, 10L, 1L, 2L, 0L, 6L, 1L, List.of()));
+                .thenReturn(new DashboardResponse(accounts, documents, subjects, List.of()));
 
         mockMvc.perform(get("/api/v1/admin/dashboard"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.statusCode").value(200))
                 .andExpect(jsonPath("$.message").value("Lấy thông tin dashboard thành công"))
-                .andExpect(jsonPath("$.data.totalUsers").value(42))
-                .andExpect(jsonPath("$.data.totalStudents").value(40))
-                .andExpect(jsonPath("$.data.readyDocs").value(6));
+                .andExpect(jsonPath("$.data.accounts.total").value(42))
+                .andExpect(jsonPath("$.data.accounts.active").value(40))
+                .andExpect(jsonPath("$.data.documents.total").value(10))
+                .andExpect(jsonPath("$.data.documents.active").value(6));
     }
 }

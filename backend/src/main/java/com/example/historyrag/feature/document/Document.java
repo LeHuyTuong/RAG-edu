@@ -68,6 +68,22 @@ public class Document extends BaseEntity {
     @Column(name = "uploaded_at", updatable = false)
     private Instant uploadedAt;
 
+    @Column(name = "subject_id")
+    private Long subjectId;
+
     @Column(name = "review_reason", columnDefinition = "TEXT")
     private String reviewReason;
+
+    @Column(name = "reviewed_by_id")
+    private Long reviewedById;
+
+    @Column(name = "reviewed_at")
+    private Instant reviewedAt;
+
+    @Column(name = "share_token", unique = true, length = 36)
+    private String shareToken;
+
+    @Column(name = "share_enabled", nullable = false)
+    @Builder.Default
+    private Boolean shareEnabled = false;
 }

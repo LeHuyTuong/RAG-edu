@@ -21,6 +21,12 @@ export const USER_NAV_ITEMS: SideNavItem[] = [
     section: "main",
   },
   {
+    label: "Thư mục",
+    icon: "folder",
+    href: "/folders",
+    section: "main",
+  },
+  {
     label: "Đóng góp",
     icon: "cloud_upload",
     href: ROUTE_PATHS.PROTECTED_ROUTES.UPLOADS,
@@ -98,13 +104,6 @@ export const ADMIN_NAV_ITEMS: SideNavItem[] = [
     label: "Quản lý môn học",
     icon: "menu_book",
     href: ROUTE_PATHS.ADMIN_ROUTES.SUBJECTS,
-    section: "main",
-  },
-
-  {
-    label: "Báo cáo",
-    icon: "bar_chart",
-    href: ROUTE_PATHS.ADMIN_ROUTES.REPORTS,
     section: "main",
   },
 

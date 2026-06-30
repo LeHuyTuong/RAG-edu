@@ -33,13 +33,11 @@ import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/Button";
 import { InputField } from "@/components/ui/InputField";
 import { fetchSubjects, createDocument } from "@/apis/document.api";
+import { listFolders, type FolderResponse } from "@/apis/folder.api";
 import { UPLOAD_ERROR_MESSAGES } from "@/constants/upload.const";
 import { getErrorMessage } from "@/utils/error";
 import type { Subject } from "@/types/document.type";
-import {
-  uploadFileToCloudinary,
-  UPLOAD_PRESET,
-} from "../utils/cloudinary-upload";
+import { uploadFileToCloudinary } from "../utils/cloudinary-upload";
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
@@ -71,14 +69,23 @@ export function DocumentUploadForm({
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [subjectsLoading, setSubjectsLoading] = useState(true);
 
+  // Folders from API
+  const [folders, setFolders] = useState<FolderResponse[]>([]);
+  const [folderId, setFolderId] = useState("");
+
   useEffect(() => {
     fetchSubjects(100)
       .then((res) => setSubjects(res.subjects))
       .catch((err) => {
-        // Non-critical — dropdown degrades gracefully to empty.
         console.error("fetchSubjects failed:", err);
       })
       .finally(() => setSubjectsLoading(false));
+
+    listFolders()
+      .then((data) => setFolders(data))
+      .catch(() => {
+        // Non-critical — folder toggle hides if empty.
+      });
   }, []);
 
   // Submit state
@@ -97,10 +104,7 @@ export function DocumentUploadForm({
       setSubmitError(UPLOAD_ERROR_MESSAGES.MISSING_TITLE);
       return;
     }
-    if (!UPLOAD_PRESET) {
-      setSubmitError(UPLOAD_ERROR_MESSAGES.MISSING_UPLOAD_CONFIG);
-      return;
-    }
+    // Bypass Cloudinary preset check — upload utility handles fallback
 
     setIsSubmitting(true);
     onSubmittingChange(true);
@@ -130,6 +134,7 @@ export function DocumentUploadForm({
         resourceType: cloudResult.resourceType,
         subjectId: subjectId || undefined,
         isPublic,
+        folderId: folderId ? Number(folderId) : undefined,
       });
 
       // Reset form on success
@@ -137,6 +142,7 @@ export function DocumentUploadForm({
       setSubjectId("");
       setDescription("");
       setIsPublic(false);
+      setFolderId("");
       onSuccess();
     } catch (err) {
       // Logged for debugging — the user only sees a mapped message,
@@ -157,6 +163,7 @@ export function DocumentUploadForm({
     title,
     description,
     subjectId,
+    folderId,
     isPublic,
     onSubmittingChange,
     onSuccess,
@@ -236,6 +243,33 @@ export function DocumentUploadForm({
           "
         />
       </label>
+
+      {/* Folder selection */}
+      {folders.length > 0 && (
+        <label className="block">
+          <span className="mb-1 block text-xs font-medium text-on-surface-variant">
+            Thư mục
+          </span>
+          <select
+            value={folderId}
+            onChange={(e) => setFolderId(e.target.value)}
+            disabled={isSubmitting}
+            className="
+              w-full rounded-xl border border-outline bg-surface
+              py-2 pl-3 pr-8 text-sm text-on-surface
+              focus:border-2 focus:border-primary focus:outline-none
+              disabled:cursor-not-allowed disabled:opacity-50
+            "
+          >
+            <option value="">Không có thư mục</option>
+            {folders.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.folderName}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
 
       {/* Visibility toggle */}
       <div className="flex items-center justify-between rounded-xl border border-outline bg-surface-variant/40 px-4 py-3">

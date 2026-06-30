@@ -8,12 +8,14 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { fetchDocumentDetail, fetchDocuments } from "@/apis/document.api";
 import type { DocumentDetail, LibraryDocument } from "@/types/document.type";
+import { useAuthStore } from "@/stores/auth/store";
 
 import { DocumentHero } from "../components/DocumentHero";
 import { DocumentPreview } from "../components/DocumentPreview";
 import { FileInfoCard } from "../components/FileInfoCard";
 import { RelatedDocumentCard } from "../components/RelatedDocumentCard";
 import { AuthorCard } from "../components/AuthorCard";
+import { ShareCard } from "../components/ShareCard";
 import { loadDocumentPreview } from "../utils/document-preview";
 import type { DocumentPreviewData } from "../type";
 
@@ -52,6 +54,7 @@ function NotFoundState({ message }: { message: string }): React.JSX.Element {
 
 export default function DocumentDetailPage(): React.JSX.Element {
   const { id } = useParams<{ id: string }>();
+  const currentUser = useAuthStore((s) => s.user);
 
   const [document, setDocument] = useState<DocumentDetail | null>(null);
   const [preview, setPreview] = useState<DocumentPreviewData | null>(null);
@@ -171,6 +174,10 @@ export default function DocumentDetailPage(): React.JSX.Element {
             format={document.format}
             sizeInBytes={document.sizeInBytes}
           />
+
+          {currentUser?.id === String(document.ownerId) && (
+            <ShareCard document={document} />
+          )}
 
           <Card className="space-y-4 p-5">
             <h3 className="text-lg font-semibold">Tài liệu liên quan</h3>

@@ -1,11 +1,11 @@
 package com.example.historyrag.feature.document.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 /**
- * Nhận qua @RequestPart("data") khi upload multipart.
- * File PDF đi kèm qua @RequestPart("file").
+ * Nhận qua JSON body sau khi file đã upload lên Cloudinary.
  */
 public record CreateDocumentRequest(
         @NotBlank(message = "Title is required")
@@ -15,9 +15,26 @@ public record CreateDocumentRequest(
         @Size(max = 5000)
         String description,
 
-        Long folderId,
+        @NotBlank(message = "fileUrl is required")
+        String fileUrl,
 
-        Boolean isPublic
+        @NotBlank(message = "publicId is required")
+        String publicId,
+
+        @NotNull(message = "sizeInBytes is required")
+        Long sizeInBytes,
+
+        @NotBlank(message = "format is required")
+        String format,
+
+        @NotBlank(message = "resourceType is required")
+        String resourceType,
+
+        Long subjectId,
+
+        Boolean isPublic,
+
+        Long folderId
 ) {
     public CreateDocumentRequest {
         isPublic = isPublic != null && isPublic;
