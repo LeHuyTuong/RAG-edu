@@ -12,6 +12,8 @@ Tại sao cần payload index: Qdrant Cloud yêu cầu tạo index trước cho 
 field dùng làm filter (sourceId, tagIds), không có index thì filter chậm
 vì phải scan toàn bộ collection.
 """
+from __future__ import annotations
+
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, PayloadSchemaType, VectorParams
 

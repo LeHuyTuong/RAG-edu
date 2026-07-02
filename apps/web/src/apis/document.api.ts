@@ -123,6 +123,10 @@ export const approveDocument = async (id: string): Promise<DocumentDetail> => {
   return result as unknown as DocumentDetail;
 };
 
+export const reclassifyDocument = async (id: string): Promise<void> => {
+  await apiClient.post(API_ENDPOINTS.DOCUMENTS.RECLASSIFY(id));
+};
+
 export const rejectDocument = async (
   id: string,
   payload: RejectDocumentPayload,

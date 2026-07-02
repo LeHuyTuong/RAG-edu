@@ -206,6 +206,16 @@ public class DocumentController {
         return ResponseEntity.ok(ApiResponse.success("Yêu cầu reindex đã được gửi", null));
     }
 
+    @PostMapping("/{id}/reclassify")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<Void>> reclassify(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Jwt jwt) {
+        Long userId = JwtUtils.getUserId(jwt);
+        documentService.reclassify(id, userId);
+        return ResponseEntity.ok(ApiResponse.success("Đã gửi yêu cầu phân loại lại", null));
+    }
+
     @PostMapping("/{id}/approve")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<DocumentResponse>> approve(

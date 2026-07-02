@@ -11,7 +11,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
-      ddl-auto: ${JPA_DDL_AUTO:validate}
+      ddl-auto: ${JPA_DDL_AUTO:update}
     open-in-view: false
     properties:
       hibernate:
@@ -43,7 +43,7 @@ app:
       secure: ${REFRESH_COOKIE_SECURE:false}
   rag:
     base-url: ${RAG_SERVICE_URL:http://localhost:8001}
-    request-timeout: ${RAG_SERVICE_REQUEST_TIMEOUT:60s}
+    request-timeout: ${RAG_SERVICE_REQUEST_TIMEOUT:300s}
   upload:
     base-path: ${UPLOAD_BASE_PATH:./uploads}
     internal-base-path: ${UPLOAD_INTERNAL_BASE_PATH:${UPLOAD_BASE_PATH:./uploads}}

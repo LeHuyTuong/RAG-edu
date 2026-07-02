@@ -2,19 +2,46 @@
 
 import { DEFAULT_UPLOAD_CONFIG } from "@/constants/upload.const";
 import { UploadConfig } from "@/types/upload";
+import { apiClient } from "@/lib/axios";
 import { useEffect, useState } from "react";
 
-const isUploadConfig = (value: unknown): value is UploadConfig => {
-  if (!value || typeof value !== "object") return false;
-  const v = value as Record<string, unknown>;
-  return (
-    typeof v.maxFileSize === "number" &&
-    typeof v.maxFiles === "number" &&
-    Array.isArray(v.allowedMimeTypes) &&
-    v.allowedMimeTypes.every((x) => typeof x === "string") &&
-    Array.isArray(v.allowedExtensions) &&
-    v.allowedExtensions.every((x) => typeof x === "string")
-  );
+interface ServerUploadConfig {
+  maxFileSize: number;
+  maxSizeMb: number;
+  allowedTypes: string;
+}
+
+const EXT_TO_MIME: Record<string, string> = {
+  pdf: "application/pdf",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  txt: "text/plain",
+  md: "text/plain",
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+};
+
+const mergeConfig = (server: ServerUploadConfig): UploadConfig => {
+  const extensions = server.allowedTypes
+    .split(",")
+    .map((t) => t.trim().toLowerCase())
+    .filter(Boolean)
+    .map((ext) => (ext.startsWith(".") ? ext : `.${ext}`));
+
+  const mimeTypes = extensions
+    .map((ext) => EXT_TO_MIME[ext.replace(".", "")])
+    .filter((v, i, arr) => v && arr.indexOf(v) === i);
+
+  return {
+    maxFileSize: server.maxFileSize,
+    maxFiles: DEFAULT_UPLOAD_CONFIG.maxFiles,
+    allowedMimeTypes:
+      mimeTypes.length > 0 ? mimeTypes : DEFAULT_UPLOAD_CONFIG.allowedMimeTypes,
+    allowedExtensions:
+      extensions.length > 0
+        ? extensions
+        : DEFAULT_UPLOAD_CONFIG.allowedExtensions,
+  };
 };
 
 export const useUploadConfig = () => {
@@ -23,14 +50,15 @@ export const useUploadConfig = () => {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const response = await fetch("/api/upload-config");
-        if (!response.ok) throw new Error("Failed to fetch upload config");
-
-        const data: unknown = await response.json();
-        if (!isUploadConfig(data))
-          throw new Error("Invalid upload config payload");
-
-        setConfig(data);
+        const data = await apiClient.get("/api/v1/upload/config");
+        const server = data as unknown as ServerUploadConfig;
+        if (
+          server &&
+          typeof server.maxFileSize === "number" &&
+          server.allowedTypes
+        ) {
+          setConfig(mergeConfig(server));
+        }
       } catch {
         // fallback default config
       }

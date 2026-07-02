@@ -303,17 +303,72 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     @Transactional
+    public void reclassify(Long id, Long userId) {
+        Document doc = documentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
+
+        if (doc.getStatus() != DocumentStatus.FAILED) {
+            throw new InvalidRequestException("Chỉ có thể reclassify tài liệu ở trạng thái FAILED");
+        }
+
+        // Reset AI review fields — listener sẽ tự set status REVIEWING/INDEXING
+        doc.setAiConfidence(null);
+        doc.setAiWarningLevel(null);
+        doc.setAiReviewStatus(null);
+        doc.setReviewReason(null);
+        documentRepository.save(doc);
+        log.info("Document {} reclassify triggered by userId={}", id, userId);
+
+        // Publish event để DocumentIngestListener chạy lại toàn bộ flow: classify → ingest
+        eventPublisher.publishEvent(new DocumentIngestRequested(doc.getId()));
+    }
+
+    @Override
+    @Transactional
     public void triggerIngest(Long id, Long userId) {
         Document doc = documentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
 
-        doc.setStatus(DocumentStatus.INDEXING);
         doc.setReviewedById(userId);
         doc.setReviewedAt(Instant.now());
-        documentRepository.save(doc);
+        doc.setIsPublic(true);
         log.info("Document {} triggerIngest by admin userId={}", id, userId);
 
-        // Gọi rag-service để ingest
+        runIngestPipeline(doc);
+    }
+
+    @Override
+    @Transactional
+    public void processAutoApprovedDocuments() {
+        List<Document> docs = documentRepository.findByStatusAndAiReviewStatus(
+                DocumentStatus.REVIEWING, "AUTO_APPROVED");
+
+        if (docs.isEmpty()) {
+            return;
+        }
+
+        log.info("AutoApprovalScheduler: processing {} AI auto-approved document(s)", docs.size());
+        for (Document doc : docs) {
+            try {
+                runIngestPipeline(doc);
+            } catch (Exception e) {
+                log.error("Document {} failed during AI auto-approve ingest: {}", doc.getId(), e.getMessage(), e);
+                doc.setStatus(DocumentStatus.FAILED);
+                documentRepository.save(doc);
+            }
+        }
+    }
+
+    /**
+     * Gọi rag-service để ingest document, cập nhật status INDEXING → READY/FAILED.
+     * Dùng chung cho admin duyệt thủ công (triggerIngest) và AI auto-approve (processAutoApprovedDocuments).
+     */
+    private void runIngestPipeline(Document doc) {
+        Long id = doc.getId();
+        doc.setStatus(DocumentStatus.INDEXING);
+        documentRepository.save(doc);
+        log.info("Document {} status set to INDEXING", id);
+
         RagIngestMetadata metadata = new RagIngestMetadata(
                 null, null, null, java.util.List.of(),
                 java.util.List.of(), java.util.List.of(),
@@ -338,18 +393,16 @@ public class DocumentServiceImpl implements DocumentService {
 
             if ("COMPLETED".equals(response.status())) {
                 doc.setStatus(DocumentStatus.READY);
-                doc.setIsPublic(true);
                 doc.setChunkCount(response.chunks() != null ? response.chunks().size() : 0);
                 documentRepository.save(doc);
-                log.info("Document {} ingestion COMPLETED after admin approval, chunks={}",
-                        id, doc.getChunkCount());
+                log.info("Document {} ingestion COMPLETED, chunks={}", id, doc.getChunkCount());
             } else {
                 doc.setStatus(DocumentStatus.FAILED);
                 documentRepository.save(doc);
-                log.warn("Document {} ingestion FAILED after admin approval: {}", id, response.status());
+                log.warn("Document {} ingestion FAILED: {}", id, response.status());
             }
         } catch (Exception e) {
-            log.error("Document {} ingestion error during admin approval: {}", id, e.getMessage(), e);
+            log.error("Document {} ingestion error: {}", id, e.getMessage(), e);
             doc.setStatus(DocumentStatus.FAILED);
             documentRepository.save(doc);
         }
@@ -477,6 +530,17 @@ public class DocumentServiceImpl implements DocumentService {
         long ownedCount = documentRepository.countByIdInAndOwnerIdAndStatusNot(
                 distinctIds, ownerId, DocumentStatus.SOFT_DELETED);
         return ownedCount == distinctIds.size();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean allValidByIdsAndOwner(List<Long> ids, Long ownerId) {
+        if (ids == null || ids.isEmpty()) {
+            return true;
+        }
+        List<Long> distinctIds = ids.stream().distinct().toList();
+        long validCount = documentRepository.countValidByIdInAndOwnerId(distinctIds, ownerId);
+        return validCount == distinctIds.size();
     }
 
     // --- helpers ---

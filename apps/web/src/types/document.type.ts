@@ -52,9 +52,11 @@ export interface LibraryDocument {
   reviewedAt?: string | null;
   rejectionReason?: string | null;
   rejectionDetail?: string | null;
+  /** Điểm tin cậy AI trả về khi kiểm duyệt nội dung (0.0 - 1.0) */
   aiConfidence?: number | null;
-  aiWarningLevel?: string | null;
-  aiReviewStatus?: string | null;
+  /** Mức cảnh báo AI: NONE (đã auto-approve) | WARNING (vàng) | DANGER (đỏ) */
+  aiWarningLevel?: "NONE" | "WARNING" | "DANGER" | null;
+  aiReviewStatus?: "AUTO_APPROVED" | "PENDING_ADMIN" | "REJECTED_BY_AI" | null;
   author: DocumentAuthor;
   subject: DocumentSubject | null;
 }
@@ -123,7 +125,8 @@ export interface ListDocumentsQuery {
   folderId?: number;
   authorId?: string;
   subjectId?: string;
-  status?: DocumentStatus;
+  /** "PENDING_REVIEW" is a backend-only filter value for documents awaiting admin review */
+  status?: DocumentStatus | "PENDING_REVIEW";
   onlyMine?: boolean;
 }
 

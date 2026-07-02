@@ -31,6 +31,7 @@ export const API_ENDPOINTS = {
     DETAIL: (id: string) => `/api/v1/documents/${id}`,
     APPROVE: (id: string) => `/api/v1/documents/${id}/approve`,
     REJECT: (id: string) => `/api/v1/documents/${id}/reject`,
+    RECLASSIFY: (id: string) => `/api/v1/documents/${id}/reclassify`,
     SHARE: (id: string) => `/api/v1/documents/${id}/share`,
     SHARED: (token: string) => `/api/v1/documents/share/${token}`,
   },

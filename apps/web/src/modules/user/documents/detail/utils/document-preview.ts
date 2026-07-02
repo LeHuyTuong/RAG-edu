@@ -75,10 +75,7 @@ export async function loadDocumentPreview(
   const normalizedFormat = normalizeFormat(document.format);
 
   if (normalizedFormat === "pdf") {
-    if (!(await canPreviewRemoteFile(document.fileUrl))) {
-      return { type: "unsupported" };
-    }
-
+    // Skip HEAD check — just return the URL, let iframe handle loading
     return { type: "pdf", fileUrl: document.fileUrl };
   }
 

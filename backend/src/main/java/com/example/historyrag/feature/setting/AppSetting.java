@@ -25,6 +25,9 @@ public class AppSetting {
     @Column(name = "max_size_mb", nullable = false)
     private Integer maxSizeMb;
 
+    @Transient
+    private String autoApproveCron = "0 * * * * *";
+
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 

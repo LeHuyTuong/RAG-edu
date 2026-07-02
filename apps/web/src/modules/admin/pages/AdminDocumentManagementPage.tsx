@@ -4,7 +4,11 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { approveDocument, fetchDocuments } from "@/apis/document.api";
+import {
+  approveDocument,
+  fetchDocuments,
+  reclassifyDocument,
+} from "@/apis/document.api";
 import { Badge } from "@/components/ui/Badge";
 import { Pagination } from "@/components/ui/Pagination";
 import { Table, type TableRow } from "@/components/ui/Table";
@@ -20,6 +24,7 @@ const columns = [
   { key: "title", label: "Tiêu đề", sortable: true },
   { key: "author", label: "Tác giả" },
   { key: "subject", label: "Môn học" },
+  { key: "confidence", label: "AI đánh giá", align: "center" as const },
   { key: "status", label: "Trạng thái" },
   { key: "actions", label: "Thao tác", align: "center" as const },
 ] as const;
@@ -31,6 +36,7 @@ const statusLabels: Record<string, string> = {
   PENDING: "Chờ duyệt",
   REJECTED: "Từ chối",
   DELETED: "Đã xóa",
+  FAILED: "Thất bại",
 };
 
 const statusTone: Record<string, "success" | "warning" | "error" | "neutral"> =
@@ -50,6 +56,18 @@ const suggestedQuestions = [
 const canSelectForReview = (document: LibraryDocument): boolean =>
   document.status === "PENDING";
 
+function ConfidenceBadge({
+  confidence,
+}: {
+  confidence: number | null | undefined;
+}) {
+  if (confidence == null)
+    return <span className="text-sm text-on-surface-variant">—</span>;
+  const pct = Math.round(confidence * 100);
+  const tone = pct >= 90 ? "success" : pct >= 70 ? "warning" : "error";
+  return <Badge tone={tone}>{pct}%</Badge>;
+}
+
 export default function AdminDocumentManagementPage(): React.JSX.Element {
   const [documents, setDocuments] = useState<LibraryDocument[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -59,6 +77,7 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
     () => new Set(),
   );
   const [bulkApproveLoading, setBulkApproveLoading] = useState(false);
+  const [reclassifyingId, setReclassifyingId] = useState<string | null>(null);
 
   const load = useCallback(async (page: number) => {
     setLoading(true);
@@ -167,6 +186,23 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
     }
   };
 
+  const handleReclassify = async (documentId: string) => {
+    if (!window.confirm("Phân loại lại tài liệu này bằng AI?")) return;
+    setReclassifyingId(documentId);
+    try {
+      await reclassifyDocument(documentId);
+      toast.success(
+        "Đã gửi yêu cầu phân loại lại. AI sẽ xử lý trong vài giây.",
+      );
+      // Auto-refresh sau 5s để AI có thời gian xử lý
+      setTimeout(() => void load(currentPage), 5000);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setReclassifyingId(null);
+    }
+  };
+
   const rows: TableRow[] = documents.map((doc) => ({
     id: doc.id,
     highlighted:
@@ -204,10 +240,31 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
       <span key="subject" className="text-sm text-on-surface-variant">
         {doc.subject?.name ?? "—"}
       </span>,
+      <ConfidenceBadge key="confidence" confidence={doc.aiConfidence} />,
       <Badge key="status" tone={statusTone[doc.status] ?? "neutral"}>
         {statusLabels[doc.status] ?? doc.status}
       </Badge>,
-      <div key="actions" className="flex justify-center">
+      <div key="actions" className="flex items-center justify-center gap-1">
+        {doc.ragStatus === "FAILED" && (
+          <button
+            aria-label={`Phân loại lại ${doc.title}`}
+            className="inline-flex h-9 w-9 items-center justify-center rounded text-amber-600 transition-colors hover:bg-amber-50 hover:text-amber-700 disabled:opacity-50"
+            disabled={reclassifyingId === String(doc.id)}
+            onClick={() => handleReclassify(String(doc.id))}
+            title="Phân loại lại bằng AI"
+          >
+            <MaterialIcon
+              name={
+                reclassifyingId === String(doc.id)
+                  ? "progress_activity"
+                  : "replay"
+              }
+              className={
+                reclassifyingId === String(doc.id) ? "animate-spin" : ""
+              }
+            />
+          </button>
+        )}
         <Link
           aria-label={`Xem chi tiết ${doc.title}`}
           className="inline-flex h-9 w-9 items-center justify-center rounded text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-primary"

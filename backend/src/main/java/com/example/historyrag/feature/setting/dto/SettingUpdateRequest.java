@@ -14,5 +14,8 @@ public record SettingUpdateRequest(
 
         @Min(value = 1, message = "Max size must be at least 1 MB")
         @Max(value = 100, message = "Max size must not exceed 100 MB")
-        Integer maxSizeMb
+        Integer maxSizeMb,
+
+        @Size(max = 100, message = "Cron expression must not exceed 100 characters")
+        String autoApproveCron
 ) {}

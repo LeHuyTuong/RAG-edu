@@ -178,7 +178,7 @@ public class RagController {
         }
         boolean documentsExist = canViewAnyDocument
                 ? documentService.allExistByIds(sourceIds)
-                : documentService.allExistByIdsAndOwner(sourceIds, userId);
+                : documentService.allValidByIdsAndOwner(sourceIds, userId);
         if (!documentsExist) {
             throw new ResourceNotFoundException("Document", "id", sourceIds);
         }

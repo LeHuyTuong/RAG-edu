@@ -127,7 +127,11 @@ export default function FolderChatPage(): React.JSX.Element {
         if (cancelled) return;
         setDocuments(response.documents);
         setSelectedDocumentIds(
-          new Set(response.documents.map((document) => String(document.id))),
+          new Set(
+            response.documents
+              .filter((d) => d.ragStatus === "READY")
+              .map((document) => String(document.id)),
+          ),
         );
       })
       .catch((error) => {

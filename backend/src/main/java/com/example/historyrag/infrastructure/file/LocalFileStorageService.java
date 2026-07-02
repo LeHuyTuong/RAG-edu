@@ -1,6 +1,7 @@
 package com.example.historyrag.infrastructure.file;
 
 import com.example.historyrag.exception.InvalidRequestException;
+import com.example.historyrag.feature.setting.SettingService;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -11,19 +12,25 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class LocalFileStorageService implements FileStorageService {
 
     private final Path root;
     private final Path internalRoot;
+    private final SettingService settingService;
 
     public LocalFileStorageService(
             @Value("${app.upload.base-path:./uploads}") String basePath,
-            @Value("${app.upload.internal-base-path:./uploads}") String internalBasePath) {
+            @Value("${app.upload.internal-base-path:./uploads}") String internalBasePath,
+            SettingService settingService) {
         this.root = Paths.get(basePath).toAbsolutePath().normalize();
         this.internalRoot = Paths.get(internalBasePath).toAbsolutePath().normalize();
+        this.settingService = settingService;
     }
 
     @PostConstruct
@@ -33,8 +40,33 @@ public class LocalFileStorageService implements FileStorageService {
 
     @Override
     public StoredFile store(MultipartFile file) {
+        var config = settingService.getConfig();
+        int maxSizeMb;
+        try {
+            maxSizeMb = Integer.parseInt(config.maxSizeMb());
+        } catch (NumberFormatException e) {
+            maxSizeMb = 20;
+        }
+        long maxSizeBytes = (long) maxSizeMb * 1024 * 1024;
+
+        if (file.getSize() > maxSizeBytes) {
+            throw new InvalidRequestException(
+                    "File vượt quá dung lượng cho phép (" + maxSizeMb + " MB). Kích thước file: " +
+                            (file.getSize() / (1024 * 1024)) + " MB");
+        }
+
         String originalFilename = file.getOriginalFilename();
         String ext = extractExtension(originalFilename);
+
+        Set<String> allowed = Arrays.stream(config.allowedTypes().split(","))
+                .map(String::trim)
+                .map(String::toLowerCase)
+                .collect(Collectors.toSet());
+        if (!allowed.contains(ext)) {
+            throw new InvalidRequestException(
+                    "Định dạng file không được hỗ trợ: ." + ext + ". Các định dạng được phép: " + config.allowedTypes());
+        }
+
         String storedName = UUID.randomUUID() + "." + ext;
         Path target = root.resolve(storedName);
         try {

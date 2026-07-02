@@ -34,21 +34,13 @@ class DocumentIngestListenerTest {
     @Mock private FileStorageService fileStorageService;
 
     @Test
-    @DisplayName("handleDocumentIngest — should classify and ingest with internal filePath")
-    void handleDocumentIngest_usesInternalFilePath() {
+    @DisplayName("handleDocumentIngest — should classify then auto-approve with confidence >= 0.9")
+    void handleDocumentIngest_autoApprove_highConfidence() {
         Document document = document(7L, DocumentStatus.UPLOADING, "lesson.pdf");
         when(documentRepository.findById(7L)).thenReturn(Optional.of(document));
         when(fileStorageService.resolveInternalPath("lesson.pdf")).thenReturn("/app/uploads/lesson.pdf");
         when(ragClientService.classify(any(RagClassifyRequest.class), isNull()))
-                .thenReturn(new RagClassifyResponse(7L, true, 0.95, "history", "OK"));
-        when(ragClientService.ingest(any(RagIngestRequest.class), isNull()))
-                .thenReturn(new RagIngestResponse(
-                        7L,
-                        "COMPLETED",
-                        "history_chunks",
-                        "gemini-embedding-001",
-                        List.of(new RagIngestedChunkResponse(0, "point-1", "hash-1"))
-                ));
+                .thenReturn(new RagClassifyResponse(7L, true, 0.95, "HISTORY", "OK"));
         DocumentIngestListener listener = new DocumentIngestListener(
                 documentRepository,
                 ragClientService,
@@ -63,6 +55,36 @@ class DocumentIngestListenerTest {
         assertEquals("/app/uploads/lesson.pdf", classifyCaptor.getValue().filePath());
         assertNull(classifyCaptor.getValue().sourceUrl());
 
+        // AUTO_APPROVED: classify returns early, ingest is NOT called here
+        verify(ragClientService, never()).ingest(any(), any());
+        assertEquals("AUTO_APPROVED", document.getAiReviewStatus());
+        assertEquals("NONE", document.getAiWarningLevel());
+    }
+
+    @Test
+    @DisplayName("handleDocumentIngest — should classify then ingest when review disabled")
+    void handleDocumentIngest_reviewDisabled_ingestDirectly() {
+        Document document = document(7L, DocumentStatus.UPLOADING, "lesson.pdf");
+        when(documentRepository.findById(7L)).thenReturn(Optional.of(document));
+        when(fileStorageService.resolveInternalPath("lesson.pdf")).thenReturn("/app/uploads/lesson.pdf");
+        when(ragClientService.ingest(any(RagIngestRequest.class), isNull()))
+                .thenReturn(new RagIngestResponse(
+                        7L,
+                        "COMPLETED",
+                        "history_chunks",
+                        "gemini-embedding-001",
+                        List.of(new RagIngestedChunkResponse(0, "point-1", "hash-1"))
+                ));
+        DocumentIngestListener listener = new DocumentIngestListener(
+                documentRepository,
+                ragClientService,
+                fileStorageService,
+                false // review disabled
+        );
+
+        listener.handleDocumentIngest(new DocumentIngestRequested(7L));
+
+        verify(ragClientService, never()).classify(any(), any());
         ArgumentCaptor<RagIngestRequest> ingestCaptor = ArgumentCaptor.forClass(RagIngestRequest.class);
         verify(ragClientService).ingest(ingestCaptor.capture(), isNull());
         assertEquals("/app/uploads/lesson.pdf", ingestCaptor.getValue().filePath());

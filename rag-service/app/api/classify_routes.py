@@ -7,7 +7,7 @@ router = APIRouter()
 
 
 @router.post("/classify", response_model=RagClassifyResponse)
-async def classify_document(req: RagClassifyRequest):
+def classify_document(req: RagClassifyRequest):
     from app.services.classify_service import classify
     try:
         return classify(req)

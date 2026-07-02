@@ -2,6 +2,8 @@ package com.example.historyrag.feature.document;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
 import java.util.List;
@@ -25,9 +27,14 @@ public interface DocumentRepository extends JpaRepository<Document, Long>, JpaSp
 
     List<Document> findByStatusAndUpdatedAtBefore(DocumentStatus status, Instant cutoff);
 
+    List<Document> findByStatusAndAiReviewStatus(DocumentStatus status, String aiReviewStatus);
+
     boolean existsByIdAndOwnerIdAndStatusNot(Long id, Long ownerId, DocumentStatus status);
 
     long countByIdInAndStatusNot(List<Long> ids, DocumentStatus status);
 
     long countByIdInAndOwnerIdAndStatusNot(List<Long> ids, Long ownerId, DocumentStatus status);
+
+    @Query("SELECT COUNT(d) FROM Document d WHERE d.id IN :ids AND d.ownerId = :ownerId AND d.status <> 'SOFT_DELETED' AND d.status <> 'FAILED'")
+    long countValidByIdInAndOwnerId(@Param("ids") List<Long> ids, @Param("ownerId") Long ownerId);
 }

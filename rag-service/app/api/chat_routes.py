@@ -15,6 +15,7 @@ Fallback: nếu không có hits hoặc LLM lỗi → trả _NO_DATA_MSG thay vì
 Graph (Neo4j) chưa implement — useGraph luôn False trong MVP.
 """
 import json
+import logging
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
@@ -22,6 +23,7 @@ from fastapi.responses import StreamingResponse
 from app.schemas.chat import RagChatRequest, RagChatResponse
 
 router = APIRouter()
+logger = logging.getLogger("rag.chat")
 
 _NO_DATA_MSG = "Hiện tại dữ liệu trong hệ thống chưa đủ để kết luận chắc chắn về câu hỏi này."
 _NO_DATA_MARKER = "hiện tại dữ liệu trong hệ thống chưa đủ để kết luận chắc chắn"
@@ -89,6 +91,7 @@ async def _chat(req: RagChatRequest) -> RagChatResponse:
         user_message = build_user_message(req.question, hits)
         answer = generate(system_prompt, user_message, req.temperature)
     except Exception:
+        logger.exception("LLM generate failed for question=%r", req.question)
         return RagChatResponse(
             answer=_NO_DATA_MSG,
             citations=[],
@@ -139,6 +142,7 @@ async def _stream_chat_events(req: RagChatRequest):
             answer_chunks.append(chunk)
             yield _sse("chat.delta", {"text": chunk})
     except Exception:
+        logger.exception("LLM generate_stream failed for question=%r", req.question)
         for event in _answer_events(_NO_DATA_MSG, [], True, False):
             yield event
         return

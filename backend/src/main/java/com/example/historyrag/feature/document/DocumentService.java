@@ -36,6 +36,10 @@ public interface DocumentService {
 
     void triggerIngest(Long id, Long userId);
 
+    void processAutoApprovedDocuments();
+
+    void reclassify(Long id, Long userId);
+
     DocumentResponse reject(Long id, String reason, Long userId);
 
     long countAll();
@@ -51,6 +55,8 @@ public interface DocumentService {
     boolean allExistByIds(List<Long> ids);
 
     boolean allExistByIdsAndOwner(List<Long> ids, Long ownerId);
+
+    boolean allValidByIdsAndOwner(List<Long> ids, Long ownerId);
 
     String enableShare(Long id, Long ownerId);
 

@@ -58,7 +58,7 @@ public class DocumentIngestListener {
 
                 RagClassifyRequest classifyRequest = new RagClassifyRequest(
                         docId, doc.getTitle(), filePath, null, null);
-                verdict = ragClientService.classify(classifyRequest, null);
+                verdict = classifyWithRetry(classifyRequest, docId);
 
                 doc = findMutableDocument(docId);
                 if (doc == null) {
@@ -71,14 +71,17 @@ public class DocumentIngestListener {
                 doc.setAiConfidence(confidence);
                 doc.setReviewReason(verdict != null ? verdict.reason() : null);
 
-                // Quyết định dựa trên confidence threshold
                 if (isHistory && confidence >= 0.9) {
                     // === AUTO APPROVE: confidence >= 90% và là lịch sử ===
+                    // Ingest ngay lập tức — không cần chờ cronjob
                     doc.setAiWarningLevel("NONE");
                     doc.setAiReviewStatus("AUTO_APPROVED");
-                    log.info("Document {} auto-approved: confidence={}", docId, confidence);
+                    doc.setStatus(DocumentStatus.INDEXING);
+                    documentRepository.save(doc);
+                    log.info("Document {} AUTO_APPROVED, tự động ingest ngay: confidence={}", docId, confidence);
+                    runIngest(doc, filePath);
+                    return;
                 } else if (!isHistory) {
-                    // === KHÔNG PHẢI LỊCH SỬ: red warning, cần admin duyệt ===
                     doc.setStatus(DocumentStatus.PENDING_REVIEW);
                     doc.setAiWarningLevel("DANGER");
                     doc.setAiReviewStatus("PENDING_ADMIN");
@@ -87,8 +90,7 @@ public class DocumentIngestListener {
                             docId, confidence, verdict != null ? verdict.reason() : "");
                     return;
                 } else {
-                    // === CONFIDENCE < 90%: cần admin duyệt ===
-                    doc.setAiWarningLevel(confidence >= 0.8 ? "WARNING" : "DANGER");
+                    doc.setAiWarningLevel(confidence >= 0.7 ? "WARNING" : "DANGER");
                     doc.setAiReviewStatus("PENDING_ADMIN");
                     doc.setStatus(DocumentStatus.PENDING_REVIEW);
                     documentRepository.save(doc);
@@ -96,52 +98,11 @@ public class DocumentIngestListener {
                             docId, confidence, doc.getAiWarningLevel());
                     return;
                 }
-                documentRepository.save(doc);
             }
 
-            // Bước 2: Index vào Qdrant (chỉ chạy khi auto-approved hoặc review disabled)
-            doc = findMutableDocument(docId);
-            if (doc == null) {
-                return;
-            }
-            doc.setStatus(DocumentStatus.INDEXING);
-            documentRepository.save(doc);
-            log.info("Document {} status set to INDEXING", docId);
-
-            RagIngestMetadata metadata = new RagIngestMetadata(
-                    null, null, null, java.util.List.of(),
-                    java.util.List.of(), java.util.List.of(),
-                    doc.getFolderId(), doc.getOwnerId()
-            );
-
-            RagIngestRequest ingestRequest = new RagIngestRequest(
-                    docId,
-                    "DOCUMENT",
-                    doc.getTitle(),
-                    null,
-                    docId,
-                    filePath,
-                    null,
-                    null,
-                    metadata,
-                    null
-            );
-
-            RagIngestResponse response = ragClientService.ingest(ingestRequest, null);
-
-            doc = findMutableDocument(docId);
-            if (doc == null) {
-                return;
-            }
-            if ("COMPLETED".equals(response.status())) {
-                doc.setStatus(DocumentStatus.READY);
-                doc.setChunkCount(response.chunks() != null ? response.chunks().size() : 0);
-                documentRepository.save(doc);
-                log.info("Document {} ingestion COMPLETED, chunks={}", docId, doc.getChunkCount());
-            } else {
-                doc.setStatus(DocumentStatus.FAILED);
-                documentRepository.save(doc);
-                log.warn("Document {} ingestion FAILED with status: {}", docId, response.status());
+            // Bước 2: Index vào Qdrant (chỉ chạy khi review bị tắt)
+            if (!reviewEnabled) {
+                runIngest(doc, filePath);
             }
         } catch (Exception e) {
             log.error("Document {} ingestion error: {}", docId, e.getMessage(), e);
@@ -153,6 +114,36 @@ public class DocumentIngestListener {
             }
             current.setStatus(DocumentStatus.FAILED);
             documentRepository.save(current);
+        }
+    }
+
+    private void runIngest(Document doc, String filePath) {
+        Long id = doc.getId();
+        RagIngestMetadata metadata = new RagIngestMetadata(
+                null, null, null, java.util.List.of(),
+                java.util.List.of(), java.util.List.of(),
+                doc.getFolderId(), doc.getOwnerId()
+        );
+
+        RagIngestRequest ingestRequest = new RagIngestRequest(
+                id, "DOCUMENT", doc.getTitle(), null, id,
+                filePath, null, null, metadata, null
+        );
+
+        RagIngestResponse response = ragClientService.ingest(ingestRequest, null);
+
+        Document current = findMutableDocument(id);
+        if (current == null) return;
+
+        if ("COMPLETED".equals(response.status())) {
+            current.setStatus(DocumentStatus.READY);
+            current.setChunkCount(response.chunks() != null ? response.chunks().size() : 0);
+            documentRepository.save(current);
+            log.info("Document {} ingestion COMPLETED, chunks={}", id, current.getChunkCount());
+        } else {
+            current.setStatus(DocumentStatus.FAILED);
+            documentRepository.save(current);
+            log.warn("Document {} ingestion FAILED: {}", id, response.status());
         }
     }
 
@@ -175,5 +166,40 @@ public class DocumentIngestListener {
 
     private String resolveInternalFilePath(Document doc) {
         return fileStorageService.resolveInternalPath(doc.getPublicId());
+    }
+
+    // ── Retry logic for classify ────────────────────────────────────────────
+
+    private static final int CLASSIFY_MAX_RETRIES = 2;
+    private static final long CLASSIFY_RETRY_BASE_MS = 1000;
+
+    /**
+     * Gọi classify với retry: thử tối đa CLASSIFY_MAX_RETRIES lần
+     * với exponential backoff. Nếu tất cả fail, trả null (fail-open)
+     * để document không bị stuck ở FAILED.
+     */
+    private RagClassifyResponse classifyWithRetry(RagClassifyRequest request, Long docId) {
+        Exception lastError = null;
+        for (int attempt = 0; attempt <= CLASSIFY_MAX_RETRIES; attempt++) {
+            try {
+                return ragClientService.classify(request, null);
+            } catch (Exception e) {
+                lastError = e;
+                if (attempt < CLASSIFY_MAX_RETRIES) {
+                    long delay = CLASSIFY_RETRY_BASE_MS * (1L << attempt);
+                    log.warn("Classify attempt {}/{} for doc {} failed: {}. Retrying in {}ms...",
+                            attempt + 1, CLASSIFY_MAX_RETRIES + 1, docId, e.getMessage(), delay);
+                    try {
+                        Thread.sleep(delay);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            }
+        }
+        log.error("Classify failed after {} retries for doc {}: {}",
+                CLASSIFY_MAX_RETRIES + 1, docId, lastError != null ? lastError.getMessage() : "unknown");
+        return null; // fail-open: để admin duyệt thủ công
     }
 }
