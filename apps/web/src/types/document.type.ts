@@ -104,7 +104,6 @@ export interface ListDocumentsQuery {
   page?: number;
   limit?: number;
   subjectId?: string;
-  authorId?: string;
   status?: DocumentStatus;
 }
 

@@ -39,13 +39,16 @@ public class SecurityConfig {
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/api/v1/auth/login",
+            "/api/v1/auth/signin",
             "/api/v1/auth/register",
+            "/api/v1/auth/signup",
             "/api/v1/auth/refresh",
             "/api/v1/auth/logout",
             "/uploads/**",
             "/actuator/health",
             "/api/v1/rag/health",
-            "/api/v1/documents/share/**"
+            "/api/v1/documents/share/**",
+            "/api/v1/folders/shared/**"
     };
 
     @Bean

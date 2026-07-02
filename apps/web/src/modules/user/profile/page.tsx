@@ -10,16 +10,17 @@
  * The surrounding UserShell (via (app)/(user)/layout.tsx) provides the
  * SideNav, top padding, and background; this page adds no extra shell.
  *
- * Rendering is fully delegated to three child components:
+ * Rendering is fully delegated to two child components:
  *  - ProfileHeader      → page title + security notice
  *  - PersonalInfoForm   → avatar + name/email/university fields + API save
- *  - SecurityForm       → password-change form
+ *
+ * Đổi mật khẩu chưa được render ở đây vì backend Spring chưa có endpoint
+ * change-password.
  */
 
 import { useAuthStore } from "@/stores/auth/store";
 import { ProfileHeader } from "./components/ProfileHeader";
 import { PersonalInfoForm } from "./components/PersonalInfoForm";
-import { SecurityForm } from "./components/SecurityForm";
 
 export default function ProfilePage(): React.JSX.Element {
   const { user } = useAuthStore();
@@ -39,7 +40,6 @@ export default function ProfilePage(): React.JSX.Element {
     <div className="min-w-0 space-y-6">
       <ProfileHeader />
       <PersonalInfoForm user={user} />
-      <SecurityForm />
     </div>
   );
 }

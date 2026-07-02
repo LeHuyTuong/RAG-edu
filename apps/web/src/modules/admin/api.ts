@@ -168,18 +168,12 @@ export const deleteAdminSubject = async (id: string): Promise<unknown> => {
 };
 
 // ─── Admin Config ───
+// Khớp SettingResponse/SettingUpdateRequest ở backend (feature/setting):
+// backend chỉ quản lý 2 cấu hình upload, không có site/email/maintenance settings.
 
 export interface AdminConfig {
-  siteName: string;
-  siteDescription: string;
-  requireEmailVerification: boolean;
-  allowRegistration: boolean;
-  maxUploadSizeMb: number;
-  allowedFileTypes: string[];
-  maintenanceMode: boolean;
-  maintenanceMessage: string;
-  defaultUserRole: string;
-  sessionTimeoutMinutes: number;
+  allowedTypes: string;
+  maxSizeMb: number;
 }
 
 export async function fetchAdminConfig(): Promise<AdminConfig> {

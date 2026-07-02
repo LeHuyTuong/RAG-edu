@@ -34,6 +34,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         long totalDocuments = documentService.countAll();
         long readyDocs = documentService.countByStatus(DocumentStatus.READY);
         long rejectedDocs = documentService.countByStatus(DocumentStatus.REJECTED);
+        long pendingReviewDocs = documentService.countByStatus(DocumentStatus.PENDING_REVIEW);
         long uploadingDocs = documentService.countByStatus(DocumentStatus.UPLOADING);
         long indexingDocs = documentService.countByStatus(DocumentStatus.INDEXING);
         long reindexingDocs = documentService.countByStatus(DocumentStatus.REINDEXING);
@@ -46,13 +47,23 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
                 new DashboardResponse.AccountStats(totalUsers, activeUsers, lockedUsers, totalStudents),
                 new DashboardResponse.DocumentStats(totalDocuments, readyDocs, pendingDocs, rejectedDocs),
                 new DashboardResponse.SubjectStats(subjectCount),
-                buildActivities(totalStudents, readyDocs, failedDocs)
+                buildActivities(totalStudents, readyDocs, failedDocs, pendingReviewDocs)
         );
     }
 
     private List<DashboardActivityResponse> buildActivities(
-            long totalStudents, long readyDocs, long failedDocs) {
+            long totalStudents, long readyDocs, long failedDocs, long pendingReviewDocs) {
         List<DashboardActivityResponse> activities = new ArrayList<>();
+        if (pendingReviewDocs > 0) {
+            activities.add(new DashboardActivityResponse(
+                    "pending-review-docs",
+                    "rate_review",
+                    "text-yellow-700",
+                    "bg-yellow-100",
+                    "Có " + pendingReviewDocs + " tài liệu chờ admin duyệt",
+                    "Cần duyệt"
+            ));
+        }
         if (failedDocs > 0) {
             activities.add(new DashboardActivityResponse(
                     "failed-docs",

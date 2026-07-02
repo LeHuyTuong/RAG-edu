@@ -45,6 +45,7 @@ public class DocumentIngestListener {
 
         try {
             // Bước 1: AI duyệt nội dung (có thể tắt qua app.document.review.enabled=false)
+            RagClassifyResponse verdict = null;
             if (reviewEnabled) {
                 doc.setStatus(DocumentStatus.REVIEWING);
                 documentRepository.save(doc);
@@ -52,22 +53,43 @@ public class DocumentIngestListener {
 
                 RagClassifyRequest classifyRequest = new RagClassifyRequest(
                         docId, doc.getTitle(), null, doc.getFileUrl(), null);
-                RagClassifyResponse verdict = ragClientService.classify(classifyRequest, null);
+                verdict = ragClientService.classify(classifyRequest, null);
 
-                if (verdict != null && !Boolean.TRUE.equals(verdict.isHistory())) {
-                    doc.setStatus(DocumentStatus.REJECTED);
-                    doc.setReviewReason(verdict.reason());
+                double confidence = verdict != null ? verdict.confidence() : 0.5;
+                boolean isHistory = verdict == null || Boolean.TRUE.equals(verdict.isHistory());
+
+                doc.setAiConfidence(confidence);
+                doc.setReviewReason(verdict != null ? verdict.reason() : null);
+
+                // Quyết định dựa trên confidence threshold
+                if (isHistory && confidence >= 0.9) {
+                    // === AUTO APPROVE: confidence >= 90% và là lịch sử ===
+                    doc.setAiWarningLevel("NONE");
+                    doc.setAiReviewStatus("AUTO_APPROVED");
+                    log.info("Document {} auto-approved: confidence={}", docId, confidence);
+                } else if (!isHistory) {
+                    // === KHÔNG PHẢI LỊCH SỬ: red warning, cần admin duyệt ===
+                    doc.setStatus(DocumentStatus.PENDING_REVIEW);
+                    doc.setAiWarningLevel("DANGER");
+                    doc.setAiReviewStatus("PENDING_ADMIN");
                     documentRepository.save(doc);
-                    log.warn("Document {} REJECTED by AI review: label={}, reason={}",
-                            docId, verdict.label(), verdict.reason());
+                    log.warn("Document {} PENDING_REVIEW (not history): confidence={}, reason={}",
+                            docId, confidence, verdict != null ? verdict.reason() : "");
+                    return;
+                } else {
+                    // === CONFIDENCE < 90%: cần admin duyệt ===
+                    doc.setAiWarningLevel(confidence >= 0.8 ? "WARNING" : "DANGER");
+                    doc.setAiReviewStatus("PENDING_ADMIN");
+                    doc.setStatus(DocumentStatus.PENDING_REVIEW);
+                    documentRepository.save(doc);
+                    log.warn("Document {} PENDING_REVIEW (confidence={}): warning={}",
+                            docId, confidence, doc.getAiWarningLevel());
                     return;
                 }
-                log.info("Document {} passed AI review: label={}, confidence={}",
-                        docId, verdict != null ? verdict.label() : "UNKNOWN",
-                        verdict != null ? verdict.confidence() : 0.0);
+                documentRepository.save(doc);
             }
 
-            // Bước 2: Index vào Qdrant
+            // Bước 2: Index vào Qdrant (chỉ chạy khi auto-approved hoặc review disabled)
             doc.setStatus(DocumentStatus.INDEXING);
             documentRepository.save(doc);
             log.info("Document {} status set to INDEXING", docId);

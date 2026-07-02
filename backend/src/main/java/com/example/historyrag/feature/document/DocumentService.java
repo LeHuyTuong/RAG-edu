@@ -19,7 +19,9 @@ public interface DocumentService {
 
     List<DocumentResponse> getMyDocuments(Long ownerId);
 
-    ResultPaginationDTO filter(String search, Long folderId, DocumentStatus status,
+    List<DocumentResponse> getPendingReviews();
+
+    ResultPaginationDTO filter(String search, Long folderId, Long subjectId, DocumentStatus status,
                                Long ownerId, Boolean onlyMine, Pageable pageable);
 
     void delete(Long id, Long ownerId);
@@ -30,9 +32,11 @@ public interface DocumentService {
 
     void reindex(Long id, Long ownerId);
 
-    void approve(Long id, Long userId);
+    DocumentResponse approve(Long id, Long userId);
 
-    void reject(Long id, String reason, Long userId);
+    void triggerIngest(Long id, Long userId);
+
+    DocumentResponse reject(Long id, String reason, Long userId);
 
     long countAll();
 

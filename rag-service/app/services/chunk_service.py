@@ -16,13 +16,14 @@ import hashlib
 from dataclasses import dataclass
 
 from app.services.extract_service import PageText
+from typing import Optional
 
 
 @dataclass
 class ChunkData:
     chunk_index: int
     text: str
-    page_number: int | None
+    page_number: Optional[int]
     content_hash: str
 
 
@@ -44,7 +45,7 @@ def chunk(pages: list[PageText], chunk_size: int, chunk_overlap: int) -> list[Ch
 
 def _chunk_text(
     text: str,
-    page_number: int | None,
+    page_number: Optional[int],
     chunk_size: int,
     chunk_overlap: int,
     start_index: int,

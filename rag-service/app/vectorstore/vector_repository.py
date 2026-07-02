@@ -28,6 +28,7 @@ from qdrant_client.models import (
 )
 
 from app.vectorstore.qdrant_client import get_client
+from typing import Optional
 
 
 def point_id(source_id: int, chunk_index: int) -> str:
@@ -58,11 +59,11 @@ def search(
     collection: str,
     query_vector: list[float],
     top_k: int,
-    score_threshold: float | None = None,
+    score_threshold: Optional[float] = None,
     source_ids: list[int] | None = None,
     tag_ids: list[int] | None = None,
-    folder_id: int | None = None,
-    user_id: int | None = None,
+    folder_id: Optional[int] = None,
+    user_id: Optional[int] = None,
 ) -> list[ScoredPoint]:
     """
     Search topK chunk gần nhất, kèm filter metadata nếu backend yêu cầu.

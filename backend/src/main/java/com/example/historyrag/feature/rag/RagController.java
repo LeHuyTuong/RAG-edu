@@ -133,7 +133,9 @@ public class RagController {
             throw new InvalidRequestException("documentId must match sourceId");
         }
 
-        RagIngestMetadata metadata = request.metadata();
+        RagIngestMetadata metadata = request.metadata() != null
+                ? request.metadata()
+                : RagIngestMetadata.empty();
         validateFolderId(metadata.folderId(), userId);
         RagIngestMetadata securedMetadata = new RagIngestMetadata(
                 metadata.categoryId(),

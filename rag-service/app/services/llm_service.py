@@ -132,10 +132,11 @@ def _cerebras_payload(system_prompt: str, user_message: str, temperature: float,
 # ─── Google GenAI (Gemma — fallback) ────────────────────────────────────────
 
 
+from typing import Optional
 from google import genai
 from google.genai import types
 
-_google_client: genai.Client | None = None
+_google_client: Optional[genai.Client] = None
 
 
 def _get_google_client() -> genai.Client:
