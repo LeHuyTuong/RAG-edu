@@ -95,7 +95,11 @@ export default function HomePage(): React.JSX.Element {
           fetchDocuments({ page: 1, limit: 10 }),
           fetchSubjects(6),
         ]);
-        setDocuments(documentsResponse.documents ?? []);
+        setDocuments(
+          (documentsResponse.documents ?? []).filter(
+            (doc) => doc.isPublic === true,
+          ),
+        );
         setSubjects(subjectsResponse.subjects ?? []);
       } catch {
         setDocuments([]);
