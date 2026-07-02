@@ -2,9 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Badge } from "@/components/ui/Badge";
 import type { FC } from "react";
 import { useState } from "react";
+import { getSubjectTheme } from "@/mockdata/document-cover.mock";
 
 interface DocumentCardProps {
   id: string;
@@ -12,6 +12,8 @@ interface DocumentCardProps {
   subtitle: string;
   coverImage?: string;
   pageCount?: number;
+  subject?: string;
+  updatedAt?: string;
   className?: string;
 }
 
@@ -21,65 +23,174 @@ export const DocumentCard: FC<DocumentCardProps> = ({
   subtitle,
   coverImage,
   pageCount,
+  subject,
+  updatedAt,
   className = "",
 }) => {
   const [imageFailed, setImageFailed] = useState(false);
+
+  const timeAgo = updatedAt
+    ? (() => {
+        const date = new Date(updatedAt);
+        const now = new Date();
+        const diffMs = now.getTime() - date.getTime();
+        const diffDays = Math.floor(diffMs / 86400000);
+
+        if (diffDays < 1) return "Hôm nay";
+        if (diffDays < 7) return `${diffDays} ngày trước`;
+
+        return date.toLocaleDateString("vi-VN", {
+          day: "numeric",
+          month: "short",
+        });
+      })()
+    : null;
+
+  // Ignore dark default svg
+  const hasRealImage =
+    coverImage && !imageFailed && !coverImage.includes("default.svg");
+
+  const theme = getSubjectTheme(subject);
 
   return (
     <Link href={`/documents/${id}`}>
       <div
         className={`
           group
-          w-[320px]
+          w-[260px]
           shrink-0
           cursor-pointer
           select-none
           snap-start
+          transition-all duration-300 ease-out
+          hover:-translate-y-1
           ${className}
-      `}
+        `}
       >
-        <div className="flex h-[420px] flex-col">
-          <div className="relative flex-[2] overflow-hidden rounded-2xl bg-surface-variant">
-            {!imageFailed && coverImage ? (
+        <div className="flex flex-col gap-3">
+          {/* Cover */}
+          <div
+            className="
+              relative
+              aspect-[4/5]
+              overflow-hidden
+              rounded-3xl
+              border border-slate-200
+              bg-white
+              shadow-sm
+              transition-all duration-300
+              group-hover:shadow-lg
+              group-hover:border-blue-200
+            "
+          >
+            {hasRealImage ? (
               <Image
                 src={coverImage}
                 alt={title}
                 fill
-                sizes="320px"
+                sizes="260px"
                 className="
                   object-cover
-                  transition-transform duration-300
-                  group-hover:scale-[1.03]
+                  transition-transform duration-500
+                  group-hover:scale-[1.04]
                 "
                 onError={() => setImageFailed(true)}
               />
             ) : (
-              <div className="flex h-full items-center justify-center bg-linear-to-br from-surface-variant to-surface">
-                <span className="material-symbols-outlined text-6xl text-on-surface-variant/40">
-                  preview
+              <div
+                className={`
+    flex h-full items-center justify-center
+    bg-gradient-to-br ${theme.gradient}
+  `}
+              >
+                <div className="flex flex-col items-center gap-4">
+                  <div
+                    className={`
+        flex h-20 w-20 items-center justify-center
+        rounded-3xl ${theme.iconBg}
+        shadow-md
+      `}
+                  >
+                    <span className="material-symbols-outlined text-4xl text-white">
+                      {theme.icon}
+                    </span>
+                  </div>
+
+                  <div className="text-center">
+                    <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-800">
+                      {subject ?? "Tài liệu"}
+                    </p>
+                    <p className="mt-1 text-[11px] text-slate-500">
+                      Education Material
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Subject badge */}
+            {subject ? (
+              <div className="absolute left-3 top-3">
+                <span
+                  className="
+                    inline-flex items-center rounded-lg
+                    bg-white/90 px-2.5 py-1
+                    text-[11px] font-semibold text-slate-700
+                    shadow-sm
+                  "
+                >
+                  {subject}
                 </span>
               </div>
-            )}
+            ) : null}
 
-            <div className="absolute inset-0 bg-black/10" />
-
-            {pageCount !== undefined && (
-              <div className="absolute bottom-2 right-2">
-                <Badge className="bg-white text-black shadow-sm">
-                  {pageCount} pages
-                </Badge>
+            {/* Page count */}
+            {pageCount !== undefined ? (
+              <div className="absolute bottom-3 right-3">
+                <span
+                  className="
+                    inline-flex items-center gap-1 rounded-lg
+                    bg-white px-2 py-0.5
+                    text-[11px] font-medium text-slate-600
+                    shadow-sm border border-slate-200
+                  "
+                >
+                  <span className="material-symbols-outlined text-sm">
+                    description
+                  </span>
+                  {pageCount} trang
+                </span>
               </div>
-            )}
+            ) : null}
           </div>
 
-          <div className="flex flex-[1] flex-col justify-center px-1 pt-3">
-            <h3 className="line-clamp-2 text-base font-semibold leading-snug text-on-surface">
+          {/* Content */}
+          <div className="px-1">
+            <h3
+              className="
+                line-clamp-2
+                text-sm
+                font-semibold
+                leading-snug
+                tracking-tight
+                text-slate-900
+                transition-colors
+                group-hover:text-blue-700
+              "
+            >
               {title}
             </h3>
 
-            <p className="mt-1 line-clamp-2 text-sm text-on-surface-variant">
-              {subtitle}
-            </p>
+            <div className="mt-1.5 flex items-center gap-2 text-xs text-slate-500">
+              <span className="line-clamp-1">{subtitle}</span>
+
+              {timeAgo ? (
+                <>
+                  <span className="text-slate-300">·</span>
+                  <span className="shrink-0">{timeAgo}</span>
+                </>
+              ) : null}
+            </div>
           </div>
         </div>
       </div>

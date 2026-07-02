@@ -111,11 +111,11 @@ export const SideNav: FC<SideNavProps> = ({
           flex-col
           overflow-y-auto
           border-r
-          border-outline-variant/60
-          bg-surface-container-high/80
+          border-outline-variant
+          bg-surface-container-high
           px-6
           py-8
-          backdrop-blur-[15px]
+          shadow-sm
           lg:flex
         "
       >

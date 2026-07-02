@@ -1,22 +1,31 @@
 import type { FC, ReactNode } from "react";
 
-export const DocumentCarousel: FC<{ children: ReactNode }> = ({ children }) => {
+export const DocumentCarousel: FC<{
+  children: ReactNode;
+  className?: string;
+}> = ({ children, className = "" }) => {
   return (
-    <div className="min-w-0 w-full overflow-hidden">
+    <div className={`${className}`}>
       <div
         className="
+          -mx-4
           flex
-          gap-6
+          gap-4
           overflow-x-auto
           scroll-smooth
-          snap-x snap-mandatory
-          px-1
+          px-4
           pb-2
+          pt-1
+          snap-x
+          snap-mandatory
 
           [&::-webkit-scrollbar]:hidden
+          [scrollbar-width:none]
         "
       >
         {children}
+
+        <div className="w-4 shrink-0" />
       </div>
     </div>
   );
