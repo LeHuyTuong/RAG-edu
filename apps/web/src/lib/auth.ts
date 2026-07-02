@@ -5,6 +5,7 @@ type BackendAuthRole = "USER" | "ADMIN" | "MODERATOR" | "student" | "teacher";
 
 type BackendAuthPayload = {
   sub: string;
+  userId?: number | string;
   email?: string;
   name?: string;
   role: BackendAuthRole;
@@ -106,7 +107,7 @@ export const buildUserFromAuthToken = (
   }
 
   return {
-    id: payload.sub,
+    id: payload.userId != null ? String(payload.userId) : payload.sub,
     email,
     name,
     role: normalizeUserRole(payload.role),
