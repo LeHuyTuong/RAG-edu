@@ -116,12 +116,16 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     @Transactional(readOnly = true)
-    public DocumentResponse getById(Long id, Long currentUserId) {
+    public DocumentResponse getById(Long id, Long currentUserId, boolean canViewAnyDocument) {
         Document doc = documentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
 
-        // Only owner or public READY documents are visible
-        if (!doc.getOwnerId().equals(currentUserId)) {
+        if (canViewAnyDocument) {
+            if (doc.getStatus() == DocumentStatus.SOFT_DELETED) {
+                throw new ResourceNotFoundException("Document", "id", id);
+            }
+        } else if (!doc.getOwnerId().equals(currentUserId)) {
+            // Only owner or public READY documents are visible to normal users.
             if (!Boolean.TRUE.equals(doc.getIsPublic()) || doc.getStatus() != DocumentStatus.READY) {
                 throw new ResourceNotFoundException("Document", "id", id);
             }
@@ -206,9 +210,8 @@ public class DocumentServiceImpl implements DocumentService {
         }
 
         if (doc.getStatus() != DocumentStatus.FAILED
-                && doc.getStatus() != DocumentStatus.READY
-                && doc.getStatus() != DocumentStatus.REJECTED) {
-            throw new InvalidRequestException("Chỉ có thể reindex tài liệu ở trạng thái READY, FAILED hoặc REJECTED");
+                && doc.getStatus() != DocumentStatus.READY) {
+            throw new InvalidRequestException("Chỉ có thể reindex tài liệu ở trạng thái READY hoặc FAILED");
         }
 
         doc.setStatus(DocumentStatus.REINDEXING);
@@ -273,16 +276,22 @@ public class DocumentServiceImpl implements DocumentService {
         Document doc = documentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
 
-        // Nếu đang ở PENDING_REVIEW → cần index trước rồi mới READY
-        if (doc.getStatus() == DocumentStatus.PENDING_REVIEW) {
+        if (doc.getStatus() == DocumentStatus.REJECTED) {
+            throw new InvalidRequestException("Tài liệu đã bị từ chối, không thể tự duyệt lại");
+        }
+
+        // PENDING_REVIEW/FAILED cần index lại trước rồi mới READY
+        if (doc.getStatus() == DocumentStatus.PENDING_REVIEW || doc.getStatus() == DocumentStatus.FAILED) {
             triggerIngest(id, userId);
-        } else {
+        } else if (doc.getStatus() == DocumentStatus.READY) {
             doc.setStatus(DocumentStatus.READY);
             doc.setIsPublic(true);
             doc.setReviewedById(userId);
             doc.setReviewedAt(Instant.now());
             documentRepository.save(doc);
             log.info("Document {} approved by userId={}", id, userId);
+        } else {
+            throw new InvalidRequestException("Chỉ có thể duyệt tài liệu ở trạng thái PENDING_REVIEW, FAILED hoặc READY");
         }
 
         Document updated = documentRepository.findById(id)
@@ -317,8 +326,8 @@ public class DocumentServiceImpl implements DocumentService {
                 doc.getTitle(),
                 null,
                 id,
+                resolveInternalFilePath(doc),
                 null,
-                doc.getFileUrl(),
                 null,
                 metadata,
                 null
@@ -352,6 +361,7 @@ public class DocumentServiceImpl implements DocumentService {
         Document doc = documentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
         doc.setStatus(DocumentStatus.REJECTED);
+        doc.setIsPublic(false);
         doc.setReviewReason(reason);
         doc.setReviewedById(userId);
         doc.setReviewedAt(Instant.now());
@@ -447,6 +457,18 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     @Transactional(readOnly = true)
+    public boolean allExistByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return true;
+        }
+        List<Long> distinctIds = ids.stream().distinct().toList();
+        long existingCount = documentRepository.countByIdInAndStatusNot(
+                distinctIds, DocumentStatus.SOFT_DELETED);
+        return existingCount == distinctIds.size();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public boolean allExistByIdsAndOwner(List<Long> ids, Long ownerId) {
         if (ids == null || ids.isEmpty()) {
             return true;
@@ -473,5 +495,9 @@ public class DocumentServiceImpl implements DocumentService {
         user.setFullName(dto.name());
         user.setAvatarUrl(dto.avatarUrl());
         return user;
+    }
+
+    private String resolveInternalFilePath(Document doc) {
+        return fileStorageService.resolveInternalPath(doc.getPublicId());
     }
 }

@@ -27,5 +27,7 @@ public interface DocumentRepository extends JpaRepository<Document, Long>, JpaSp
 
     boolean existsByIdAndOwnerIdAndStatusNot(Long id, Long ownerId, DocumentStatus status);
 
+    long countByIdInAndStatusNot(List<Long> ids, DocumentStatus status);
+
     long countByIdInAndOwnerIdAndStatusNot(List<Long> ids, Long ownerId, DocumentStatus status);
 }

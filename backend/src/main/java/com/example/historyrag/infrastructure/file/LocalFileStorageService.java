@@ -17,9 +17,13 @@ import java.util.UUID;
 public class LocalFileStorageService implements FileStorageService {
 
     private final Path root;
+    private final Path internalRoot;
 
-    public LocalFileStorageService(@Value("${app.upload.base-path:./uploads}") String basePath) {
+    public LocalFileStorageService(
+            @Value("${app.upload.base-path:./uploads}") String basePath,
+            @Value("${app.upload.internal-base-path:./uploads}") String internalBasePath) {
         this.root = Paths.get(basePath).toAbsolutePath().normalize();
+        this.internalRoot = Paths.get(internalBasePath).toAbsolutePath().normalize();
     }
 
     @PostConstruct
@@ -39,6 +43,18 @@ public class LocalFileStorageService implements FileStorageService {
             throw new InvalidRequestException("Không thể lưu file: " + e.getMessage());
         }
         return new StoredFile(storedName, file.getSize(), ext);
+    }
+
+    @Override
+    public String resolveInternalPath(String storedName) {
+        if (storedName == null || storedName.isBlank()) {
+            throw new InvalidRequestException("Tên file lưu trữ không hợp lệ");
+        }
+        Path target = internalRoot.resolve(storedName).normalize();
+        if (!target.startsWith(internalRoot)) {
+            throw new InvalidRequestException("Tên file lưu trữ không hợp lệ");
+        }
+        return target.toString();
     }
 
     @Override

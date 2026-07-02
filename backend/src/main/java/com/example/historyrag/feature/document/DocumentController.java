@@ -9,8 +9,8 @@ import com.example.historyrag.feature.document.dto.DocumentResponse;
 import com.example.historyrag.feature.document.dto.ShareLinkResponse;
 import com.example.historyrag.feature.document.dto.UpdateDocumentRequest;
 import jakarta.validation.Valid;
-import org.springdoc.core.annotations.ParameterObject;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -56,7 +56,7 @@ public class DocumentController {
         DocumentStatus mappedStatus = mapStatusFilter(status);
         ResultPaginationDTO result = documentService.filter(
                 search, folderId, subjectId, mappedStatus, ownerId, onlyMine,
-                org.springframework.data.domain.PageRequest.of(page - 1, limit));
+                newestFirstPageRequest(page, limit));
         @SuppressWarnings("unchecked")
         java.util.List<DocumentResponse> docs = (java.util.List<DocumentResponse>) result.result();
         DocumentPageResponse response = new DocumentPageResponse(
@@ -82,7 +82,7 @@ public class DocumentController {
         DocumentStatus mappedStatus = mapStatusFilter(status);
         ResultPaginationDTO result = documentService.filter(
                 null, null, subjectId, mappedStatus, ownerId, true,
-                org.springframework.data.domain.PageRequest.of(page - 1, limit));
+                newestFirstPageRequest(page, limit));
         @SuppressWarnings("unchecked")
         java.util.List<DocumentResponse> docs = (java.util.List<DocumentResponse>) result.result();
         DocumentPageResponse response = new DocumentPageResponse(
@@ -135,12 +135,29 @@ public class DocumentController {
         };
     }
 
+    private PageRequest newestFirstPageRequest(int page, int limit) {
+        Sort newestFirst = Sort.by(
+                Sort.Order.desc("uploadedAt"),
+                Sort.Order.desc("createdAt"),
+                Sort.Order.desc("id")
+        );
+        return PageRequest.of(page - 1, limit, newestFirst);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<DocumentResponse>> getById(
             @PathVariable Long id,
             @AuthenticationPrincipal Jwt jwt) {
         Long currentUserId = JwtUtils.getUserId(jwt);
-        return ResponseEntity.ok(ApiResponse.success(documentService.getById(id, currentUserId)));
+        return ResponseEntity.ok(ApiResponse.success(documentService.getById(id, currentUserId, isAdmin(jwt))));
+    }
+
+    private boolean isAdmin(Jwt jwt) {
+        if ("ADMIN".equalsIgnoreCase(jwt.getClaimAsString("accountType"))) {
+            return true;
+        }
+        List<String> roles = jwt.getClaimAsStringList("roles");
+        return roles != null && roles.contains("ROLE_ADMIN");
     }
 
     @PatchMapping("/{id}")

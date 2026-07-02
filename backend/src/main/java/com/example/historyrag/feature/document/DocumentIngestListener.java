@@ -1,6 +1,7 @@
 package com.example.historyrag.feature.document;
 
 import com.example.historyrag.feature.document.event.DocumentIngestRequested;
+import com.example.historyrag.infrastructure.file.FileStorageService;
 import com.example.historyrag.infrastructure.webclient.RagClientService;
 import com.example.historyrag.infrastructure.webclient.dto.RagClassifyRequest;
 import com.example.historyrag.infrastructure.webclient.dto.RagClassifyResponse;
@@ -22,13 +23,16 @@ public class DocumentIngestListener {
 
     private final DocumentRepository documentRepository;
     private final RagClientService ragClientService;
+    private final FileStorageService fileStorageService;
     private final boolean reviewEnabled;
 
     public DocumentIngestListener(DocumentRepository documentRepository,
                                    RagClientService ragClientService,
+                                   FileStorageService fileStorageService,
                                    @Value("${app.document.review.enabled:true}") boolean reviewEnabled) {
         this.documentRepository = documentRepository;
         this.ragClientService = ragClientService;
+        this.fileStorageService = fileStorageService;
         this.reviewEnabled = reviewEnabled;
     }
 
@@ -37,13 +41,14 @@ public class DocumentIngestListener {
     public void handleDocumentIngest(DocumentIngestRequested event) {
         Long docId = event.documentId();
 
-        Document doc = documentRepository.findById(docId).orElse(null);
+        Document doc = findMutableDocument(docId);
         if (doc == null) {
-            log.warn("Document not found for ingestion: {}", docId);
             return;
         }
 
         try {
+            String filePath = resolveInternalFilePath(doc);
+
             // Bước 1: AI duyệt nội dung (có thể tắt qua app.document.review.enabled=false)
             RagClassifyResponse verdict = null;
             if (reviewEnabled) {
@@ -52,8 +57,13 @@ public class DocumentIngestListener {
                 log.info("Document {} status set to REVIEWING", docId);
 
                 RagClassifyRequest classifyRequest = new RagClassifyRequest(
-                        docId, doc.getTitle(), null, doc.getFileUrl(), null);
+                        docId, doc.getTitle(), filePath, null, null);
                 verdict = ragClientService.classify(classifyRequest, null);
+
+                doc = findMutableDocument(docId);
+                if (doc == null) {
+                    return;
+                }
 
                 double confidence = verdict != null ? verdict.confidence() : 0.5;
                 boolean isHistory = verdict == null || Boolean.TRUE.equals(verdict.isHistory());
@@ -90,6 +100,10 @@ public class DocumentIngestListener {
             }
 
             // Bước 2: Index vào Qdrant (chỉ chạy khi auto-approved hoặc review disabled)
+            doc = findMutableDocument(docId);
+            if (doc == null) {
+                return;
+            }
             doc.setStatus(DocumentStatus.INDEXING);
             documentRepository.save(doc);
             log.info("Document {} status set to INDEXING", docId);
@@ -106,8 +120,8 @@ public class DocumentIngestListener {
                     doc.getTitle(),
                     null,
                     docId,
+                    filePath,
                     null,
-                    doc.getFileUrl(),
                     null,
                     metadata,
                     null
@@ -115,6 +129,10 @@ public class DocumentIngestListener {
 
             RagIngestResponse response = ragClientService.ingest(ingestRequest, null);
 
+            doc = findMutableDocument(docId);
+            if (doc == null) {
+                return;
+            }
             if ("COMPLETED".equals(response.status())) {
                 doc.setStatus(DocumentStatus.READY);
                 doc.setChunkCount(response.chunks() != null ? response.chunks().size() : 0);
@@ -127,8 +145,35 @@ public class DocumentIngestListener {
             }
         } catch (Exception e) {
             log.error("Document {} ingestion error: {}", docId, e.getMessage(), e);
-            doc.setStatus(DocumentStatus.FAILED);
-            documentRepository.save(doc);
+            Document current = documentRepository.findById(docId).orElse(doc);
+            if (isLockedStatus(current.getStatus())) {
+                log.info("Document {} is {}, skip marking FAILED after ingestion error",
+                        docId, current.getStatus());
+                return;
+            }
+            current.setStatus(DocumentStatus.FAILED);
+            documentRepository.save(current);
         }
+    }
+
+    private Document findMutableDocument(Long docId) {
+        Document doc = documentRepository.findById(docId).orElse(null);
+        if (doc == null) {
+            log.warn("Document not found for ingestion: {}", docId);
+            return null;
+        }
+        if (isLockedStatus(doc.getStatus())) {
+            log.info("Document {} is {}, skip ingestion state changes", docId, doc.getStatus());
+            return null;
+        }
+        return doc;
+    }
+
+    private boolean isLockedStatus(DocumentStatus status) {
+        return status == DocumentStatus.REJECTED || status == DocumentStatus.SOFT_DELETED;
+    }
+
+    private String resolveInternalFilePath(Document doc) {
+        return fileStorageService.resolveInternalPath(doc.getPublicId());
     }
 }

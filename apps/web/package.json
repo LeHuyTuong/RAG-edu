@@ -20,6 +20,8 @@
   "dependencies": {
     "@base-ui/react": "^1.5.0",
     "@hookform/resolvers": "^5.4.0",
+    "@radix-ui/react-alert-dialog": "^1.1.18",
+    "@radix-ui/react-dialog": "^1.1.18",
     "@repo/tokens": "workspace:*",
     "@repo/ui": "workspace:*",
     "axios": "^1.16.1",

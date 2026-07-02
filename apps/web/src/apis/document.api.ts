@@ -37,8 +37,12 @@ export const fetchDocuments = async (
     params: {
       page: params.page ?? 1,
       limit: params.limit ?? 12,
+      ...(params.search ? { search: params.search } : {}),
+      ...(params.folderId ? { folderId: params.folderId } : {}),
       ...(params.subjectId ? { subjectId: params.subjectId } : {}),
+      ...(params.authorId ? { authorId: params.authorId } : {}),
       ...(params.status ? { status: params.status } : {}),
+      ...(params.onlyMine !== undefined ? { onlyMine: params.onlyMine } : {}),
     },
   });
   // Double-cast required: the interceptor unwraps response.data.data at runtime,

@@ -24,6 +24,7 @@ from app.schemas.chat import RagChatRequest, RagChatResponse
 router = APIRouter()
 
 _NO_DATA_MSG = "Hiện tại dữ liệu trong hệ thống chưa đủ để kết luận chắc chắn về câu hỏi này."
+_NO_DATA_MARKER = "hiện tại dữ liệu trong hệ thống chưa đủ để kết luận chắc chắn"
 
 
 @router.get("/health")
@@ -97,7 +98,7 @@ async def _chat(req: RagChatRequest) -> RagChatResponse:
 
     return RagChatResponse(
         answer=answer,
-        citations=to_citations(hits),
+        citations=[] if _is_no_data_answer(answer) else to_citations(hits),
         usedVector=True,
         usedGraph=False,
     )
@@ -130,17 +131,20 @@ async def _stream_chat_events(req: RagChatRequest):
             yield event
         return
 
-    citations = to_citations(hits)
+    answer_chunks = []
     try:
         system_prompt = load_system_prompt()
         user_message = build_user_message(req.question, hits)
         for chunk in generate_stream(system_prompt, user_message, req.temperature):
+            answer_chunks.append(chunk)
             yield _sse("chat.delta", {"text": chunk})
     except Exception:
         for event in _answer_events(_NO_DATA_MSG, [], True, False):
             yield event
         return
 
+    answer = "".join(answer_chunks)
+    citations = [] if _is_no_data_answer(answer) else to_citations(hits)
     yield _sse("chat.citations", {
         "citations": [citation.model_dump() for citation in citations],
     })
@@ -165,6 +169,11 @@ def _answer_events(answer: str, citations: list, used_vector: bool, used_graph: 
 def _sse(event: str, data: dict) -> str:
     payload = json.dumps(data, ensure_ascii=False)
     return f"event: {event}\ndata: {payload}\n\n"
+
+
+def _is_no_data_answer(answer: str) -> bool:
+    normalized = " ".join((answer or "").strip().lower().split())
+    return _NO_DATA_MARKER in normalized
 
 
 def _chunk_text(text: str, chunk_size: int = 48):

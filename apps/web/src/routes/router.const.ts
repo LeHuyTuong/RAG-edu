@@ -44,6 +44,7 @@ export const ROUTE_PATHS = {
     DASHBOARD: "/admin",
     USERS: "/admin/users",
     DOCUMENTS: "/admin/documents",
+    DOCUMENT_DETAIL: "/admin/documents/:id",
     CATEGORIES: "/admin/categories",
     SUBJECTS: "/admin/subjects",
     REPORTS: "/admin/reports",

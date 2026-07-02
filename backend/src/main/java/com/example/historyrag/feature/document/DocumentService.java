@@ -15,7 +15,7 @@ public interface DocumentService {
 
     DocumentResponse update(Long id, UpdateDocumentRequest request, Long ownerId);
 
-    DocumentResponse getById(Long id, Long currentUserId);
+    DocumentResponse getById(Long id, Long currentUserId, boolean canViewAnyDocument);
 
     List<DocumentResponse> getMyDocuments(Long ownerId);
 
@@ -47,6 +47,8 @@ public interface DocumentService {
     void purgeExpiredSoftDeleted(Instant cutoff);
 
     boolean existsByIdAndOwner(Long id, Long ownerId);
+
+    boolean allExistByIds(List<Long> ids);
 
     boolean allExistByIdsAndOwner(List<Long> ids, Long ownerId);
 

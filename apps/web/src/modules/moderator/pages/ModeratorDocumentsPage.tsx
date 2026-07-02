@@ -130,6 +130,42 @@ export default function ModeratorDocumentsPage(): React.JSX.Element {
     [loadDocuments, rejectingDocument],
   );
 
+  const skeletonRows: TableRow[] = useMemo(() => {
+    return Array.from({ length: 5 }).map((_, i) => ({
+      id: `skeleton-${i}`,
+      cells: [
+        <div className="flex items-center gap-3" key="title">
+          <div className="h-12 w-10 animate-pulse rounded bg-surface-variant/40" />
+          <div className="space-y-1.5">
+            <div className="h-4 w-32 animate-pulse rounded bg-surface-variant/40" />
+            <div className="h-3 w-20 animate-pulse rounded bg-surface-variant/30" />
+          </div>
+        </div>,
+        <div className="flex items-center gap-2" key="author">
+          <div className="h-6 w-6 animate-pulse rounded-full bg-surface-variant/40" />
+          <div className="h-4 w-20 animate-pulse rounded bg-surface-variant/40" />
+        </div>,
+        <div
+          key="subject"
+          className="h-6 w-24 animate-pulse rounded-lg bg-surface-variant/40"
+        />,
+        <div
+          key="uploadDate"
+          className="h-4 w-16 animate-pulse rounded bg-surface-variant/40"
+        />,
+        <div
+          key="status"
+          className="h-6 w-16 animate-pulse rounded bg-surface-variant/40"
+        />,
+        <div className="flex justify-end gap-2" key="actions">
+          <div className="h-8 w-8 animate-pulse rounded-lg bg-surface-variant/40" />
+          <div className="h-8 w-8 animate-pulse rounded-lg bg-surface-variant/40" />
+          <div className="h-8 w-8 animate-pulse rounded-lg bg-surface-variant/40" />
+        </div>,
+      ],
+    }));
+  }, []);
+
   const documentRows: TableRow[] = visibleDocuments.map((document) => {
     const isActing = actionId === document.id;
 
@@ -248,9 +284,7 @@ export default function ModeratorDocumentsPage(): React.JSX.Element {
 
       <ModeratorCard className="overflow-hidden">
         {isLoading ? (
-          <div className="px-6 py-12 text-center font-label-md text-label-md text-on-surface-variant">
-            Đang tải tài liệu chờ duyệt...
-          </div>
+          <Table columns={documentColumns} rows={skeletonRows} />
         ) : error ? (
           <EmptyState description={error} title="Không thể tải tài liệu" />
         ) : filteredDocuments.length === 0 ? (

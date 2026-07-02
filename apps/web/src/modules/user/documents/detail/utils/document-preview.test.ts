@@ -1,5 +1,29 @@
-import { describe, expect, it } from "vitest";
-import { buildPreviewSkeleton } from "./document-preview";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { DocumentDetail } from "@/types/document.type";
+import { buildPreviewSkeleton, loadDocumentPreview } from "./document-preview";
+
+const pdfDocument = {
+  id: "101",
+  title: "Reject PDF",
+  description: null,
+  fileUrl: "https://res.cloudinary.com/demo/reject.pdf",
+  publicId: "reject.pdf",
+  format: "pdf",
+  sizeInBytes: 1024,
+  createdAt: "2026-07-02T00:00:00.000Z",
+  author: {
+    id: "1",
+    name: "Test Student",
+    email: "student@example.com",
+    avatarUrl: null,
+  },
+  subject: null,
+} satisfies DocumentDetail;
+
+beforeEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 describe("buildPreviewSkeleton", () => {
   it("maps pdf to the pdf preview branch", () => {
@@ -33,5 +57,21 @@ describe("buildPreviewSkeleton", () => {
     expect(
       buildPreviewSkeleton("pptx", "https://example.com/file.pptx"),
     ).toEqual({ type: "unsupported" });
+  });
+
+  it("falls back before rendering when a PDF url is not reachable", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(null, {
+        status: 404,
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(loadDocumentPreview(pdfDocument)).resolves.toEqual({
+      type: "unsupported",
+    });
+    expect(fetchMock).toHaveBeenCalledWith(pdfDocument.fileUrl, {
+      method: "HEAD",
+    });
   });
 });

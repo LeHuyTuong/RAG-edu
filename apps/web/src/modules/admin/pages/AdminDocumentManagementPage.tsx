@@ -1,29 +1,27 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+
+import { approveDocument, fetchDocuments } from "@/apis/document.api";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
 import { Pagination } from "@/components/ui/Pagination";
 import { Table, type TableRow } from "@/components/ui/Table";
-import {
-  approveDocument,
-  fetchDocuments,
-  rejectDocument,
-} from "@/apis/document.api";
 import type { LibraryDocument } from "@/types/document.type";
-import {
-  AdminCard,
-  AdminIconAction,
-  MaterialIcon,
-} from "../components/AdminPrimitives";
+import { formatFileSize } from "@/utils";
+import { getErrorMessage } from "@/utils/error";
+
+import { AdminDocumentAiAssistant } from "../components/AdminDocumentAiAssistant";
+import { AdminCard, MaterialIcon } from "../components/AdminPrimitives";
 
 const columns = [
+  { key: "select", label: "Chọn", align: "center" as const },
   { key: "title", label: "Tiêu đề", sortable: true },
   { key: "author", label: "Tác giả" },
   { key: "subject", label: "Môn học" },
   { key: "status", label: "Trạng thái" },
-  { key: "actions", label: "Duyệt", align: "center" as const },
+  { key: "actions", label: "Thao tác", align: "center" as const },
 ] as const;
 
 const pageSize = 10;
@@ -43,12 +41,24 @@ const statusTone: Record<string, "success" | "warning" | "error" | "neutral"> =
     DELETED: "neutral",
   };
 
+const suggestedQuestions = [
+  "Các tài liệu đã chọn có phù hợp để duyệt không?",
+  "Có tài liệu nào không liên quan đến lịch sử không?",
+  "Tóm tắt lý do nên duyệt hoặc cần từ chối.",
+] as const;
+
+const canSelectForReview = (document: LibraryDocument): boolean =>
+  document.status === "PENDING";
+
 export default function AdminDocumentManagementPage(): React.JSX.Element {
   const [documents, setDocuments] = useState<LibraryDocument[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [selectedDocumentIds, setSelectedDocumentIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [bulkApproveLoading, setBulkApproveLoading] = useState(false);
 
   const load = useCallback(async (page: number) => {
     setLoading(true);
@@ -56,6 +66,14 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
       const res = await fetchDocuments({ page, limit: pageSize });
       setDocuments(res.documents);
       setTotalPages(res.pagination.totalPages);
+      setSelectedDocumentIds((current) => {
+        const availableIds = new Set(
+          res.documents
+            .filter(canSelectForReview)
+            .map((document) => String(document.id)),
+        );
+        return new Set([...current].filter((id) => availableIds.has(id)));
+      });
     } catch {
       toast.error("Không thể tải danh sách tài liệu");
     } finally {
@@ -64,40 +82,121 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
   }, []);
 
   useEffect(() => {
-    load(currentPage);
+    void load(currentPage);
   }, [currentPage, load]);
 
-  const handleApprove = async (id: string) => {
-    setActionLoading(id);
-    try {
-      await approveDocument(id);
-      toast.success("Đã duyệt tài liệu");
-      load(currentPage);
-    } catch {
-      toast.error("Không thể duyệt tài liệu");
-    } finally {
-      setActionLoading(null);
-    }
+  const selectedDocuments = useMemo(
+    () =>
+      documents.filter(
+        (document) =>
+          canSelectForReview(document) &&
+          selectedDocumentIds.has(String(document.id)),
+      ),
+    [documents, selectedDocumentIds],
+  );
+
+  const assistantDocuments = useMemo(
+    () =>
+      selectedDocuments.map((document) => ({
+        id: document.id,
+        title: document.title,
+        subtitle: document.subject?.name ?? document.format.toUpperCase(),
+      })),
+    [selectedDocuments],
+  );
+
+  const selectableDocuments = useMemo(
+    () => documents.filter(canSelectForReview),
+    [documents],
+  );
+
+  const allVisibleSelected =
+    selectableDocuments.length > 0 &&
+    selectableDocuments.every((document) =>
+      selectedDocumentIds.has(String(document.id)),
+    );
+
+  const canBulkApprove = selectedDocuments.length > 0 && !bulkApproveLoading;
+
+  const toggleDocument = (documentId: string, checked: boolean) => {
+    setSelectedDocumentIds((current) => {
+      const document = documents.find((item) => String(item.id) === documentId);
+      if (checked && (!document || !canSelectForReview(document))) {
+        return current;
+      }
+
+      const next = new Set(current);
+      if (checked) {
+        next.add(documentId);
+      } else {
+        next.delete(documentId);
+      }
+      return next;
+    });
   };
 
-  const handleReject = async (id: string) => {
-    setActionLoading(id);
+  const toggleAllVisible = (checked: boolean) => {
+    setSelectedDocumentIds((current) => {
+      const next = new Set(current);
+      selectableDocuments.forEach((document) => {
+        if (checked) {
+          next.add(String(document.id));
+        } else {
+          next.delete(String(document.id));
+        }
+      });
+      return next;
+    });
+  };
+
+  const handleBulkApprove = async () => {
+    if (selectedDocuments.length === 0) return;
+
+    setBulkApproveLoading(true);
     try {
-      await rejectDocument(id, { rejectionReason: "Từ chối bởi admin" });
-      toast.success("Đã từ chối tài liệu");
-      load(currentPage);
-    } catch {
-      toast.error("Không thể từ chối tài liệu");
+      for (const document of selectedDocuments) {
+        await approveDocument(document.id);
+      }
+      toast.success(`Đã duyệt ${selectedDocuments.length} tài liệu`);
+      setSelectedDocumentIds(new Set());
+      await load(currentPage);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
     } finally {
-      setActionLoading(null);
+      setBulkApproveLoading(false);
     }
   };
 
   const rows: TableRow[] = documents.map((doc) => ({
     id: doc.id,
+    highlighted:
+      canSelectForReview(doc) && selectedDocumentIds.has(String(doc.id)),
     cells: [
-      <div key="title" className="min-w-40">
+      canSelectForReview(doc) ? (
+        <input
+          aria-label={`Chọn ${doc.title}`}
+          checked={selectedDocumentIds.has(String(doc.id))}
+          className="h-4 w-4 accent-primary"
+          key="select"
+          onChange={(event) =>
+            toggleDocument(String(doc.id), event.target.checked)
+          }
+          type="checkbox"
+        />
+      ) : (
+        <span
+          aria-hidden="true"
+          className="text-sm text-on-surface-variant"
+          key="select"
+        >
+          —
+        </span>
+      ),
+      <div key="title" className="min-w-56">
         <p className="font-medium text-on-surface line-clamp-1">{doc.title}</p>
+        <p className="mt-1 text-xs text-on-surface-variant">
+          {doc.format.toUpperCase()} · {formatFileSize(doc.sizeInBytes)}
+        </p>
       </div>,
       <span key="author" className="text-sm text-on-surface-variant">
         {doc.author?.name ?? "Không rõ"}
@@ -108,46 +207,30 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
       <Badge key="status" tone={statusTone[doc.status] ?? "neutral"}>
         {statusLabels[doc.status] ?? doc.status}
       </Badge>,
-      <div key="actions" className="flex justify-center gap-1">
-        {doc.status === "PENDING" && (
-          <>
-            <AdminIconAction
-              icon="check_circle"
-              label="Duyệt"
-              onClick={() => handleApprove(doc.id)}
-              tone={actionLoading === doc.id ? "neutral" : "primary"}
-            />
-            <AdminIconAction
-              icon="cancel"
-              label="Từ chối"
-              onClick={() => handleReject(doc.id)}
-              tone="error"
-            />
-          </>
-        )}
-        {doc.status === "REJECTED" && (
-          <AdminIconAction
-            icon="restart_alt"
-            label="Duyệt lại"
-            onClick={() => handleApprove(doc.id)}
-            tone="primary"
-          />
-        )}
+      <div key="actions" className="flex justify-center">
+        <Link
+          aria-label={`Xem chi tiết ${doc.title}`}
+          className="inline-flex h-9 w-9 items-center justify-center rounded text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-primary"
+          href={`/admin/documents/${doc.id}`}
+          title={`Xem chi tiết ${doc.title}`}
+        >
+          <MaterialIcon name="visibility" />
+        </Link>
       </div>,
     ],
   }));
 
   return (
-    <div>
-      <div className="mb-8">
+    <div className="space-y-6 pb-24">
+      <div>
         <h1 className="text-3xl font-bold text-on-surface">Quản lý tài liệu</h1>
         <p className="mt-2 text-on-surface-variant">
-          Duyệt và quản lý tài liệu người dùng tải lên.
+          Duyệt, phân tích bằng AI và quản lý tài liệu người dùng tải lên.
         </p>
       </div>
 
       <AdminCard>
-        <div className="flex items-center justify-between border-b border-outline-variant p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-outline-variant p-4">
           <div>
             <h2 className="font-semibold text-on-surface">
               Danh sách tài liệu
@@ -156,6 +239,16 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
               {documents.length} kết quả
             </p>
           </div>
+          <label className="flex items-center gap-2 text-sm text-on-surface-variant">
+            <input
+              checked={allVisibleSelected}
+              className="h-4 w-4 accent-primary"
+              disabled={selectableDocuments.length === 0}
+              onChange={(event) => toggleAllVisible(event.target.checked)}
+              type="checkbox"
+            />
+            Chọn tất cả trang này
+          </label>
         </div>
 
         {loading ? (
@@ -179,6 +272,17 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
           />
         </div>
       </AdminCard>
+
+      <AdminDocumentAiAssistant
+        approveDisabled={!canBulkApprove}
+        approveLabel={`Duyệt ${selectedDocuments.length} tài liệu`}
+        approveLoading={bulkApproveLoading}
+        documents={assistantDocuments}
+        emptyContextMessage="Chọn một hoặc nhiều tài liệu trong bảng."
+        onApprove={handleBulkApprove}
+        suggestions={suggestedQuestions}
+        textareaLabel="Câu hỏi AI cho các tài liệu đã chọn"
+      />
     </div>
   );
 }

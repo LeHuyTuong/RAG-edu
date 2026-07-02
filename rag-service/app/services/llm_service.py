@@ -49,10 +49,10 @@ def generate_stream(system_prompt: str, user_message: str, temperature: float = 
 
     if provider == "cerebras":
         for text in _stream_cerebras(system_prompt, user_message, temperature):
-            yield _clean_text(text)
+            yield text
     else:
         for text in _stream_google(system_prompt, user_message, temperature):
-            yield _clean_text(text)
+            yield text
 
 
 # ─── Cerebras (OpenAI-compatible) ───────────────────────────────────────────

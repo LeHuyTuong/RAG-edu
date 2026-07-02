@@ -1,7 +1,9 @@
 package com.example.historyrag.feature.document;
 
+import com.example.historyrag.exception.InvalidRequestException;
 import com.example.historyrag.exception.ResourceNotFoundException;
 import com.example.historyrag.feature.document.dto.CreateDocumentRequest;
+import com.example.historyrag.feature.document.dto.DocumentResponse;
 import com.example.historyrag.feature.document.dto.UpdateDocumentRequest;
 import com.example.historyrag.feature.folder.FolderService;
 import com.example.historyrag.feature.subject.SubjectService;
@@ -9,18 +11,28 @@ import com.example.historyrag.feature.user.UserService;
 import com.example.historyrag.feature.user.dto.AccountResponse;
 import com.example.historyrag.infrastructure.file.FileStorageService;
 import com.example.historyrag.infrastructure.webclient.RagClientService;
+import com.example.historyrag.infrastructure.webclient.dto.RagIngestRequest;
+import com.example.historyrag.infrastructure.webclient.dto.RagIngestResponse;
+import com.example.historyrag.infrastructure.webclient.dto.RagIngestedChunkResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
+import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -82,5 +94,130 @@ class DocumentServiceImplTest {
                 () -> documentService.create(request, 10L));
 
         verify(documentRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    @DisplayName("getById — should allow admin to view pending review document owned by another user")
+    void getById_adminCanViewPendingReviewDocumentOwnedByAnotherUser() {
+        Document document = document(150004L, DocumentStatus.PENDING_REVIEW, "pending.pdf");
+        when(documentRepository.findById(150004L)).thenReturn(Optional.of(document));
+
+        DocumentResponse response = documentService.getById(150004L, 1L, true);
+
+        assertEquals(150004L, response.id());
+        assertEquals("PENDING", response.status());
+        assertEquals(DocumentStatus.PENDING_REVIEW, response.ragStatus());
+    }
+
+    @Test
+    @DisplayName("getById — should keep hiding pending review document from non-owner user")
+    void getById_normalUserCannotViewPendingReviewDocumentOwnedByAnotherUser() {
+        Document document = document(150004L, DocumentStatus.PENDING_REVIEW, "pending.pdf");
+        when(documentRepository.findById(150004L)).thenReturn(Optional.of(document));
+
+        assertThrows(ResourceNotFoundException.class, () -> documentService.getById(150004L, 1L, false));
+    }
+
+    @Test
+    @DisplayName("allExistByIds — should validate distinct non-deleted documents without owner constraint")
+    void allExistByIds_distinctNonDeletedDocuments_returnsTrue() {
+        when(documentRepository.countByIdInAndStatusNot(List.of(150004L, 150005L), DocumentStatus.SOFT_DELETED))
+                .thenReturn(2L);
+
+        assertTrue(documentService.allExistByIds(List.of(150004L, 150004L, 150005L)));
+    }
+
+    @Test
+    @DisplayName("allExistByIds — should return false when any document is missing or soft-deleted")
+    void allExistByIds_missingOrSoftDeletedDocument_returnsFalse() {
+        when(documentRepository.countByIdInAndStatusNot(List.of(150004L, 150005L), DocumentStatus.SOFT_DELETED))
+                .thenReturn(1L);
+
+        assertFalse(documentService.allExistByIds(List.of(150004L, 150005L)));
+    }
+
+    @Test
+    @DisplayName("approve — should re-ingest FAILED document with internal filePath before marking READY")
+    void approve_failedDocument_reingestsWithInternalFilePathBeforeReady() {
+        Document document = document(7L, DocumentStatus.FAILED, "failed.pdf");
+        when(documentRepository.findById(7L)).thenReturn(Optional.of(document));
+        when(fileStorageService.resolveInternalPath("failed.pdf")).thenReturn("/app/uploads/failed.pdf");
+        when(ragClientService.ingest(any(RagIngestRequest.class), isNull()))
+                .thenReturn(completedIngestResponse(7L));
+
+        documentService.approve(7L, 1L);
+
+        ArgumentCaptor<RagIngestRequest> requestCaptor = ArgumentCaptor.forClass(RagIngestRequest.class);
+        verify(ragClientService).ingest(requestCaptor.capture(), isNull());
+        RagIngestRequest request = requestCaptor.getValue();
+        assertEquals("/app/uploads/failed.pdf", request.filePath());
+        assertNull(request.sourceUrl());
+        assertEquals(DocumentStatus.READY, document.getStatus());
+        assertTrue(document.getIsPublic());
+        assertEquals(1, document.getChunkCount());
+        assertEquals(1L, document.getReviewedById());
+    }
+
+    @Test
+    @DisplayName("approve — should not revive REJECTED document")
+    void approve_rejectedDocument_throwsInvalidRequest() {
+        Document document = document(8L, DocumentStatus.REJECTED, "rejected.pdf");
+        when(documentRepository.findById(8L)).thenReturn(Optional.of(document));
+
+        assertThrows(InvalidRequestException.class, () -> documentService.approve(8L, 1L));
+
+        assertEquals(DocumentStatus.REJECTED, document.getStatus());
+        verify(ragClientService, never()).ingest(any(), any());
+    }
+
+    @Test
+    @DisplayName("reject — should make document private and keep explicit rejection state")
+    void reject_setsRejectedAndPrivate() {
+        Document document = document(9L, DocumentStatus.READY, "ready.pdf");
+        document.setIsPublic(true);
+        when(documentRepository.findById(9L)).thenReturn(Optional.of(document));
+        when(documentRepository.save(document)).thenReturn(document);
+
+        documentService.reject(9L, "Sai chủ đề", 1L);
+
+        assertEquals(DocumentStatus.REJECTED, document.getStatus());
+        assertFalse(document.getIsPublic());
+        assertEquals("Sai chủ đề", document.getReviewReason());
+        assertEquals(1L, document.getReviewedById());
+    }
+
+    @Test
+    @DisplayName("reindex — should not restart ingestion for REJECTED document")
+    void reindex_rejectedDocument_throwsInvalidRequest() {
+        Document document = document(10L, DocumentStatus.REJECTED, "rejected.pdf");
+        when(documentRepository.findById(10L)).thenReturn(Optional.of(document));
+
+        assertThrows(InvalidRequestException.class, () -> documentService.reindex(10L, 20L));
+
+        assertEquals(DocumentStatus.REJECTED, document.getStatus());
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    private static Document document(Long id, DocumentStatus status, String publicId) {
+        Document document = new Document();
+        document.setId(id);
+        document.setTitle("Tài liệu " + id);
+        document.setFileUrl("http://localhost:8080/uploads/" + publicId);
+        document.setPublicId(publicId);
+        document.setStatus(status);
+        document.setOwnerId(20L);
+        document.setFolderId(30L);
+        document.setIsPublic(false);
+        return document;
+    }
+
+    private static RagIngestResponse completedIngestResponse(Long sourceId) {
+        return new RagIngestResponse(
+                sourceId,
+                "COMPLETED",
+                "history_chunks",
+                "gemini-embedding-001",
+                List.of(new RagIngestedChunkResponse(0, "point-1", "hash-1"))
+        );
     }
 }

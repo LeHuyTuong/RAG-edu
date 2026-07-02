@@ -5,6 +5,16 @@
  */
 
 export type DocumentStatus = "ACTIVE" | "PENDING" | "REJECTED" | "DELETED";
+export type DocumentRagStatus =
+  | "UPLOADING"
+  | "REVIEWING"
+  | "PENDING_REVIEW"
+  | "INDEXING"
+  | "REINDEXING"
+  | "READY"
+  | "FAILED"
+  | "REJECTED"
+  | "SOFT_DELETED";
 
 export interface DocumentAuthor {
   id: string;
@@ -28,17 +38,23 @@ export interface LibraryDocument {
   fileUrl: string;
   format: string;
   sizeInBytes: number;
-  ragStatus?: DocumentStatus;
+  resourceType?: string;
+  ragStatus?: DocumentRagStatus;
   status: DocumentStatus;
   isPublic: boolean;
   pageCount?: number | null;
+  chunkCount?: number | null;
   folderId?: number | null;
+  ownerId?: number;
   createdAt: string;
   updatedAt: string;
   reviewedById?: string | null;
   reviewedAt?: string | null;
   rejectionReason?: string | null;
   rejectionDetail?: string | null;
+  aiConfidence?: number | null;
+  aiWarningLevel?: string | null;
+  aiReviewStatus?: string | null;
   author: DocumentAuthor;
   subject: DocumentSubject | null;
 }
@@ -103,8 +119,12 @@ export interface RejectDocumentPayload {
 export interface ListDocumentsQuery {
   page?: number;
   limit?: number;
+  search?: string;
+  folderId?: number;
+  authorId?: string;
   subjectId?: string;
   status?: DocumentStatus;
+  onlyMine?: boolean;
 }
 
 /**
@@ -120,10 +140,13 @@ export interface DocumentDetail {
   publicId: string;
   /** File extension as stored by Cloudinary, e.g. "pdf", "docx" */
   format: string;
+  resourceType?: string;
   sizeInBytes: number;
   pageCount?: number | null;
+  chunkCount?: number | null;
   createdAt: string;
   status?: DocumentStatus;
+  ragStatus?: DocumentRagStatus;
   isPublic?: boolean;
   ownerId?: number;
   folderId?: number | null;
@@ -133,6 +156,9 @@ export interface DocumentDetail {
   reviewedAt?: string | null;
   rejectionReason?: string | null;
   rejectionDetail?: string | null;
+  aiConfidence?: number | null;
+  aiWarningLevel?: string | null;
+  aiReviewStatus?: string | null;
   author: {
     id: string;
     name: string;

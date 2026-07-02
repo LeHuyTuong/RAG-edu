@@ -136,11 +136,18 @@ export default function AdminDashboardPage(): React.JSX.Element {
 
       <div className="grid grid-cols-1 gap-gutter lg:grid-cols-12">
         {isLoading ? (
-          <AdminCard className="p-6 lg:col-span-12">
-            <p className="font-label-md text-label-md text-on-surface-variant">
-              Đang tải số liệu dashboard...
-            </p>
-          </AdminCard>
+          <>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <AdminCard className="p-6 lg:col-span-3" key={i}>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="h-10 w-10 animate-pulse rounded bg-surface-variant/40" />
+                  <div className="h-4 w-12 animate-pulse rounded bg-surface-variant/40" />
+                </div>
+                <div className="mt-6 h-4 w-28 animate-pulse rounded bg-surface-variant/40" />
+                <div className="mt-2 h-8 w-16 animate-pulse rounded bg-surface-variant/30" />
+              </AdminCard>
+            ))}
+          </>
         ) : null}
 
         {errorMessage ? (

@@ -24,8 +24,7 @@ import type {
   UpdateDocumentPayload,
 } from "@/types/document.type";
 
-import { DocumentEditModal } from "./components/DocumentEditModal";
-import { DeleteDocumentModal } from "./components/DeleteDocumentModal";
+import { DocumentDetailModal } from "./components/DocumentDetailModal";
 import { DocumentStats } from "./components/DocumentStats";
 import { DocumentTable } from "./components/DocumentTable";
 
@@ -38,10 +37,8 @@ export default function MyDocumentPage(): React.JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [deletingDocument, setDeletingDocument] =
-    useState<LibraryDocument | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
-  const [editingDocument, setEditingDocument] =
+  const [viewingDocument, setViewingDocument] =
     useState<LibraryDocument | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
@@ -84,23 +81,24 @@ export default function MyDocumentPage(): React.JSX.Element {
       alert("Xóa tài liệu thất bại. Vui lòng thử lại.");
     } finally {
       setDeletingId(null);
-      setDeletingDocument(null);
+      setViewingDocument(null);
     }
   };
 
-  const handleEdit = (document: LibraryDocument) => {
+  const handleView = (document: LibraryDocument) => {
     setEditError(null);
-    setEditingDocument(document);
+    setViewingDocument(document);
   };
 
-  const handleSaveEdit = async (payload: UpdateDocumentPayload) => {
-    if (!editingDocument) return;
-
-    setSavingId(editingDocument.id);
+  const handleSaveEdit = async (
+    document: LibraryDocument,
+    payload: UpdateDocumentPayload,
+  ) => {
+    setSavingId(document.id);
     setEditError(null);
     try {
-      await updateDocument(editingDocument.id, payload);
-      setEditingDocument(null);
+      await updateDocument(document.id, payload);
+      setViewingDocument(null);
       await load(currentPage);
     } catch {
       setEditError("Cập nhật tài liệu thất bại. Vui lòng thử lại.");
@@ -130,38 +128,25 @@ export default function MyDocumentPage(): React.JSX.Element {
         error={error}
         skeletonCount={ITEMS_PER_PAGE}
         onPageChange={setCurrentPage}
-        onEdit={handleEdit}
-        onRequestDelete={(document) => setDeletingDocument(document)}
+        onView={handleView}
         deletingId={deletingId}
         savingId={savingId}
       />
 
-      <DocumentEditModal
-        document={editingDocument}
+      <DocumentDetailModal
+        deletingId={deletingId}
+        document={viewingDocument}
         subjects={subjects}
-        isOpen={editingDocument !== null}
+        isOpen={viewingDocument !== null}
         isSaving={savingId !== null}
         error={editError}
         onCancel={() => {
-          if (savingId) return;
-          setEditingDocument(null);
+          if (savingId || deletingId) return;
+          setViewingDocument(null);
           setEditError(null);
         }}
+        onDelete={(document) => void handleDelete(document.id)}
         onSave={handleSaveEdit}
-      />
-
-      <DeleteDocumentModal
-        documentTitle={deletingDocument?.title ?? ""}
-        isOpen={deletingDocument !== null}
-        isDeleting={deletingId !== null}
-        onCancel={() => {
-          if (deletingId) return;
-          setDeletingDocument(null);
-        }}
-        onConfirm={() => {
-          if (!deletingDocument) return;
-          void handleDelete(deletingDocument.id);
-        }}
       />
     </div>
   );

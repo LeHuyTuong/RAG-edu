@@ -106,6 +106,11 @@ export type StreamChunkCallback = (token: string) => void;
 /** Callback khi stream hoan tat */
 export type StreamCompleteCallback = (fullText: string) => void;
 
+/** Callback khi stream tra ve nguon/citation */
+export type StreamCitationsCallback = (
+  citations: RagCitationResponse[],
+) => void;
+
 /** Callback khi stream gap loi */
 export type StreamErrorCallback = (error: Error) => void;
 
@@ -120,6 +125,16 @@ export const ragHealth = async (): Promise<RagHealthResponse> => {
   return result as unknown as RagHealthResponse;
 };
 
+const mapCitation = (c: any): RagCitationResponse => ({
+  id: c.sourceId ?? c.documentId ?? c.id,
+  title: c.title,
+  content: c.snippet ?? c.content,
+  source: c.sourceType ?? c.source,
+  relevance: c.score ?? c.relevance,
+  page: c.pageNumber ?? c.page,
+  url: c.slug ?? c.url,
+});
+
 // --- Chat (non-streaming) ---
 
 /**
@@ -129,8 +144,11 @@ export const ragHealth = async (): Promise<RagHealthResponse> => {
 export const ragChat = async (
   payload: RagChatRequest,
 ): Promise<RagChatResponse> => {
-  const result = await apiClient.post(API_ENDPOINTS.RAG.CHAT, payload);
-  return result as unknown as RagChatResponse;
+  const result = (await apiClient.post(API_ENDPOINTS.RAG.CHAT, payload)) as any;
+  return {
+    ...result,
+    citations: (result.citations || []).map(mapCitation),
+  };
 };
 
 // --- Chat (streaming SSE) ---
@@ -149,6 +167,7 @@ export const chatStream = async (
   callbacks: {
     onChunk: StreamChunkCallback;
     onComplete: StreamCompleteCallback;
+    onCitations?: StreamCitationsCallback;
     onError: StreamErrorCallback;
   },
 ): Promise<AbortController> => {
@@ -209,6 +228,9 @@ export const chatStream = async (
             }
             try {
               const parsed = JSON.parse(jsonStr);
+              if (Array.isArray(parsed.citations)) {
+                callbacks.onCitations?.(parsed.citations.map(mapCitation));
+              }
               const token = parsed.token ?? parsed.content ?? parsed.text ?? "";
               if (token) {
                 fullText += token;

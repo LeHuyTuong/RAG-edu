@@ -15,6 +15,16 @@ export const ChatBubble: FC<ChatBubbleProps> = ({
   citations,
 }) => {
   const isUser = role === "user";
+  const uniqueCitations = citations
+    ? citations.filter(
+        (c, idx, self) =>
+          self.findIndex(
+            (other) =>
+              (other.title || other.source || "") ===
+              (c.title || c.source || ""),
+          ) === idx,
+      )
+    : [];
 
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
@@ -45,13 +55,13 @@ export const ChatBubble: FC<ChatBubbleProps> = ({
             ))}
         </div>
 
-        {!isUser && citations && citations.length > 0 && (
+        {!isUser && uniqueCitations.length > 0 && (
           <div className="mt-3 pt-3 border-t border-outline/30">
             <p className="text-xs font-medium text-on-surface-variant mb-2">
-              Nguồn tham khảo ({citations.length})
+              Nguồn tham khảo ({uniqueCitations.length})
             </p>
             <div className="space-y-2">
-              {citations.map((c, i) => (
+              {uniqueCitations.map((c, i) => (
                 <div
                   key={i}
                   className="text-xs bg-surface/80 rounded-lg p-2 border border-outline/20"
@@ -66,7 +76,8 @@ export const ChatBubble: FC<ChatBubbleProps> = ({
                   )}
                   {c.relevance !== undefined && (
                     <span className="text-on-surface-variant/60 mt-0.5 block">
-                      Độ liên quan: {Math.round(c.relevance * 100)}%
+                      {c.page ? `Trang ${c.page} · ` : ""}Độ liên quan:{" "}
+                      {Math.round(c.relevance * 100)}%
                     </span>
                   )}
                 </div>
