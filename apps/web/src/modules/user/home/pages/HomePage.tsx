@@ -1,136 +1,308 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 import { DocumentCard } from "../components/DocumentCard";
 import { DocumentCarousel } from "../components/DocumentCarousel";
 import { DocumentCardSkeleton } from "../components/DocumentSkeleton";
 import { fetchDocuments, fetchSubjects } from "@/apis/document.api";
-import type { Subject } from "@/types/document.type";
+import type { LibraryDocument, Subject } from "@/types/document.type";
 
-export default async function HomePage(): Promise<React.JSX.Element> {
-  let documents: Awaited<ReturnType<typeof fetchDocuments>>["documents"] = [];
-  let subjects: Subject[] = [];
+const SUBJECT_ICONS: Record<string, string> = {
+  lịch: "history_edu",
+  sử: "history_edu",
+  văn: "menu_book",
+  toán: "function",
+  lý: "science",
+  hóa: "biotech",
+  sinh: "psychology",
+  anh: "translate",
+  ngoại: "language",
+  tin: "computer",
+  công: "engineering",
+  kinh: "finance",
+  luật: "gavel",
+  triết: "lightbulb",
+  địa: "public",
+  giáo: "school",
+  y: "medical_services",
+  mỹ: "palette",
+  nhạc: "music_note",
+};
 
-  try {
-    const [documentsResponse, subjectsResponse] = await Promise.all([
-      fetchDocuments({ page: 1, limit: 10 }),
-      fetchSubjects(6),
-    ]);
-    documents = documentsResponse.documents ?? [];
-    subjects = subjectsResponse.subjects ?? [];
-  } catch {
-    documents = [];
-    subjects = [];
+function getSubjectIcon(name: string): string {
+  const lower = name.toLowerCase();
+  for (const [key, icon] of Object.entries(SUBJECT_ICONS)) {
+    if (lower.includes(key)) return icon;
   }
+  return "auto_stories";
+}
 
-  const recentDocs = documents.slice(0, 4);
-  const recentUpdatedDocs = documents.slice(4, 7);
+const SUBJECT_LIGHT_GRADIENTS = [
+  "from-blue-50 to-indigo-50/50",
+  "from-orange-50 to-amber-50/50",
+  "from-violet-50 to-purple-50/50",
+  "from-emerald-50 to-teal-50/50",
+  "from-yellow-50 to-amber-50/50",
+  "from-pink-50 to-rose-50/50",
+];
+
+const SUBJECT_ICON_BG = [
+  "bg-blue-100 text-blue-600",
+  "bg-orange-100 text-orange-600",
+  "bg-violet-100 text-violet-600",
+  "bg-emerald-100 text-emerald-600",
+  "bg-yellow-100 text-yellow-600",
+  "bg-pink-100 text-pink-600",
+];
+
+function getSubjectGradient(index: number): string {
+  return SUBJECT_LIGHT_GRADIENTS[index % SUBJECT_LIGHT_GRADIENTS.length]!;
+}
+
+function getSubjectIconBg(index: number): string {
+  return SUBJECT_ICON_BG[index % SUBJECT_ICON_BG.length]!;
+}
+
+function formatRelativeTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "Vừa xong";
+  if (diffMins < 60) return `${diffMins} phút trước`;
+  if (diffHours < 24) return `${diffHours} giờ trước`;
+  if (diffDays < 7) return `${diffDays} ngày trước`;
+  return date.toLocaleDateString("vi-VN", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
+export default function HomePage(): React.JSX.Element {
+  const [documents, setDocuments] = useState<LibraryDocument[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [documentsResponse, subjectsResponse] = await Promise.all([
+          fetchDocuments({ page: 1, limit: 10 }),
+          fetchSubjects(6),
+        ]);
+        setDocuments(
+          (documentsResponse.documents ?? []).filter(
+            (doc) => doc.isPublic === true,
+          ),
+        );
+        setSubjects(subjectsResponse.subjects ?? []);
+      } catch {
+        setDocuments([]);
+        setSubjects([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, []);
+
+  const recentDocs = documents.slice(0, 5);
+  const recentUpdatedDocs = documents.slice(5, 8);
 
   const linkClass =
-    "inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-transparent px-2.5 py-1.5 text-sm font-medium text-on-surface-variant transition-colors hover:bg-surface-variant";
+    "inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-outline-variant bg-surface-container-low px-4 py-2 text-sm font-medium text-on-surface-variant transition-all hover:border-outline hover:bg-surface-container-high hover:text-on-surface";
 
   return (
-    <div className="min-w-0 bg-background">
-      {/* ================= SECTION 1 ================= */}
-      <section className="mb-12">
-        <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-2xl font-bold">Tài liệu gần đây</h2>
+    <div className="min-w-0">
+      {/* Subtle background decoration */}
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 h-[500px] w-[500px] rounded-full bg-primary/5 blur-[120px] dark:bg-primary/5" />
+        <div className="absolute -bottom-20 -left-20 h-[400px] w-[400px] rounded-full bg-violet-500/5 blur-[100px] dark:bg-violet-500/5" />
+      </div>
 
-          <Link href="/library" className={linkClass}>
-            Xem thêm
-          </Link>
-        </div>
-
-        <DocumentCarousel>
-          {documents.length === 0
-            ? Array.from({ length: 4 }).map((_, index) => (
-                <DocumentCardSkeleton key={index} />
-              ))
-            : recentDocs.map((doc) => (
-                <DocumentCard
-                  id={doc.id}
-                  key={doc.id}
-                  title={doc.title}
-                  subtitle={
-                    doc.subject?.name
-                      ? `Môn học: ${doc.subject.name}`
-                      : doc.author?.name
-                        ? `Tác giả: ${doc.author.name}`
-                        : "Tài liệu học tập mới"
-                  }
-                  coverImage={doc.author?.avatarUrl ?? undefined}
-                  pageCount={doc.pageCount ?? undefined}
-                />
-              ))}
-        </DocumentCarousel>
-      </section>
-      {/* ================= SECTION 2 ================= */}
-      <section>
-        <div className="grid grid-cols-3 gap-6">
-          {/* LEFT: SUBJECTS */}
-          <div className="col-span-2">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Khám phá theo môn học</h2>
-
-              <Link href="/library" className={linkClass}>
-                Xem tất cả
-              </Link>
+      <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        {/* ================= SECTION 1: RECENT DOCUMENTS ================= */}
+        <section className="mb-16">
+          <div className="mb-8 flex items-end justify-between">
+            <div>
+              <h2 className="text-[28px] font-bold tracking-tight text-on-surface">
+                Tài liệu gần đây
+              </h2>
+              <p className="mt-1.5 text-sm font-medium text-on-surface-variant/70">
+                Tiếp tục khám phá những tài liệu mới nhất từ cộng đồng
+              </p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              {subjects.length === 0
-                ? Array.from({ length: 6 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className="h-24 bg-surface-variant animate-pulse rounded-lg"
-                    />
-                  ))
-                : subjects.map((subject) => (
-                    <Link
-                      key={subject.id}
-                      href={`/library?subjectId=${subject.id}`}
-                      className="block p-4 bg-surface-variant rounded-xl hover:bg-surface-hover transition-colors"
-                    >
-                      <h3 className="font-semibold text-on-surface line-clamp-1">
-                        {subject.name}
-                      </h3>
-                      <p className="mt-1 text-sm text-on-surface-variant line-clamp-1">
-                        Khám phá tài liệu môn học này
-                      </p>
-                    </Link>
-                  ))}
-            </div>
+            <Link href="/library" className={linkClass}>
+              Xem tất cả
+              <span className="material-symbols-outlined text-base">
+                arrow_forward
+              </span>
+            </Link>
           </div>
 
-          {/* RIGHT: RECENTLY UPDATED */}
-          <div className="col-span-1">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-2xl font-bold">Mới cập nhật</h2>
+          <DocumentCarousel>
+            {loading || documents.length === 0
+              ? Array.from({ length: 5 }).map((_, index) => (
+                  <DocumentCardSkeleton key={index} />
+                ))
+              : recentDocs.map((doc) => (
+                  <DocumentCard
+                    id={doc.id}
+                    key={doc.id}
+                    title={doc.title}
+                    subtitle={
+                      doc.subject?.name
+                        ? `Môn học: ${doc.subject.name}`
+                        : doc.author?.name
+                          ? `Tác giả: ${doc.author.name}`
+                          : "Tài liệu học tập mới"
+                    }
+                    coverImage={undefined}
+                    pageCount={doc.pageCount ?? undefined}
+                    updatedAt={doc.updatedAt}
+                    subject={doc.subject?.name}
+                  />
+                ))}
+          </DocumentCarousel>
+        </section>
 
-              <Link href="/library" className={linkClass}>
-                Xem thêm
+        {/* ================= SECTION 2: TWO-COLUMN LAYOUT ================= */}
+        <section className="mb-16">
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-[2.2fr_1fr]">
+            {/* LEFT: EXPLORE BY SUBJECT */}
+            <div>
+              <div className="mb-8 flex items-end justify-between">
+                <div>
+                  <h2 className="text-[28px] font-bold tracking-tight text-on-surface">
+                    Khám phá theo môn học
+                  </h2>
+                  <p className="mt-1.5 text-sm font-medium text-on-surface-variant/70">
+                    Chọn môn học bạn quan tâm để tìm tài liệu phù hợp
+                  </p>
+                </div>
+
+                <Link
+                  href="/library"
+                  className={`hidden sm:inline-flex ${linkClass}`}
+                >
+                  Xem tất cả
+                  <span className="material-symbols-outlined text-base">
+                    arrow_forward
+                  </span>
+                </Link>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
+                {loading || subjects.length === 0
+                  ? Array.from({ length: 6 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="h-[104px] animate-pulse rounded-2xl border border-outline-variant bg-surface-container-low"
+                      />
+                    ))
+                  : subjects.map((subject, i) => (
+                      <Link
+                        key={subject.id}
+                        href={`/library?subjectId=${subject.id}`}
+                        className="group relative overflow-hidden rounded-2xl border border-outline-variant bg-surface-container-low p-5 transition-all duration-300 hover:border-outline hover:bg-surface-container-high hover:shadow-md"
+                      >
+                        <div
+                          className={`absolute inset-0 bg-gradient-to-br ${getSubjectGradient(i)} opacity-0 transition-opacity duration-300 group-hover:opacity-100`}
+                        />
+
+                        <div className="relative">
+                          <span
+                            className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl ${getSubjectIconBg(i)} transition-transform duration-300 group-hover:scale-110`}
+                          >
+                            <span className="material-symbols-outlined text-xl">
+                              {getSubjectIcon(subject.name)}
+                            </span>
+                          </span>
+
+                          <h3 className="text-sm font-semibold leading-tight text-on-surface line-clamp-1">
+                            {subject.name}
+                          </h3>
+                          {subject.code ? (
+                            <p className="mt-1 text-xs font-medium text-on-surface-variant/60 line-clamp-1">
+                              {subject.code}
+                            </p>
+                          ) : null}
+                        </div>
+                      </Link>
+                    ))}
+              </div>
+            </div>
+
+            {/* RIGHT: RECENTLY UPDATED */}
+            <div>
+              <div className="mb-8">
+                <h2 className="text-[28px] font-bold tracking-tight text-on-surface">
+                  Mới cập nhật
+                </h2>
+                <p className="mt-1.5 text-sm font-medium text-on-surface-variant/70">
+                  Tài liệu vừa được chỉnh sửa
+                </p>
+              </div>
+
+              <div className="relative space-y-3 rounded-2xl border border-outline-variant bg-surface-container-low/60 p-5">
+                {loading || recentUpdatedDocs.length === 0
+                  ? Array.from({ length: 3 }).map((_, i) => (
+                      <div key={i} className="flex gap-3 py-1">
+                        <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-surface-variant" />
+                        <div className="flex-1 space-y-2">
+                          <div className="h-4 w-3/4 animate-pulse rounded bg-surface-variant" />
+                          <div className="h-3 w-1/2 animate-pulse rounded bg-surface-variant" />
+                        </div>
+                      </div>
+                    ))
+                  : recentUpdatedDocs.map((doc, i) => (
+                      <Link
+                        key={doc.id}
+                        href={`/documents/${doc.id}`}
+                        className="group flex gap-3 rounded-xl px-2 py-2.5 -mx-2 transition-colors hover:bg-surface-container-high"
+                      >
+                        <div className="relative mt-1.5 flex h-2 w-2 shrink-0 items-center justify-center">
+                          <span
+                            className={`block h-2 w-2 rounded-full ${i === 0 ? "bg-primary" : "bg-surface-variant"}`}
+                          />
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-sm font-semibold leading-snug text-on-surface line-clamp-1">
+                            {doc.title}
+                          </h4>
+                          <div className="mt-1 flex items-center gap-2 text-xs text-on-surface-variant/60">
+                            {doc.subject?.name ? (
+                              <span>{doc.subject.name}</span>
+                            ) : null}
+                            <span>·</span>
+                            <span>{formatRelativeTime(doc.updatedAt)}</span>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+              </div>
+
+              <Link
+                href="/library"
+                className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary transition-colors hover:text-primary/80"
+              >
+                Xem tất cả tài liệu
+                <span className="material-symbols-outlined text-sm">
+                  arrow_forward
+                </span>
               </Link>
             </div>
-
-            <div className="space-y-4">
-              {recentUpdatedDocs.length === 0
-                ? Array.from({ length: 2 }).map((_, i) => (
-                    <DocumentCardSkeleton key={i} />
-                  ))
-                : recentUpdatedDocs.map((doc) => (
-                    <DocumentCard
-                      id={doc.id}
-                      key={doc.id}
-                      title={doc.title}
-                      subtitle={doc.subject?.name ?? "Tài liệu mới cập nhật"}
-                      coverImage={doc.author?.avatarUrl ?? undefined}
-                      pageCount={doc.pageCount ?? undefined}
-                      className="max-w-full"
-                    />
-                  ))}
-            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
     </div>
   );
 }

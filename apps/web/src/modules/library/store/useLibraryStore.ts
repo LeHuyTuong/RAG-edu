@@ -71,7 +71,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       });
 
       set({
-        documents: response.documents,
+        documents: response.documents.filter((doc) => doc.isPublic === true),
         pagination: response.pagination,
         isLoading: false,
       });

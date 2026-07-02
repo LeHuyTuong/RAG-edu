@@ -21,7 +21,7 @@ export const UserInfo: FC = () => {
   return (
     <Link
       href={ROUTE_PATHS.PROTECTED_ROUTES.PROFILE}
-      className="group flex items-center gap-3 rounded-2xl border border-outline-variant bg-surface-container-high/80 p-3 backdrop-blur-[15px] transition-colors hover:bg-surface-container-high"
+      className="group flex items-center gap-3 rounded-2xl border border-outline-variant bg-surface-container-low p-3 transition-colors hover:bg-surface-container-high"
     >
       <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 ring-2 ring-primary/20">
         {user?.avatar && !isDefaultAvatar(user.avatar) ? (

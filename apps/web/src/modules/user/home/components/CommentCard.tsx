@@ -2,9 +2,6 @@
 
 import type { FC } from "react";
 import { Avatar } from "@/components/ui/Avatar";
-import { Badge } from "@/components/ui/Badge";
-import { Card } from "@/components/ui/Card";
-import { IconButton } from "@/components/ui/IconButton";
 
 export interface Comment {
   readonly id: string;
@@ -33,64 +30,68 @@ export const CommentCard: FC<CommentCardProps> = ({ data, className = "" }) => {
     // TODO: Implement like functionality
     console.log("Like clicked for comment:", data.id);
   };
+
   return (
-    <Card className={`bg-white text-black p-5 ${className}`}>
+    <div
+      className={`rounded-2xl border border-outline-variant bg-surface-container-low p-5 transition-colors hover:border-outline hover:bg-surface-container ${className}`}
+    >
       <div className="flex flex-col gap-4">
-        {/* ================= SECTION 1 ================= */}
-        <div className="flex items-start justify-between">
-          {/* left */}
-          <div className="flex items-start gap-3">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3 min-w-0">
             <Avatar
               imageUrl={data.avatarUrl}
               initials={data.initials}
               size="md"
+              tone="tertiary"
+              className="shrink-0 ring-2 ring-outline-variant"
             />
 
-            <div className="flex flex-col leading-tight">
-              <span className="font-semibold text-sm">{data.username}</span>
-
-              <span className="text-xs text-gray-500">{data.title}</span>
+            <div className="min-w-0">
+              <span className="text-sm font-semibold text-on-surface">
+                {data.username}
+              </span>
+              <p className="mt-0.5 text-xs text-on-surface-variant/60 line-clamp-1">
+                {data.title}
+              </p>
             </div>
           </div>
 
-          {/* right */}
-          <Badge className="bg-blue-100 text-black" tone="neutral">
+          <span className="inline-flex shrink-0 items-center rounded-lg border border-outline-variant bg-surface-container-high px-2.5 py-1 text-[11px] font-semibold text-on-surface-variant">
             {data.subject}
-          </Badge>
+          </span>
         </div>
 
-        {/* ================= SECTION 2 ================= */}
-        <div className="text-sm leading-relaxed text-gray-800">
+        {/* Content */}
+        <p className="text-sm leading-relaxed text-on-surface-variant/80">
           {data.content}
-        </div>
+        </p>
 
-        {/* ================= SECTION 3 ================= */}
-        <div className="flex items-center gap-6">
-          {/* replies */}
-          <div className="flex items-center gap-1 text-sm text-gray-600">
-            <IconButton
-              ariaLabel="replies"
-              icon={<span className="material-symbols-outlined">chat</span>}
-              className="p-1"
-              onClick={handleReplyClick}
-            />
-
+        {/* Actions */}
+        <div className="flex items-center gap-6 border-t border-outline-variant pt-3">
+          <button
+            type="button"
+            onClick={handleReplyClick}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-on-surface-variant/50 transition-colors hover:text-on-surface-variant"
+          >
+            <span className="material-symbols-outlined text-base">
+              chat_bubble
+            </span>
             <span>{data.replies} phản hồi</span>
-          </div>
+          </button>
 
-          {/* likes */}
-          <div className="flex items-center gap-1 text-sm text-gray-600">
-            <IconButton
-              ariaLabel="likes"
-              icon={<span className="material-symbols-outlined">favorite</span>}
-              className="p-1"
-              onClick={handleLikeClick}
-            />
-
+          <button
+            type="button"
+            onClick={handleLikeClick}
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-on-surface-variant/50 transition-colors hover:text-primary"
+          >
+            <span className="material-symbols-outlined text-base">
+              favorite
+            </span>
             <span>{data.likes} lượt thích</span>
-          </div>
+          </button>
         </div>
       </div>
-    </Card>
+    </div>
   );
 };
