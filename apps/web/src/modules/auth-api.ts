@@ -100,30 +100,6 @@ export const verifyEmail = async (payload: {
   }
 };
 
-export const resendVerificationEmail = async () => {
-  try {
-    return unwrap<null>(
-      await apiClient.post(API_ENDPOINTS.AUTH.RESEND_VERIFICATION_EMAIL),
-    );
-  } catch (error) {
-    throw new Error(
-      getErrorMessage(error, "Could not resend verification email"),
-    );
-  }
-};
-
-export const forgotPassword = async (payload: { email: string }) => {
-  try {
-    return unwrap<null>(
-      await client.post("/api/v1/auth/forgot-password", payload),
-    );
-  } catch (error) {
-    throw new Error(
-      getErrorMessage(error, "Could not send password reset link"),
-    );
-  }
-};
-
 export const resetPassword = async (payload: {
   token: string;
   password: string;

@@ -28,4 +28,11 @@ public class Folder extends BaseEntity {
     @NotNull
     @Column(name = "owner_id", nullable = false)
     private Long ownerId;
+
+    @Column(name = "share_token", unique = true, length = 36)
+    private String shareToken;
+
+    @Column(name = "share_enabled", nullable = false)
+    @Builder.Default
+    private Boolean shareEnabled = false;
 }

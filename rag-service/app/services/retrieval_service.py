@@ -19,6 +19,7 @@ from qdrant_client.models import ScoredPoint
 from app.config import settings
 from app.services.embedding_service import embed_query
 from app.vectorstore.vector_repository import search
+from typing import Optional
 
 
 def retrieve(
@@ -26,8 +27,8 @@ def retrieve(
     top_k: int,
     source_ids: list[int] | None = None,
     tag_ids: list[int] | None = None,
-    folder_id: int | None = None,
-    user_id: int | None = None,
+    folder_id: Optional[int] = None,
+    user_id: Optional[int] = None,
 ) -> list[ScoredPoint]:
     query_vector = embed_query(question)
     return search(

@@ -17,11 +17,12 @@ Qdrant trả cùng 1 chunk nhiều lần khi kết hợp nhiều filter.
 from qdrant_client.models import ScoredPoint
 
 from app.schemas.chat import Citation
+from typing import Optional
 
 
 def to_citations(hits: list[ScoredPoint]) -> list[Citation]:
     citations: list[Citation] = []
-    seen: set[tuple[str | None, int | None, int | None]] = set()
+    seen: set[tuple[Optional[str], Optional[int], Optional[int]]] = set()
 
     for hit in hits:
         payload = hit.payload or {}
@@ -48,7 +49,7 @@ def to_citations(hits: list[ScoredPoint]) -> list[Citation]:
     return citations
 
 
-def _to_int(value) -> int | None:
+def _to_int(value) -> Optional[int]:
     if value is None:
         return None
     return int(value)

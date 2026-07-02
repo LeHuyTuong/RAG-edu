@@ -19,6 +19,8 @@ public interface DocumentRepository extends JpaRepository<Document, Long>, JpaSp
 
     List<Document> findByOwnerIdOrderByCreatedAtDesc(Long ownerId);
 
+    List<Document> findByStatus(DocumentStatus status);
+
     long countByStatus(DocumentStatus status);
 
     List<Document> findByStatusAndUpdatedAtBefore(DocumentStatus status, Instant cutoff);

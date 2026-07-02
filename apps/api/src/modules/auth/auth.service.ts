@@ -137,21 +137,11 @@ export class AuthService {
       password: signupDto.password,
       avatarUrl: signupDto.avatarUrl,
       role: UserRole.USER,
-      status: UserStatus.UNVERIFIED,
+      status: UserStatus.ACTIVE,
     });
 
-    const account = await this.accountService.findAccountByEmail(
-      signupDto.email,
-    );
-
-    if (!account) {
-      throw new BadRequestException('Unable to create account');
-    }
-
-    await this.issueVerificationEmail(account);
-
     return {
-      message: 'Signup successful. Please verify your email.',
+      message: 'Signup successful.',
       data: null,
     };
   }

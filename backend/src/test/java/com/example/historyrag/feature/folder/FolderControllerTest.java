@@ -49,7 +49,7 @@ class FolderControllerTest {
     @Test
     void create_validFolderName_callsService() throws Exception {
         when(folderService.create("History", 10L))
-                .thenReturn(new FolderResponse(1L, "History", 10L, 0L, Instant.now(), Instant.now()));
+                .thenReturn(new FolderResponse(1L, "History", 10L, 0L, Instant.now(), Instant.now(), null, false));
 
         mockMvc.perform(post("/api/v1/folders")
                         .contentType(MediaType.APPLICATION_JSON)

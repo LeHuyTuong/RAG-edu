@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     # embedding_dim phải khớp với collection đã tạo trong Qdrant — đổi model thì phải tạo lại collection
     embedding_dim: int = 768
 
+    # Local embedding fallback — dùng khi Gemini API hết quota hoặc lỗi
+    embedding_provider: str = "gemini"  # "gemini" | "local"
+    local_embedding_model: str = "keepitreal/vietnamese-sbert"
+
     # LLM provider — "google" (Gemma) or "cerebras" (OpenAI-compatible)
     llm_provider: str = "cerebras"
     # Google LLM (Gemma) — fallback nếu llm_provider=google

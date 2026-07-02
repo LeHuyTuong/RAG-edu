@@ -9,6 +9,8 @@ import { apiClient } from "@/lib/axios";
 import { ROUTE_PATHS } from "@/routes/router.const";
 import { API_ENDPOINTS } from "@/shared/constants";
 import { getOrCreateDeviceId } from "@/utils";
+import { useAuthStore } from "@/stores/auth/store";
+import { signin, getCurrentUser } from "@/modules/auth-api";
 
 const getSafeRedirect = (value: string | null): string | null => {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
@@ -22,11 +24,13 @@ export default function RegisterPageClient(): ReactElement {
   const router = useRouter();
   const searchParams = useSearchParams();
   const safeRedirect = getSafeRedirect(searchParams.get("redirect"));
+  const homeHref = safeRedirect ?? ROUTE_PATHS.PROTECTED_ROUTES.HOME;
   const loginHref = safeRedirect
     ? `${ROUTE_PATHS.AUTH_ROUTES.LOGIN}?redirect=${encodeURIComponent(
         safeRedirect,
       )}`
     : ROUTE_PATHS.AUTH_ROUTES.LOGIN;
+  const setAuth = useAuthStore((state) => state.setAuth);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -77,8 +81,8 @@ export default function RegisterPageClient(): ReactElement {
     if (!formData.password) {
       nextErrors.password = "Mật khẩu là bắt buộc";
       isValid = false;
-    } else if (formData.password.length < 6) {
-      nextErrors.password = "Mật khẩu phải có ít nhất 6 ký tự";
+    } else if (formData.password.length < 8) {
+      nextErrors.password = "Mật khẩu phải có ít nhất 8 ký tự";
       isValid = false;
     }
 
@@ -108,6 +112,7 @@ export default function RegisterPageClient(): ReactElement {
       const name = formData.name.trim();
       const email = formData.email.trim();
 
+      // Đăng ký tài khoản
       await apiClient.post(API_ENDPOINTS.AUTH.REGISTER, {
         name,
         email,
@@ -115,7 +120,20 @@ export default function RegisterPageClient(): ReactElement {
         deviceId,
       });
 
-      router.replace(loginHref);
+      // Tự động đăng nhập sau khi đăng ký thành công
+      const result = await signin({
+        email,
+        password: formData.password,
+        deviceId,
+      });
+      if (result?.data?.accessToken) {
+        const user = await getCurrentUser();
+        setAuth(result.data.accessToken, user.role, user);
+        router.replace(homeHref);
+      } else {
+        // Fallback: redirect sang login nếu auto-login không được
+        router.replace(loginHref);
+      }
     } catch (error) {
       const axiosError = error as {
         response?: { data?: { message?: string } };

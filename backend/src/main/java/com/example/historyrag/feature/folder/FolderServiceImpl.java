@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -73,5 +74,46 @@ public class FolderServiceImpl implements FolderService {
     @Transactional(readOnly = true)
     public boolean existsByIdAndOwner(Long id, Long ownerId) {
         return folderRepository.existsByIdAndOwnerId(id, ownerId);
+    }
+
+    @Override
+    @Transactional
+    public String enableShare(Long id, Long ownerId) {
+        Folder folder = folderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Folder", "id", id));
+
+        if (!folder.getOwnerId().equals(ownerId)) {
+            throw new ResourceNotFoundException("Folder", "id", id);
+        }
+
+        if (folder.getShareToken() == null) {
+            folder.setShareToken(UUID.randomUUID().toString());
+        }
+        folder.setShareEnabled(true);
+        folderRepository.save(folder);
+        return folder.getShareToken();
+    }
+
+    @Override
+    @Transactional
+    public void disableShare(Long id, Long ownerId) {
+        Folder folder = folderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Folder", "id", id));
+
+        if (!folder.getOwnerId().equals(ownerId)) {
+            throw new ResourceNotFoundException("Folder", "id", id);
+        }
+
+        folder.setShareEnabled(false);
+        folderRepository.save(folder);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public FolderResponse getByShareToken(String token) {
+        Folder folder = folderRepository.findByShareTokenAndShareEnabledTrue(token)
+                .orElseThrow(() -> new ResourceNotFoundException("Folder", "shareToken", token));
+        long docCount = documentService.countActiveByFolderId(folder.getId());
+        return FolderResponse.fromEntity(folder, docCount);
     }
 }

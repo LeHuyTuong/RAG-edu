@@ -126,7 +126,7 @@ public class AccountServiceImpl implements AccountService {
 
     @Override
     @Transactional
-    public void toggleBan(Long id) {
+    public AccountResponse toggleBan(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Account", "id", id));
 
@@ -137,7 +137,8 @@ public class AccountServiceImpl implements AccountService {
             user.setStatus(User.UserStatus.LOCKED);
             log.info("Account banned by admin: id={}", id);
         }
-        userRepository.save(user);
+        User saved = userRepository.save(user);
+        return AccountResponse.fromUser(saved);
     }
 
     @Override

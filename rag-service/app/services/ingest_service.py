@@ -29,6 +29,7 @@ from app.services.embedding_service import embed_documents
 from app.services.extract_service import extract
 from app.vectorstore.qdrant_client import ensure_collection
 from app.vectorstore.vector_repository import delete_by_source_id, point_id, upsert
+from typing import Optional
 
 
 def ingest(req: RagIngestRequest) -> RagIngestResponse:
@@ -86,7 +87,7 @@ def ingest(req: RagIngestRequest) -> RagIngestResponse:
 def _build_payload(
     req: RagIngestRequest,
     chunk_index: int,
-    page_number: int | None,
+    page_number: Optional[int],
     text: str,
     created_at: str,
 ) -> dict:

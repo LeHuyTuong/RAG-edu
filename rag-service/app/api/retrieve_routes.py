@@ -8,6 +8,7 @@ và score retrieval có đủ cao chưa.
 from fastapi import APIRouter, HTTPException
 
 from app.schemas.retrieve import RagRetrieveRequest, RagRetrieveResponse, RetrievalHit
+from typing import Optional
 
 router = APIRouter()
 
@@ -53,7 +54,7 @@ def _to_hit(hit) -> RetrievalHit:
     )
 
 
-def _to_int(value) -> int | None:
+def _to_int(value) -> Optional[int]:
     if value is None:
         return None
     return int(value)

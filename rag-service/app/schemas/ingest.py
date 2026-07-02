@@ -13,12 +13,13 @@ Vai trò: định nghĩa "hợp đồng" API cho /rag/ingest. Bám sát docs/12 
   IngestedChunk    — thông tin 1 chunk: index, UUID trong Qdrant, hash để detect thay đổi
 """
 from pydantic import BaseModel
+from typing import Optional
 
 
 class IngestSettings(BaseModel):
     """Override chunk params per-request. None = dùng giá trị mặc định từ config.py."""
-    chunkSize: int | None = None
-    chunkOverlap: int | None = None
+    chunkSize: Optional[int] = None
+    chunkOverlap: Optional[int] = None
 
 
 class IngestMetadata(BaseModel):
@@ -26,26 +27,26 @@ class IngestMetadata(BaseModel):
     Metadata Spring Boot denormalize từ MySQL rồi nhét vào đây.
     Sẽ được ép phẳng vào payload Qdrant để filter lúc query mà không cần JOIN MySQL.
     """
-    categoryId: int | None = None
-    categoryName: str | None = None
-    slug: str | None = None  # chỉ article mới có slug
+    categoryId: Optional[int] = None
+    categoryName: Optional[str] = None
+    slug: Optional[str] = None  # chỉ article mới có slug
     tagIds: list[int] = []
     eventIds: list[int] = []
     periodIds: list[int] = []
-    folderId: int | None = None
-    userId: int | None = None
+    folderId: Optional[int] = None
+    userId: Optional[int] = None
 
 
 class RagIngestRequest(BaseModel):
     sourceId: int
     sourceType: str  # "DOCUMENT" | "ARTICLE" | "URL" | "MANUAL_INPUT"
     title: str
-    articleId: int | None = None
-    documentId: int | None = None
+    articleId: Optional[int] = None
+    documentId: Optional[int] = None
     # Một trong 3 field dưới phải có giá trị: filePath, sourceUrl, hoặc rawContent
-    filePath: str | None = None
-    sourceUrl: str | None = None
-    rawContent: str | None = None
+    filePath: Optional[str] = None
+    sourceUrl: Optional[str] = None
+    rawContent: Optional[str] = None
     metadata: IngestMetadata = IngestMetadata()
     settings: IngestSettings = IngestSettings()
 

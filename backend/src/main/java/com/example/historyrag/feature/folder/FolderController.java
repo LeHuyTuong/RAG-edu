@@ -87,4 +87,52 @@ public class FolderController {
         RagChatResponse response = ragService.chat(ragRequest, null);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
+
+    @PostMapping("/{id}/share")
+    public ResponseEntity<ApiResponse<String>> enableShare(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Jwt jwt) {
+        Long ownerId = JwtUtils.getUserId(jwt);
+        String token = folderService.enableShare(id, ownerId);
+        String shareUrl = "/share/notebook/" + token;
+        return ResponseEntity.ok(ApiResponse.success("Đã tạo link chia sẻ", shareUrl));
+    }
+
+    @DeleteMapping("/{id}/share")
+    public ResponseEntity<ApiResponse<Void>> disableShare(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Jwt jwt) {
+        Long ownerId = JwtUtils.getUserId(jwt);
+        folderService.disableShare(id, ownerId);
+        return ResponseEntity.ok(ApiResponse.success("Đã tắt chia sẻ", null));
+    }
+
+    // --- Public shared folder endpoints (no JWT required, whitelisted in SecurityConfig) ---
+
+    @GetMapping("/shared/{token}")
+    public ResponseEntity<ApiResponse<FolderResponse>> getSharedFolder(
+            @PathVariable String token) {
+        FolderResponse response = folderService.getByShareToken(token);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PostMapping("/shared/{token}/chat")
+    public ResponseEntity<ApiResponse<RagChatResponse>> sharedChat(
+            @PathVariable String token,
+            @Valid @RequestBody FolderChatRequest request) {
+        // Look up folder by share token (no JWT)
+        FolderResponse folder = folderService.getByShareToken(token);
+        RagChatRequest ragRequest = new RagChatRequest(
+                request.question(),
+                request.topK(),
+                false,
+                java.util.List.of(),
+                java.util.List.of(),
+                request.temperature(),
+                folder.id(),
+                null  // No userId for shared/public chat
+        );
+        RagChatResponse response = ragService.chat(ragRequest, null);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
 }

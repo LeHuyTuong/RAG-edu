@@ -14,6 +14,9 @@ import com.example.historyrag.feature.user.UserService;
 import com.example.historyrag.feature.user.dto.AccountResponse;
 import com.example.historyrag.infrastructure.file.FileStorageService;
 import com.example.historyrag.infrastructure.webclient.RagClientService;
+import com.example.historyrag.infrastructure.webclient.dto.RagIngestMetadata;
+import com.example.historyrag.infrastructure.webclient.dto.RagIngestRequest;
+import com.example.historyrag.infrastructure.webclient.dto.RagIngestResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -145,10 +148,22 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     @Transactional(readOnly = true)
-    public ResultPaginationDTO filter(String search, Long folderId, DocumentStatus status,
+    public List<DocumentResponse> getPendingReviews() {
+        return documentRepository.findByStatus(DocumentStatus.PENDING_REVIEW).stream()
+                .map(doc -> {
+                    AccountResponse author = userService.findById(doc.getOwnerId()).orElse(null);
+                    SubjectDto subject = buildSubjectDto(doc.getSubjectId());
+                    return DocumentResponse.fromEntity(doc, toUserEntity(author), subject);
+                })
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ResultPaginationDTO filter(String search, Long folderId, Long subjectId, DocumentStatus status,
                                        Long ownerId, Boolean onlyMine, Pageable pageable) {
         PredicateSpecification<Document> spec = DocumentSpecification.build(
-                search, folderId, status, Boolean.TRUE.equals(onlyMine) ? ownerId : null);
+                search, folderId, subjectId, status, Boolean.TRUE.equals(onlyMine) ? ownerId : null);
 
         Page<DocumentResponse> pageResult = documentRepository.findBy(spec, q -> q.page(pageable))
                 .map(doc -> {
@@ -254,28 +269,98 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     @Transactional
-    public void approve(Long id, Long userId) {
+    public DocumentResponse approve(Long id, Long userId) {
         Document doc = documentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
-        doc.setStatus(DocumentStatus.READY);
-        doc.setIsPublic(true);
-        doc.setReviewedById(userId);
-        doc.setReviewedAt(Instant.now());
-        documentRepository.save(doc);
-        log.info("Document {} approved by userId={}", id, userId);
+
+        // Nếu đang ở PENDING_REVIEW → cần index trước rồi mới READY
+        if (doc.getStatus() == DocumentStatus.PENDING_REVIEW) {
+            triggerIngest(id, userId);
+        } else {
+            doc.setStatus(DocumentStatus.READY);
+            doc.setIsPublic(true);
+            doc.setReviewedById(userId);
+            doc.setReviewedAt(Instant.now());
+            documentRepository.save(doc);
+            log.info("Document {} approved by userId={}", id, userId);
+        }
+
+        Document updated = documentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
+        AccountResponse author = userService.findById(updated.getOwnerId()).orElse(null);
+        SubjectDto subject = buildSubjectDto(updated.getSubjectId());
+        return DocumentResponse.fromEntity(updated, toUserEntity(author), subject);
     }
 
     @Override
     @Transactional
-    public void reject(Long id, String reason, Long userId) {
+    public void triggerIngest(Long id, Long userId) {
+        Document doc = documentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
+
+        doc.setStatus(DocumentStatus.INDEXING);
+        doc.setReviewedById(userId);
+        doc.setReviewedAt(Instant.now());
+        documentRepository.save(doc);
+        log.info("Document {} triggerIngest by admin userId={}", id, userId);
+
+        // Gọi rag-service để ingest
+        RagIngestMetadata metadata = new RagIngestMetadata(
+                null, null, null, java.util.List.of(),
+                java.util.List.of(), java.util.List.of(),
+                doc.getFolderId(), doc.getOwnerId()
+        );
+
+        RagIngestRequest ingestRequest = new RagIngestRequest(
+                id,
+                "DOCUMENT",
+                doc.getTitle(),
+                null,
+                id,
+                null,
+                doc.getFileUrl(),
+                null,
+                metadata,
+                null
+        );
+
+        try {
+            RagIngestResponse response = ragClientService.ingest(ingestRequest, null);
+
+            if ("COMPLETED".equals(response.status())) {
+                doc.setStatus(DocumentStatus.READY);
+                doc.setIsPublic(true);
+                doc.setChunkCount(response.chunks() != null ? response.chunks().size() : 0);
+                documentRepository.save(doc);
+                log.info("Document {} ingestion COMPLETED after admin approval, chunks={}",
+                        id, doc.getChunkCount());
+            } else {
+                doc.setStatus(DocumentStatus.FAILED);
+                documentRepository.save(doc);
+                log.warn("Document {} ingestion FAILED after admin approval: {}", id, response.status());
+            }
+        } catch (Exception e) {
+            log.error("Document {} ingestion error during admin approval: {}", id, e.getMessage(), e);
+            doc.setStatus(DocumentStatus.FAILED);
+            documentRepository.save(doc);
+        }
+    }
+
+    @Override
+    @Transactional
+    public DocumentResponse reject(Long id, String reason, Long userId) {
         Document doc = documentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
         doc.setStatus(DocumentStatus.REJECTED);
         doc.setReviewReason(reason);
         doc.setReviewedById(userId);
         doc.setReviewedAt(Instant.now());
-        documentRepository.save(doc);
+        Document saved = documentRepository.save(doc);
         log.info("Document {} rejected by userId={}, reason={}", id, userId, reason);
+
+        AccountResponse author = userService.findById(saved.getOwnerId()).orElse(null);
+        SubjectDto subject = buildSubjectDto(saved.getSubjectId());
+        return DocumentResponse.fromEntity(saved, toUserEntity(author), subject);
     }
 
     @Override

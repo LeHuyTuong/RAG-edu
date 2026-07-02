@@ -24,7 +24,7 @@ export interface ShareLinkResponse {
 
 /**
  * Fetch a paginated list of public documents.
- * Supports optional subjectId / authorId / page / limit filters.
+ * Supports optional subjectId / page / limit filters.
  * The axios interceptor unwraps the response so the return value is
  * { documents, pagination } directly.
  */
@@ -38,7 +38,6 @@ export const fetchDocuments = async (
       page: params.page ?? 1,
       limit: params.limit ?? 12,
       ...(params.subjectId ? { subjectId: params.subjectId } : {}),
-      ...(params.authorId ? { authorId: params.authorId } : {}),
       ...(params.status ? { status: params.status } : {}),
     },
   });

@@ -13,30 +13,31 @@ Response phải luôn kèm citations — chatbot lịch sử không được tr�
 mà không có nguồn để user kiểm chứng (docs/14).
 """
 from pydantic import BaseModel
+from typing import Optional
 
 
 class Citation(BaseModel):
     sourceType: str  # "DOCUMENT" | "ARTICLE" | "URL" | "MANUAL_INPUT"
-    sourceId: int | None = None
-    articleId: int | None = None
-    documentId: int | None = None
-    title: str | None = None
-    slug: str | None = None
-    pageNumber: int | None = None
-    chunkIndex: int | None = None
-    score: float | None = None  # cosine similarity score từ Qdrant
-    snippet: str | None = None  # ~300 ký tự đầu chunkText
+    sourceId: Optional[int] = None
+    articleId: Optional[int] = None
+    documentId: Optional[int] = None
+    title: Optional[str] = None
+    slug: Optional[str] = None
+    pageNumber: Optional[int] = None
+    chunkIndex: Optional[int] = None
+    score: Optional[float] = None  # cosine similarity score từ Qdrant
+    snippet: Optional[str] = None  # ~300 ký tự đầu chunkText
 
 
 class RagChatRequest(BaseModel):
     question: str
-    topK: int | None = None  # None = dùng default_top_k từ config
+    topK: Optional[int] = None  # None = dùng default_top_k từ config
     useGraph: bool = False    # luôn False trong MVP; chừa chỗ cho Neo4j sau
     sourceIds: list[int] = []  # filter: chỉ search trong các source này
     tagIds: list[int] = []     # filter: chỉ search chunk có gắn tag này
     temperature: float = 0.2
-    folderId: int | None = None
-    userId: int | None = None
+    folderId: Optional[int] = None
+    userId: Optional[int] = None
 
 
 class RagChatResponse(BaseModel):

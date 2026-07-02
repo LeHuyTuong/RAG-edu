@@ -46,6 +46,7 @@ public class DocumentController {
     public ResponseEntity<ApiResponse<DocumentPageResponse>> filter(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Long folderId,
+            @RequestParam(required = false) Long subjectId,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "false") boolean onlyMine,
             @RequestParam(defaultValue = "1") int page,
@@ -54,7 +55,7 @@ public class DocumentController {
         Long ownerId = JwtUtils.getUserId(jwt);
         DocumentStatus mappedStatus = mapStatusFilter(status);
         ResultPaginationDTO result = documentService.filter(
-                search, folderId, mappedStatus, ownerId, onlyMine,
+                search, folderId, subjectId, mappedStatus, ownerId, onlyMine,
                 org.springframework.data.domain.PageRequest.of(page - 1, limit));
         @SuppressWarnings("unchecked")
         java.util.List<DocumentResponse> docs = (java.util.List<DocumentResponse>) result.result();
@@ -74,12 +75,13 @@ public class DocumentController {
     public ResponseEntity<ApiResponse<DocumentPageResponse>> getMyDocuments(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(name = "limit", defaultValue = "10") int limit,
+            @RequestParam(required = false) Long subjectId,
             @RequestParam(required = false) String status,
             @AuthenticationPrincipal Jwt jwt) {
         Long ownerId = JwtUtils.getUserId(jwt);
         DocumentStatus mappedStatus = mapStatusFilter(status);
         ResultPaginationDTO result = documentService.filter(
-                null, null, mappedStatus, ownerId, true,
+                null, null, subjectId, mappedStatus, ownerId, true,
                 org.springframework.data.domain.PageRequest.of(page - 1, limit));
         @SuppressWarnings("unchecked")
         java.util.List<DocumentResponse> docs = (java.util.List<DocumentResponse>) result.result();
@@ -128,7 +130,8 @@ public class DocumentController {
             case "ACTIVE" -> DocumentStatus.READY;
             case "REJECTED" -> DocumentStatus.REJECTED;
             case "DELETED" -> DocumentStatus.SOFT_DELETED;
-            default -> null; // PENDING covers all processing states
+            case "PENDING_REVIEW" -> DocumentStatus.PENDING_REVIEW;
+            default -> null; // PENDING covers all other processing states
         };
     }
 
@@ -188,22 +191,29 @@ public class DocumentController {
 
     @PostMapping("/{id}/approve")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> approve(
+    public ResponseEntity<ApiResponse<DocumentResponse>> approve(
             @PathVariable Long id,
             @AuthenticationPrincipal Jwt jwt) {
         Long userId = JwtUtils.getUserId(jwt);
-        documentService.approve(id, userId);
-        return ResponseEntity.ok(ApiResponse.success("Duyệt tài liệu thành công", null));
+        DocumentResponse response = documentService.approve(id, userId);
+        return ResponseEntity.ok(ApiResponse.success("Duyệt tài liệu thành công", response));
+    }
+
+    @GetMapping("/pending")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<DocumentResponse>>> getPendingReviews() {
+        List<DocumentResponse> result = documentService.getPendingReviews();
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> reject(
+    public ResponseEntity<ApiResponse<DocumentResponse>> reject(
             @PathVariable Long id,
             @Valid @RequestBody com.example.historyrag.feature.document.dto.RejectDocumentRequest request,
             @AuthenticationPrincipal Jwt jwt) {
         Long userId = JwtUtils.getUserId(jwt);
-        documentService.reject(id, request.rejectionReason(), userId);
-        return ResponseEntity.ok(ApiResponse.success("Từ chối tài liệu thành công", null));
+        DocumentResponse response = documentService.reject(id, request.rejectionReason(), userId);
+        return ResponseEntity.ok(ApiResponse.success("Từ chối tài liệu thành công", response));
     }
 }

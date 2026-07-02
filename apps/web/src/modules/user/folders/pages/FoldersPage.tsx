@@ -14,6 +14,7 @@ import {
   deleteFolder,
   type FolderResponse,
 } from "@/apis/folder.api";
+import { getErrorMessage } from "@/utils/error";
 
 export default function FoldersPage(): React.JSX.Element {
   const [folders, setFolders] = useState<FolderResponse[]>([]);
@@ -32,8 +33,8 @@ export default function FoldersPage(): React.JSX.Element {
     try {
       const data = await listFolders();
       setFolders(data);
-    } catch {
-      toast.error("Không thể tải danh sách thư mục");
+    } catch (error) {
+      toast.error(getErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -51,8 +52,8 @@ export default function FoldersPage(): React.JSX.Element {
       setCreateOpen(false);
       setNewName("");
       loadFolders();
-    } catch {
-      toast.error("Không thể tạo thư mục");
+    } catch (error) {
+      toast.error(getErrorMessage(error));
     }
   };
 
@@ -66,8 +67,8 @@ export default function FoldersPage(): React.JSX.Element {
       setRenameTarget(null);
       setRenameName("");
       loadFolders();
-    } catch {
-      toast.error("Không thể đổi tên thư mục");
+    } catch (error) {
+      toast.error(getErrorMessage(error));
     }
   };
 
@@ -78,8 +79,8 @@ export default function FoldersPage(): React.JSX.Element {
       toast.success("Đã xóa thư mục");
       setDeleteTarget(null);
       loadFolders();
-    } catch {
-      toast.error("Không thể xóa thư mục");
+    } catch (error) {
+      toast.error(getErrorMessage(error));
     }
   };
 
