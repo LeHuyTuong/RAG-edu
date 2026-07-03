@@ -105,6 +105,20 @@ def test_chat_returns_no_data_when_llm_fails(monkeypatch):
     }
 
 
+def test_chat_suppresses_citations_when_llm_returns_no_data(monkeypatch):
+    monkeypatch.setattr(question_router_service, "route", lambda question, use_graph: {"use_vector": True, "use_graph": False})
+    monkeypatch.setattr(retrieval_service, "retrieve", lambda **kwargs: [_hit()])
+    monkeypatch.setattr(llm_service, "generate", lambda system, user, temperature: chat_routes._NO_DATA_MSG)
+
+    response = client.post("/rag/chat", json={"question": "Dang doi bung qua ne"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["answer"] == chat_routes._NO_DATA_MSG
+    assert body["citations"] == []
+    assert body["usedVector"] is True
+
+
 def test_chat_stream_success_emits_delta_citations_and_completed(monkeypatch):
     monkeypatch.setattr(question_router_service, "route", lambda question, use_graph: {"use_vector": True, "use_graph": False})
     monkeypatch.setattr(retrieval_service, "retrieve", lambda **kwargs: [_hit()])
@@ -132,6 +146,21 @@ def test_chat_stream_no_hits_emits_no_data_answer(monkeypatch):
     assert response.status_code == 200
     assert chat_routes._NO_DATA_MSG[:30] in body
     assert "event: chat.citations" in body
+    assert 'event: chat.completed\ndata: {"usedVector": true, "usedGraph": false}' in body
+
+
+def test_chat_stream_suppresses_citations_when_llm_returns_no_data(monkeypatch):
+    monkeypatch.setattr(question_router_service, "route", lambda question, use_graph: {"use_vector": True, "use_graph": False})
+    monkeypatch.setattr(retrieval_service, "retrieve", lambda **kwargs: [_hit()])
+    monkeypatch.setattr(llm_service, "generate_stream", lambda system, user, temperature: iter([chat_routes._NO_DATA_MSG]))
+
+    with client.stream("POST", "/rag/chat/stream", json={"question": "Dang doi bung qua ne"}) as response:
+        body = "".join(response.iter_text())
+
+    assert response.status_code == 200
+    assert chat_routes._NO_DATA_MSG in body
+    assert 'event: chat.citations\ndata: {"citations": []}' in body
+    assert '"pageNumber": 105' not in body
     assert 'event: chat.completed\ndata: {"usedVector": true, "usedGraph": false}' in body
 
 

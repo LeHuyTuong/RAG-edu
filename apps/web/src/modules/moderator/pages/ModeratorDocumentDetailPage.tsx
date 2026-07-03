@@ -61,6 +61,59 @@ function formatBytes(bytes: number): string {
   return `${size.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
 }
 
+function ModeratorDetailPageSkeleton(): React.JSX.Element {
+  return (
+    <div className="animate-pulse space-y-6">
+      {/* Breadcrumbs Skeleton */}
+      <div className="flex items-center gap-2">
+        <div className="h-4 w-16 rounded bg-surface-variant/40" />
+        <div className="h-4 w-4 rounded bg-surface-variant/40" />
+        <div className="h-4 w-20 rounded bg-surface-variant/40" />
+        <div className="h-4 w-4 rounded bg-surface-variant/40" />
+        <div className="h-4 w-24 rounded bg-surface-variant/30" />
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12 xl:items-start">
+        {/* Document Preview Card Skeleton */}
+        <div className="space-y-6 xl:col-span-8">
+          <div className="rounded-xl border border-outline-variant/60 bg-surface/50">
+            <div className="flex items-center justify-between border-b border-outline-variant px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="h-6 w-6 rounded bg-surface-variant/40" />
+                <div className="h-5 w-48 rounded bg-surface-variant/40" />
+              </div>
+              <div className="h-8 w-24 rounded-lg bg-surface-variant/40" />
+            </div>
+            <div className="h-[500px] bg-surface-container/30 p-4" />
+          </div>
+        </div>
+
+        {/* Sidebar Info Card Skeleton */}
+        <aside className="space-y-6 xl:col-span-4">
+          <div className="rounded-xl border border-outline-variant/60 bg-surface/50 p-6 space-y-6">
+            <div className="flex items-center gap-2">
+              <div className="h-6 w-6 rounded bg-surface-variant/40" />
+              <div className="h-6 w-36 rounded bg-surface-variant/40" />
+            </div>
+            <div className="space-y-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <div className="h-3.5 w-20 rounded bg-surface-variant/40" />
+                  <div className="h-5 w-full rounded bg-surface-variant/30" />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-xl border border-outline-variant/60 bg-surface/50 p-6 flex justify-between gap-4">
+            <div className="h-10 w-28 rounded-lg bg-surface-variant/40" />
+            <div className="h-10 w-28 rounded-lg bg-surface-variant/40" />
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
 export default function ModeratorDocumentDetailPage({
   documentId,
 }: {
@@ -137,11 +190,7 @@ export default function ModeratorDocumentDetailPage({
   };
 
   if (isLoading) {
-    return (
-      <div className="px-6 py-12 text-center font-label-md text-label-md text-on-surface-variant">
-        Đang tải chi tiết tài liệu...
-      </div>
-    );
+    return <ModeratorDetailPageSkeleton />;
   }
 
   if (error || !document) {

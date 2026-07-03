@@ -10,8 +10,6 @@ import { Card } from "@/components/ui/Card";
 import {
   createFolder,
   listFolders,
-  renameFolder,
-  deleteFolder,
   type FolderResponse,
 } from "@/apis/folder.api";
 import { getErrorMessage } from "@/utils/error";
@@ -22,11 +20,6 @@ export default function FoldersPage(): React.JSX.Element {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [newName, setNewName] = useState("");
-
-  const [renameTarget, setRenameTarget] = useState<FolderResponse | null>(null);
-  const [renameName, setRenameName] = useState("");
-
-  const [deleteTarget, setDeleteTarget] = useState<FolderResponse | null>(null);
 
   const loadFolders = useCallback(async () => {
     setLoading(true);
@@ -51,33 +44,6 @@ export default function FoldersPage(): React.JSX.Element {
       toast.success("Đã tạo thư mục");
       setCreateOpen(false);
       setNewName("");
-      loadFolders();
-    } catch (error) {
-      toast.error(getErrorMessage(error));
-    }
-  };
-
-  const handleRename = async () => {
-    if (!renameTarget || !renameName.trim()) return;
-    try {
-      await renameFolder(String(renameTarget.id), {
-        folderName: renameName.trim(),
-      });
-      toast.success("Đã đổi tên thư mục");
-      setRenameTarget(null);
-      setRenameName("");
-      loadFolders();
-    } catch (error) {
-      toast.error(getErrorMessage(error));
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-    try {
-      await deleteFolder(String(deleteTarget.id));
-      toast.success("Đã xóa thư mục");
-      setDeleteTarget(null);
       loadFolders();
     } catch (error) {
       toast.error(getErrorMessage(error));
@@ -123,16 +89,17 @@ export default function FoldersPage(): React.JSX.Element {
             <Link
               key={folder.id}
               href={`/folders/${folder.id}`}
-              className="block"
+              aria-label={`Mở thư mục ${folder.folderName}`}
+              className="group block cursor-pointer rounded-2xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
-              <Card className="p-4 hover:bg-surface-hover transition-colors">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-3xl text-primary">
+              <Card className="p-4 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-primary/60 group-hover:bg-primary-fixed/40 group-hover:shadow-lg group-hover:shadow-primary/10">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="material-symbols-outlined text-3xl text-primary transition-transform duration-200 group-hover:scale-110">
                       folder
                     </span>
-                    <div>
-                      <h3 className="font-semibold text-on-surface">
+                    <div className="min-w-0">
+                      <h3 className="truncate font-semibold text-on-surface">
                         {folder.folderName}
                       </h3>
                       <p className="text-sm text-on-surface-variant">
@@ -140,32 +107,9 @@ export default function FoldersPage(): React.JSX.Element {
                       </p>
                     </div>
                   </div>
-                  <div
-                    className="flex gap-1"
-                    onClick={(e) => e.preventDefault()}
-                  >
-                    <button
-                      type="button"
-                      className="p-1.5 rounded-lg hover:bg-surface-variant text-on-surface-variant"
-                      onClick={() => {
-                        setRenameTarget(folder);
-                        setRenameName(folder.folderName);
-                      }}
-                    >
-                      <span className="material-symbols-outlined text-[18px]">
-                        edit
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      className="p-1.5 rounded-lg hover:bg-surface-variant text-error"
-                      onClick={() => setDeleteTarget(folder)}
-                    >
-                      <span className="material-symbols-outlined text-[18px]">
-                        delete
-                      </span>
-                    </button>
-                  </div>
+                  <span className="material-symbols-outlined text-on-surface-variant transition-transform duration-200 group-hover:translate-x-1 group-hover:text-primary">
+                    arrow_forward
+                  </span>
                 </div>
               </Card>
             </Link>
@@ -196,41 +140,6 @@ export default function FoldersPage(): React.JSX.Element {
           />
         </div>
       </Modal>
-
-      {/* Rename modal */}
-      <Modal
-        open={renameTarget !== null}
-        title="Đổi tên thư mục"
-        description="Nhập tên mới cho thư mục"
-        confirmLabel="Lưu"
-        cancelLabel="Hủy"
-        onCancel={() => {
-          setRenameTarget(null);
-          setRenameName("");
-        }}
-        onConfirm={handleRename}
-      >
-        <div className="mb-4">
-          <InputField
-            label="Tên thư mục"
-            placeholder="Tên mới"
-            value={renameName}
-            onChange={(e) => setRenameName(e.target.value)}
-            autoFocus
-          />
-        </div>
-      </Modal>
-
-      {/* Delete confirmation */}
-      <Modal
-        open={deleteTarget !== null}
-        title="Xóa thư mục"
-        description={`Bạn có chắc muốn xóa thư mục "${deleteTarget?.folderName}"? Tài liệu trong thư mục sẽ không bị xóa.`}
-        confirmLabel="Xóa"
-        cancelLabel="Hủy"
-        onCancel={() => setDeleteTarget(null)}
-        onConfirm={handleDelete}
-      />
     </div>
   );
 }

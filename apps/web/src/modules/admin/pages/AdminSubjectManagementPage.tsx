@@ -3,6 +3,7 @@
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { AppDialog } from "@/components/ui/AppDialog";
 import { InputField } from "@/components/ui/InputField";
 import { Pagination } from "@/components/ui/Pagination";
 import { SearchInput } from "@/components/ui/SearchInput";
@@ -237,6 +238,31 @@ export default function AdminSubjectManagementPage(): React.JSX.Element {
     }
   };
 
+  const skeletonRows: TableRow[] = useMemo(() => {
+    return Array.from({ length: 6 }).map((_, i) => ({
+      id: `skeleton-${i}`,
+      cells: [
+        <div
+          key="code"
+          className="h-5 w-24 animate-pulse rounded bg-surface-variant/40"
+        />,
+        <div
+          key="name"
+          className="h-5 w-48 animate-pulse rounded bg-surface-variant/40"
+        />,
+        <div
+          key="createdAt"
+          className="h-5 w-32 animate-pulse rounded bg-surface-variant/40"
+        />,
+        <div key="actions" className="flex justify-center gap-1.5 py-1">
+          <div className="h-7 w-7 animate-pulse rounded-lg bg-surface-variant/40" />
+          <div className="h-7 w-7 animate-pulse rounded-lg bg-surface-variant/40" />
+          <div className="h-7 w-7 animate-pulse rounded-lg bg-surface-variant/40" />
+        </div>,
+      ],
+    }));
+  }, []);
+
   const rows: TableRow[] = subjects.map((subject) => {
     return {
       id: subject.id,
@@ -264,18 +290,6 @@ export default function AdminSubjectManagementPage(): React.JSX.Element {
             icon="visibility"
             label={`Xem ${subject.name}`}
             onClick={() => void handleOpenDetail(subject)}
-          />
-          <AdminIconAction
-            icon="edit"
-            label={`Sửa ${subject.name}`}
-            onClick={() => handleOpenEdit(subject)}
-            tone="primary"
-          />
-          <AdminIconAction
-            icon="delete"
-            label={`Xóa ${subject.name}`}
-            onClick={() => setDeleteSubject(subject)}
-            tone="error"
           />
         </div>,
       ],
@@ -357,10 +371,9 @@ export default function AdminSubjectManagementPage(): React.JSX.Element {
             Trang {currentPage}/{totalPages}
           </Badge>
         </div>
+
         {isLoading ? (
-          <div className="p-6 font-body-md text-body-md text-on-surface-variant">
-            Đang tải danh sách môn học...
-          </div>
+          <Table columns={subjectColumns} rows={skeletonRows} />
         ) : rows.length > 0 ? (
           <Table columns={subjectColumns} rows={rows} />
         ) : (
@@ -368,6 +381,7 @@ export default function AdminSubjectManagementPage(): React.JSX.Element {
             Không tìm thấy môn học nào phù hợp.
           </div>
         )}
+
         <div className="flex flex-col gap-3 border-t border-outline-variant p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="font-label-sm text-label-sm text-on-surface-variant tracking-normal">
             Hiển thị {subjects.length} trên {totalItems} môn học.
@@ -399,6 +413,14 @@ export default function AdminSubjectManagementPage(): React.JSX.Element {
 
       {viewSubject ? (
         <SubjectDetailDialog
+          onDelete={() => {
+            setDeleteSubject(viewSubject);
+            setViewSubject(null);
+          }}
+          onEdit={() => {
+            handleOpenEdit(viewSubject);
+            setViewSubject(null);
+          }}
           onClose={() => setViewSubject(null)}
           subject={viewSubject}
         />
@@ -450,36 +472,36 @@ function SubjectFormDialog({
     draft.name.trim().length > 0 && draft.code.trim().length > 0 && !isSaving;
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-inverse-surface/35 px-4 py-8">
-      <button
-        aria-label="Đóng form môn học"
-        className="absolute inset-0"
-        onClick={onCancel}
-        type="button"
-      />
-      <div className="relative z-10 w-full max-w-lg rounded-lg border border-outline-variant bg-surface-container-lowest p-6">
-        <div className="mb-6 flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-semibold tracking-normal text-on-surface">
-              {isUpdate ? "Cập nhật môn học" : "Thêm môn học"}
-            </h2>
-            <p className="font-label-sm text-label-sm text-on-surface-variant tracking-normal">
-              {isUpdate
-                ? "Thay đổi thông tin môn học hiện có"
-                : "Thêm môn học mới vào hệ thống"}
-            </p>
-          </div>
-          <button
-            aria-label="Đóng"
-            className="rounded p-2 text-on-surface-variant hover:bg-surface-container-high"
-            onClick={onCancel}
-            type="button"
-          >
-            <MaterialIcon name="close" />
-          </button>
-        </div>
+    <AppDialog
+      description={
+        isUpdate
+          ? "Thay đổi thông tin môn học hiện có"
+          : "Thêm môn học mới vào hệ thống"
+      }
+      icon={isUpdate ? "edit" : "add"}
+      onOpenChange={(open) => {
+        if (!open && !isSaving) onCancel();
+      }}
+      open
+      title={isUpdate ? "Cập nhật môn học" : "Thêm môn học"}
+      footer={
+        <>
+          <Button disabled={isSaving} onClick={onCancel} variant="outline">
+            Hủy
+          </Button>
+          <Button disabled={!canSave} onClick={onSave}>
+            {isSaving
+              ? "Đang lưu..."
+              : isUpdate
+                ? "Lưu thay đổi"
+                : "Tạo môn học"}
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
         {errorMessage ? (
-          <p className="mb-4 rounded border border-error/30 bg-error-container px-4 py-3 font-label-sm text-label-sm text-error">
+          <p className="rounded border border-error/30 bg-error-container px-4 py-3 font-label-sm text-label-sm text-error">
             {errorMessage}
           </p>
         ) : null}
@@ -503,72 +525,68 @@ function SubjectFormDialog({
             value={draft.name}
           />
         </div>
-        <div className="mt-6 flex justify-end gap-3 border-t border-outline-variant pt-4">
-          <Button disabled={isSaving} onClick={onCancel} variant="ghost">
-            Hủy
-          </Button>
-          <Button disabled={!canSave} onClick={onSave}>
-            {isSaving
-              ? "Đang lưu..."
-              : isUpdate
-                ? "Lưu thay đổi"
-                : "Tạo môn học"}
-          </Button>
-        </div>
       </div>
-    </div>
+    </AppDialog>
   );
 }
 
 function SubjectDetailDialog({
   subject,
   onClose,
+  onEdit,
+  onDelete,
 }: {
   readonly subject: AdminSubject;
   readonly onClose: () => void;
+  readonly onEdit: () => void;
+  readonly onDelete: () => void;
 }): React.JSX.Element {
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-inverse-surface/35 px-4 py-8">
-      <button
-        aria-label="Đóng chi tiết môn học"
-        className="absolute inset-0"
-        onClick={onClose}
-        type="button"
-      />
-      <div className="relative z-10 w-full max-w-lg rounded-lg border border-outline-variant bg-surface-container-lowest p-6">
-        <div className="mb-6 flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-semibold tracking-normal text-on-surface">
-              {subject.name}
-            </h2>
-            <p className="font-mono font-label-sm text-label-sm text-primary tracking-normal">
-              Mã: {subject.code}
-            </p>
-          </div>
-          <button
-            aria-label="Đóng"
-            className="rounded p-2 text-on-surface-variant hover:bg-surface-container-high"
-            onClick={onClose}
+    <AppDialog
+      description={
+        <span className="font-mono text-primary">Mã: {subject.code}</span>
+      }
+      icon="visibility"
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+      open
+      title={subject.name}
+      footer={
+        <>
+          <Button
+            className="text-error hover:bg-error/10 hover:text-error"
+            onClick={onDelete}
             type="button"
+            variant="ghost"
           >
-            <MaterialIcon name="close" />
-          </button>
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <DetailItem label="Mã môn học" value={subject.code} />
-          <DetailItem label="Tên môn học" value={subject.name} />
-          <DetailItem label="Ngày tạo" value={formatDate(subject.createdAt)} />
-          <DetailItem
-            label="Cập nhật gần nhất"
-            value={
-              subject.updatedAt
-                ? formatDate(subject.updatedAt)
-                : "Chưa cập nhật"
-            }
-          />
-        </div>
+            <MaterialIcon className="text-[18px]" name="delete" />
+            Xóa môn học
+          </Button>
+          <div className="flex gap-3">
+            <Button onClick={onClose} type="button" variant="outline">
+              Đóng
+            </Button>
+            <Button onClick={onEdit} type="button">
+              <MaterialIcon className="text-[18px]" name="edit" />
+              Sửa môn học
+            </Button>
+          </div>
+        </>
+      }
+    >
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <DetailItem label="Mã môn học" value={subject.code} />
+        <DetailItem label="Tên môn học" value={subject.name} />
+        <DetailItem label="Ngày tạo" value={formatDate(subject.createdAt)} />
+        <DetailItem
+          label="Cập nhật gần nhất"
+          value={
+            subject.updatedAt ? formatDate(subject.updatedAt) : "Chưa cập nhật"
+          }
+        />
       </div>
-    </div>
+    </AppDialog>
   );
 }
 
@@ -594,43 +612,35 @@ function AdminConfirmDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-inverse-surface/35 px-4 py-8">
-      <button
-        aria-label="Đóng hộp thoại xác nhận"
-        className="absolute inset-0"
-        disabled={disabled}
-        onClick={onCancel}
-        type="button"
-      />
-      <div className="relative z-10 w-full max-w-md rounded-lg border border-outline-variant bg-surface-container-lowest p-6">
-        <div className="mb-6 flex items-start gap-4">
-          <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded bg-error-container text-error">
-            <MaterialIcon name="warning" />
-          </span>
-          <div>
-            <h2 className="text-xl font-semibold tracking-normal text-on-surface">
-              {title}
-            </h2>
-            <p className="mt-2 font-body-md text-body-md text-on-surface-variant">
-              {description}
-            </p>
-          </div>
-        </div>
-        <div className="flex justify-end gap-3 border-t border-outline-variant pt-4">
-          <Button disabled={disabled} onClick={onCancel} variant="ghost">
+    <AppDialog
+      description={description}
+      icon="warning"
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen && !disabled) onCancel();
+      }}
+      open={open}
+      title={title}
+      tone="error"
+      footer={
+        <>
+          <Button disabled={disabled} onClick={onCancel} variant="outline">
             Hủy
           </Button>
-          <button
-            className="rounded bg-error px-6 py-2 font-label-md text-label-md text-on-error transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          <Button
+            className="bg-error text-on-error hover:bg-error/90"
             disabled={disabled}
             onClick={onConfirm}
             type="button"
           >
             {confirmLabel}
-          </button>
-        </div>
+          </Button>
+        </>
+      }
+    >
+      <div className="rounded-xl border border-error/15 bg-error/5 px-4 py-3 text-sm text-on-surface-variant">
+        Thao tác này không thể hoàn tác nếu môn học đã được xóa khỏi hệ thống.
       </div>
-    </div>
+    </AppDialog>
   );
 }
 

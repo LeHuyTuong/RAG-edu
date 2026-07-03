@@ -1,14 +1,14 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type FC, type ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef, type FC, type ReactNode } from "react";
 
-import { SideNav } from "@/components/layout/SideNav";
+import { DashboardShell } from "@/components/layout/DashboardShell";
+import { UserInfo } from "@/components/ui/UserInfo";
+import { USER_NAV_ITEMS } from "@/constants/nav.const";
 import { getCurrentUser, logoutCurrentSession } from "@/modules/auth-api";
 import { ROUTE_PATHS } from "@/routes/router.const";
 import { useAuthStore } from "@/stores/auth/store";
-import { USER_NAV_ITEMS } from "@/constants/nav.const";
-import { UserInfo } from "@/components/ui/UserInfo";
 
 export interface UserShellProps {
   readonly children: ReactNode;
@@ -22,8 +22,8 @@ export const UserShell: FC<UserShellProps> = ({
   subtitle,
 }) => {
   const router = useRouter();
+  const pathname = usePathname();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
   const setUser = useAuthStore((state) => state.setUser);
 
@@ -64,19 +64,25 @@ export const UserShell: FC<UserShellProps> = ({
   const navItems = USER_NAV_ITEMS.map((item) =>
     item.href === "#" ? { ...item, action: handleLogout } : item,
   );
+  const isFolderWorkspace = /^\/folders\/[^/]+$/.test(pathname);
+
+  if (isFolderWorkspace) {
+    return (
+      <div className="min-h-screen overflow-hidden bg-background text-foreground">
+        {children}
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <SideNav
-        title={title}
-        subtitle={subtitle}
-        items={navItems}
-        footerContent={<UserInfo />}
-      />
-
-      <main className="min-h-screen overflow-x-hidden px-4 py-6 sm:px-6 lg:ml-72 lg:px-8">
-        <div className="min-w-0 space-y-4">{children}</div>
-      </main>
-    </div>
+    <DashboardShell
+      contentClassName="space-y-4"
+      footerContent={<UserInfo />}
+      items={navItems}
+      subtitle={subtitle}
+      title={title}
+    >
+      {children}
+    </DashboardShell>
   );
 };

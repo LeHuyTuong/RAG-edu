@@ -27,13 +27,10 @@ type BadgeStatusTone = Extract<
 import { formatDate } from "@/utils";
 import type { LibraryDocument, PaginationMeta } from "@/types/document.type";
 
-import { DocumentReasonModal } from "./DocumentReasonModal";
-
 const COLUMNS = [
   { key: "name", label: "Tên tài liệu" },
   { key: "date", label: "Ngày tải lên", align: "center" as const },
   { key: "status", label: "Trạng thái", align: "center" as const },
-  { key: "reason", label: "Lý do", align: "center" as const },
   { key: "actions", label: "Thao tác", align: "center" as const },
 ] as const;
 
@@ -78,10 +75,6 @@ function getStatusDisplay(
   return { label: status, tone: "neutral" };
 }
 
-function isRejectedStatus(status: string): boolean {
-  return status.toLowerCase() === "rejected";
-}
-
 function formatToIcon(publicId: string): string {
   const lower = publicId.toLowerCase();
   if (lower.includes("pdf")) return "picture_as_pdf";
@@ -116,8 +109,7 @@ interface Props {
   readonly error: string | null;
   readonly skeletonCount: number;
   readonly onPageChange: (page: number) => void;
-  readonly onRequestDelete: (document: LibraryDocument) => void;
-  readonly onEdit: (document: LibraryDocument) => void;
+  readonly onView: (document: LibraryDocument) => void;
   readonly deletingId: string | null;
   readonly savingId: string | null;
 }
@@ -129,15 +121,11 @@ export function DocumentTable({
   error,
   skeletonCount,
   onPageChange,
-  onRequestDelete,
-  onEdit,
+  onView,
   deletingId,
   savingId,
 }: Props): React.JSX.Element {
   const [searchTerm, setSearchTerm] = useState("");
-  const [reasonDocument, setReasonDocument] = useState<LibraryDocument | null>(
-    null,
-  );
   const normalizedSearchTerm = searchTerm.trim();
   const isSearching = normalizedSearchTerm.length > 0;
 
@@ -154,7 +142,6 @@ export function DocumentTable({
   const tableRows: TableRow[] = visibleDocuments.map((doc) => {
     const status = getStatusDisplay(doc.status, doc.isPublic);
     const icon = formatToIcon(doc.publicId);
-    const canViewReason = isRejectedStatus(doc.status);
 
     return {
       id: doc.id,
@@ -183,55 +170,24 @@ export function DocumentTable({
         <div key="status" className="flex justify-center">
           <Badge tone={status.tone}>{status.label}</Badge>
         </div>,
-        <div key="reason" className="flex justify-center">
-          {canViewReason ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="xs"
-              className="gap-1 border-error/20 bg-error/5 px-2 text-error hover:border-error/35 hover:bg-error/10"
-              onClick={() => setReasonDocument(doc)}
-            >
-              <span className="material-symbols-outlined text-[14px]">
-                visibility
-              </span>
-              Xem lý do
-            </Button>
-          ) : (
-            <span className="inline-flex items-center rounded-full border border-outline-variant/80 bg-surface-variant/30 px-2 py-0.5 text-xs text-on-surface-variant">
-              -
-            </span>
-          )}
-        </div>,
         <div key="actions" className="flex justify-center gap-2">
           <Button
-            type="button"
+            aria-label={`Xem chi tiết ${doc.title}`}
             variant="ghost"
             size="sm"
-            className="px-3"
-            onClick={() => onEdit(doc)}
+            className="h-9 w-9 p-0 text-on-surface-variant hover:bg-surface-container-high hover:text-primary"
+            onClick={() => onView(doc)}
             disabled={savingId === doc.id || deletingId === doc.id}
-          >
-            <span className="flex items-center gap-1">
-              <span className="material-symbols-outlined text-[16px]">
-                edit
-              </span>
-              {savingId === doc.id ? "Đang lưu..." : "Sửa"}
-            </span>
-          </Button>
-          <Button
+            title={`Xem chi tiết ${doc.title}`}
             type="button"
-            variant="ghost"
-            size="sm"
-            className="px-3 text-error hover:bg-error-container hover:text-error"
-            onClick={() => onRequestDelete(doc)}
-            disabled={deletingId === doc.id || savingId === doc.id}
           >
-            <span className="flex items-center gap-1">
-              <span className="material-symbols-outlined text-[16px]">
-                delete
-              </span>
-              {deletingId === doc.id ? "Đang xóa..." : "Xóa"}
+            <span
+              aria-hidden="true"
+              className="material-symbols-outlined text-[22px]"
+            >
+              {savingId === doc.id || deletingId === doc.id
+                ? "sync"
+                : "visibility"}
             </span>
           </Button>
         </div>,
@@ -311,7 +267,14 @@ export function DocumentTable({
             </p>
           </div>
         ) : (
-          <Table columns={COLUMNS} rows={tableRows} />
+          <Table
+            columns={COLUMNS}
+            rows={tableRows}
+            onRowClick={(row) => {
+              const doc = documents.find((d) => d.id === row.id);
+              if (doc) onView(doc);
+            }}
+          />
         )}
       </div>
 
@@ -328,12 +291,6 @@ export function DocumentTable({
           />
         </div>
       ) : null}
-
-      <DocumentReasonModal
-        document={reasonDocument}
-        isOpen={reasonDocument !== null}
-        onClose={() => setReasonDocument(null)}
-      />
     </Card>
   );
 }

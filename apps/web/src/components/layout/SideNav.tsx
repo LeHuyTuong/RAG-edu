@@ -3,13 +3,13 @@
 import { SideNavItem } from "@/types/sideNav";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useEffect, type FC, type ReactNode } from "react";
+import { useState, type FC, type ReactNode } from "react";
 import { Logo } from "../ui/Logo";
 
 export interface SideNavProps {
   readonly title: string;
   readonly subtitle?: string;
-  readonly items: SideNavItem[];
+  readonly items: readonly SideNavItem[];
   readonly footerContent?: ReactNode;
 }
 
@@ -109,7 +109,7 @@ export const SideNav: FC<SideNavProps> = ({
           h-screen
           w-72
           flex-col
-          overflow-y-auto
+          overflow-hidden
           border-r
           border-outline-variant
           bg-surface-container-high
@@ -119,7 +119,7 @@ export const SideNav: FC<SideNavProps> = ({
           lg:flex
         "
       >
-        <div className="mb-8">
+        <div className="mb-8 shrink-0">
           <div className="mb-6">
             <Logo />
           </div>
@@ -134,20 +134,24 @@ export const SideNav: FC<SideNavProps> = ({
           ) : null}
         </div>
 
-        <nav
-          className="mb-6 flex flex-col gap-2"
-          aria-label="Primary navigation"
-        >
-          {mainItems.map(renderNavItem)}
-        </nav>
+        <div className="min-h-0 flex-1 overflow-y-auto pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <nav
+            className="mb-6 flex flex-col gap-2"
+            aria-label="Primary navigation"
+          >
+            {mainItems.map(renderNavItem)}
+          </nav>
 
-        <div className="mb-auto border-t border-outline-variant pt-6">
-          <div className="flex flex-col gap-2">
-            {secondaryItems.map(renderNavItem)}
+          <div className="border-t border-outline-variant pt-6">
+            <div className="flex flex-col gap-2">
+              {secondaryItems.map(renderNavItem)}
+            </div>
           </div>
         </div>
 
-        {footerContent ? <div className="mt-6">{footerContent}</div> : null}
+        {footerContent ? (
+          <div className="mt-6 shrink-0">{footerContent}</div>
+        ) : null}
       </aside>
 
       {isOpen ? (

@@ -116,12 +116,16 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     @Transactional(readOnly = true)
-    public DocumentResponse getById(Long id, Long currentUserId) {
+    public DocumentResponse getById(Long id, Long currentUserId, boolean canViewAnyDocument) {
         Document doc = documentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
 
-        // Only owner or public READY documents are visible
-        if (!doc.getOwnerId().equals(currentUserId)) {
+        if (canViewAnyDocument) {
+            if (doc.getStatus() == DocumentStatus.SOFT_DELETED) {
+                throw new ResourceNotFoundException("Document", "id", id);
+            }
+        } else if (!doc.getOwnerId().equals(currentUserId)) {
+            // Only owner or public READY documents are visible to normal users.
             if (!Boolean.TRUE.equals(doc.getIsPublic()) || doc.getStatus() != DocumentStatus.READY) {
                 throw new ResourceNotFoundException("Document", "id", id);
             }
@@ -206,9 +210,8 @@ public class DocumentServiceImpl implements DocumentService {
         }
 
         if (doc.getStatus() != DocumentStatus.FAILED
-                && doc.getStatus() != DocumentStatus.READY
-                && doc.getStatus() != DocumentStatus.REJECTED) {
-            throw new InvalidRequestException("Chỉ có thể reindex tài liệu ở trạng thái READY, FAILED hoặc REJECTED");
+                && doc.getStatus() != DocumentStatus.READY) {
+            throw new InvalidRequestException("Chỉ có thể reindex tài liệu ở trạng thái READY hoặc FAILED");
         }
 
         doc.setStatus(DocumentStatus.REINDEXING);
@@ -273,16 +276,22 @@ public class DocumentServiceImpl implements DocumentService {
         Document doc = documentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
 
-        // Nếu đang ở PENDING_REVIEW → cần index trước rồi mới READY
-        if (doc.getStatus() == DocumentStatus.PENDING_REVIEW) {
+        if (doc.getStatus() == DocumentStatus.REJECTED) {
+            throw new InvalidRequestException("Tài liệu đã bị từ chối, không thể tự duyệt lại");
+        }
+
+        // PENDING_REVIEW/FAILED cần index lại trước rồi mới READY
+        if (doc.getStatus() == DocumentStatus.PENDING_REVIEW || doc.getStatus() == DocumentStatus.FAILED) {
             triggerIngest(id, userId);
-        } else {
+        } else if (doc.getStatus() == DocumentStatus.READY) {
             doc.setStatus(DocumentStatus.READY);
             doc.setIsPublic(true);
             doc.setReviewedById(userId);
             doc.setReviewedAt(Instant.now());
             documentRepository.save(doc);
             log.info("Document {} approved by userId={}", id, userId);
+        } else {
+            throw new InvalidRequestException("Chỉ có thể duyệt tài liệu ở trạng thái PENDING_REVIEW, FAILED hoặc READY");
         }
 
         Document updated = documentRepository.findById(id)
@@ -294,17 +303,72 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     @Transactional
+    public void reclassify(Long id, Long userId) {
+        Document doc = documentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
+
+        if (doc.getStatus() != DocumentStatus.FAILED) {
+            throw new InvalidRequestException("Chỉ có thể reclassify tài liệu ở trạng thái FAILED");
+        }
+
+        // Reset AI review fields — listener sẽ tự set status REVIEWING/INDEXING
+        doc.setAiConfidence(null);
+        doc.setAiWarningLevel(null);
+        doc.setAiReviewStatus(null);
+        doc.setReviewReason(null);
+        documentRepository.save(doc);
+        log.info("Document {} reclassify triggered by userId={}", id, userId);
+
+        // Publish event để DocumentIngestListener chạy lại toàn bộ flow: classify → ingest
+        eventPublisher.publishEvent(new DocumentIngestRequested(doc.getId()));
+    }
+
+    @Override
+    @Transactional
     public void triggerIngest(Long id, Long userId) {
         Document doc = documentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
 
-        doc.setStatus(DocumentStatus.INDEXING);
         doc.setReviewedById(userId);
         doc.setReviewedAt(Instant.now());
-        documentRepository.save(doc);
+        doc.setIsPublic(true);
         log.info("Document {} triggerIngest by admin userId={}", id, userId);
 
-        // Gọi rag-service để ingest
+        runIngestPipeline(doc);
+    }
+
+    @Override
+    @Transactional
+    public void processAutoApprovedDocuments() {
+        List<Document> docs = documentRepository.findByStatusAndAiReviewStatus(
+                DocumentStatus.REVIEWING, "AUTO_APPROVED");
+
+        if (docs.isEmpty()) {
+            return;
+        }
+
+        log.info("AutoApprovalScheduler: processing {} AI auto-approved document(s)", docs.size());
+        for (Document doc : docs) {
+            try {
+                runIngestPipeline(doc);
+            } catch (Exception e) {
+                log.error("Document {} failed during AI auto-approve ingest: {}", doc.getId(), e.getMessage(), e);
+                doc.setStatus(DocumentStatus.FAILED);
+                documentRepository.save(doc);
+            }
+        }
+    }
+
+    /**
+     * Gọi rag-service để ingest document, cập nhật status INDEXING → READY/FAILED.
+     * Dùng chung cho admin duyệt thủ công (triggerIngest) và AI auto-approve (processAutoApprovedDocuments).
+     */
+    private void runIngestPipeline(Document doc) {
+        Long id = doc.getId();
+        doc.setStatus(DocumentStatus.INDEXING);
+        documentRepository.save(doc);
+        log.info("Document {} status set to INDEXING", id);
+
         RagIngestMetadata metadata = new RagIngestMetadata(
                 null, null, null, java.util.List.of(),
                 java.util.List.of(), java.util.List.of(),
@@ -317,8 +381,8 @@ public class DocumentServiceImpl implements DocumentService {
                 doc.getTitle(),
                 null,
                 id,
+                resolveInternalFilePath(doc),
                 null,
-                doc.getFileUrl(),
                 null,
                 metadata,
                 null
@@ -329,18 +393,16 @@ public class DocumentServiceImpl implements DocumentService {
 
             if ("COMPLETED".equals(response.status())) {
                 doc.setStatus(DocumentStatus.READY);
-                doc.setIsPublic(true);
                 doc.setChunkCount(response.chunks() != null ? response.chunks().size() : 0);
                 documentRepository.save(doc);
-                log.info("Document {} ingestion COMPLETED after admin approval, chunks={}",
-                        id, doc.getChunkCount());
+                log.info("Document {} ingestion COMPLETED, chunks={}", id, doc.getChunkCount());
             } else {
                 doc.setStatus(DocumentStatus.FAILED);
                 documentRepository.save(doc);
-                log.warn("Document {} ingestion FAILED after admin approval: {}", id, response.status());
+                log.warn("Document {} ingestion FAILED: {}", id, response.status());
             }
         } catch (Exception e) {
-            log.error("Document {} ingestion error during admin approval: {}", id, e.getMessage(), e);
+            log.error("Document {} ingestion error: {}", id, e.getMessage(), e);
             doc.setStatus(DocumentStatus.FAILED);
             documentRepository.save(doc);
         }
@@ -352,6 +414,7 @@ public class DocumentServiceImpl implements DocumentService {
         Document doc = documentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
         doc.setStatus(DocumentStatus.REJECTED);
+        doc.setIsPublic(false);
         doc.setReviewReason(reason);
         doc.setReviewedById(userId);
         doc.setReviewedAt(Instant.now());
@@ -447,6 +510,18 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     @Transactional(readOnly = true)
+    public boolean allExistByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return true;
+        }
+        List<Long> distinctIds = ids.stream().distinct().toList();
+        long existingCount = documentRepository.countByIdInAndStatusNot(
+                distinctIds, DocumentStatus.SOFT_DELETED);
+        return existingCount == distinctIds.size();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public boolean allExistByIdsAndOwner(List<Long> ids, Long ownerId) {
         if (ids == null || ids.isEmpty()) {
             return true;
@@ -455,6 +530,17 @@ public class DocumentServiceImpl implements DocumentService {
         long ownedCount = documentRepository.countByIdInAndOwnerIdAndStatusNot(
                 distinctIds, ownerId, DocumentStatus.SOFT_DELETED);
         return ownedCount == distinctIds.size();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean allValidByIdsAndOwner(List<Long> ids, Long ownerId) {
+        if (ids == null || ids.isEmpty()) {
+            return true;
+        }
+        List<Long> distinctIds = ids.stream().distinct().toList();
+        long validCount = documentRepository.countValidByIdInAndOwnerId(distinctIds, ownerId);
+        return validCount == distinctIds.size();
     }
 
     // --- helpers ---
@@ -473,5 +559,9 @@ public class DocumentServiceImpl implements DocumentService {
         user.setFullName(dto.name());
         user.setAvatarUrl(dto.avatarUrl());
         return user;
+    }
+
+    private String resolveInternalFilePath(Document doc) {
+        return fileStorageService.resolveInternalPath(doc.getPublicId());
     }
 }

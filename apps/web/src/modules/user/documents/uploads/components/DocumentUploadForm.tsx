@@ -32,6 +32,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/Button";
 import { InputField } from "@/components/ui/InputField";
+import { SelectField } from "@/components/ui/SelectField";
 import { fetchSubjects, createDocument } from "@/apis/document.api";
 import { listFolders, type FolderResponse } from "@/apis/folder.api";
 import { UPLOAD_ERROR_MESSAGES } from "@/constants/upload.const";
@@ -172,6 +173,20 @@ export function DocumentUploadForm({
   // ── Render ────────────────────────────────────────────────────────────────
 
   const canSubmit = Boolean(selectedFile) && !isSubmitting;
+  const subjectOptions = [
+    { label: "Chọn môn học", value: "" },
+    ...subjects.map((subject) => ({
+      label: subject.name,
+      value: subject.id,
+    })),
+  ];
+  const folderOptions = [
+    { label: "Không có thư mục", value: "" },
+    ...folders.map((folder) => ({
+      label: folder.folderName,
+      value: String(folder.id),
+    })),
+  ];
 
   return (
     <form onSubmit={(e) => e.preventDefault()} className="space-y-5" noValidate>
@@ -188,29 +203,14 @@ export function DocumentUploadForm({
       {/* Subject + School */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {/* Subject — populated from GET /api/v1/subjects */}
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-on-surface-variant">
-            Môn học
-          </span>
-          <select
-            value={subjectId}
-            onChange={(e) => setSubjectId(e.target.value)}
-            disabled={subjectsLoading || isSubmitting}
-            className="
-              w-full rounded-xl border border-outline bg-surface
-              py-2 pl-3 pr-8 text-sm text-on-surface
-              focus:border-2 focus:border-primary focus:outline-none
-              disabled:cursor-not-allowed disabled:opacity-50
-            "
-          >
-            <option value="">Chọn môn học</option>
-            {subjects.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        <SelectField
+          disabled={subjectsLoading || isSubmitting}
+          label="Môn học"
+          onChange={setSubjectId}
+          options={subjectOptions}
+          placeholder="Chọn môn học"
+          value={subjectId}
+        />
 
         {/*
          * "Trường học" is not part of CreateDocumentDto — the backend
@@ -246,29 +246,14 @@ export function DocumentUploadForm({
 
       {/* Folder selection */}
       {folders.length > 0 && (
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-on-surface-variant">
-            Thư mục
-          </span>
-          <select
-            value={folderId}
-            onChange={(e) => setFolderId(e.target.value)}
-            disabled={isSubmitting}
-            className="
-              w-full rounded-xl border border-outline bg-surface
-              py-2 pl-3 pr-8 text-sm text-on-surface
-              focus:border-2 focus:border-primary focus:outline-none
-              disabled:cursor-not-allowed disabled:opacity-50
-            "
-          >
-            <option value="">Không có thư mục</option>
-            {folders.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.folderName}
-              </option>
-            ))}
-          </select>
-        </label>
+        <SelectField
+          disabled={isSubmitting}
+          label="Thư mục"
+          onChange={setFolderId}
+          options={folderOptions}
+          placeholder="Không có thư mục"
+          value={folderId}
+        />
       )}
 
       {/* Visibility toggle */}

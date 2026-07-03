@@ -16,6 +16,7 @@ export interface TableRow {
 export interface TableProps {
   readonly columns: readonly TableColumn[];
   readonly rows: readonly TableRow[];
+  readonly onRowClick?: (row: TableRow) => void;
 }
 
 const getAlignmentClass = (align: TableColumn["align"]): string => {
@@ -30,7 +31,7 @@ const getAlignmentClass = (align: TableColumn["align"]): string => {
   return "";
 };
 
-export const Table: FC<TableProps> = ({ columns, rows }) => {
+export const Table: FC<TableProps> = ({ columns, rows, onRowClick }) => {
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-left">
@@ -61,9 +62,18 @@ export const Table: FC<TableProps> = ({ columns, rows }) => {
           {rows.map((row) => (
             <tr
               key={row.id}
-              className={`border-b border-outline-variant ${
-                row.highlighted ? "bg-surface-container" : ""
-              }`}
+              onClick={(event) => {
+                const target = event.target as HTMLElement;
+                if (target.closest("a, button, input, select, label")) {
+                  return;
+                }
+                onRowClick?.(row);
+              }}
+              className={`border-b border-outline-variant transition-colors ${
+                onRowClick
+                  ? "cursor-pointer hover:bg-surface-container-high"
+                  : ""
+              } ${row.highlighted ? "bg-surface-container" : ""}`}
             >
               {row.cells.map((cell, index) => (
                 <td

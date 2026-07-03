@@ -52,6 +52,7 @@ class AdminDashboardServiceImplTest {
         when(documentService.countByStatus(DocumentStatus.READY)).thenReturn(6L);
         when(documentService.countByStatus(DocumentStatus.FAILED)).thenReturn(1L);
         when(documentService.countByStatus(DocumentStatus.REJECTED)).thenReturn(0L);
+        when(documentService.countByStatus(DocumentStatus.PENDING_REVIEW)).thenReturn(0L);
 
         when(subjectService.countAll()).thenReturn(3L);
 

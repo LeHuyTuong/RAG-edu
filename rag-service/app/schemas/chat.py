@@ -9,8 +9,8 @@ Spring Boot serialize Java object → JSON → RAG service deserialize vào đâ
   RagChatResponse — answer text + danh sách citations + flags (usedVector/Graph)
   Citation        — 1 nguồn được dùng để trả lời: sourceType, title, score...
 
-Response phải luôn kèm citations — chatbot lịch sử không được trả lời
-mà không có nguồn để user kiểm chứng (docs/14).
+Response kèm citations khi answer thật sự dựa trên context. Với fallback
+"dữ liệu chưa đủ", citations phải rỗng để không gợi ý sai nguồn tham khảo.
 """
 from pydantic import BaseModel
 from typing import Optional

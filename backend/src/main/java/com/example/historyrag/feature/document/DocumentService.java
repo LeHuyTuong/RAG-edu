@@ -15,7 +15,7 @@ public interface DocumentService {
 
     DocumentResponse update(Long id, UpdateDocumentRequest request, Long ownerId);
 
-    DocumentResponse getById(Long id, Long currentUserId);
+    DocumentResponse getById(Long id, Long currentUserId, boolean canViewAnyDocument);
 
     List<DocumentResponse> getMyDocuments(Long ownerId);
 
@@ -36,6 +36,10 @@ public interface DocumentService {
 
     void triggerIngest(Long id, Long userId);
 
+    void processAutoApprovedDocuments();
+
+    void reclassify(Long id, Long userId);
+
     DocumentResponse reject(Long id, String reason, Long userId);
 
     long countAll();
@@ -48,7 +52,11 @@ public interface DocumentService {
 
     boolean existsByIdAndOwner(Long id, Long ownerId);
 
+    boolean allExistByIds(List<Long> ids);
+
     boolean allExistByIdsAndOwner(List<Long> ids, Long ownerId);
+
+    boolean allValidByIdsAndOwner(List<Long> ids, Long ownerId);
 
     String enableShare(Long id, Long ownerId);
 

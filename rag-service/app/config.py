@@ -51,6 +51,11 @@ class Settings(BaseSettings):
     cerebras_model: str = "gpt-oss-120b"
     cerebras_base_url: str = "https://api.cerebras.ai/v1"
 
+    # OpenRouter — fallback khi Cerebras lỗi
+    openrouter_api_key: str = ""
+    openrouter_model: str = "google/gemini-2.5-flash"
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+
     # Giá trị mặc định cho pipeline — request có thể override
     default_chunk_size: int = 800
     default_chunk_overlap: int = 120

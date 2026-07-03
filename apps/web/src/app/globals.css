@@ -147,6 +147,7 @@ body {
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
   --primary: #004ac6;
+  --on-primary: #ffffff;
   --primary-foreground: #ffffff;
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
@@ -224,6 +225,7 @@ body {
   --popover: #12141c;
   --popover-foreground: #f1f5f9;
   --primary: #3b82f6;
+  --on-primary: #ffffff;
   --primary-foreground: #ffffff;
   --secondary: #1e293b;
   --secondary-foreground: #f1f5f9;

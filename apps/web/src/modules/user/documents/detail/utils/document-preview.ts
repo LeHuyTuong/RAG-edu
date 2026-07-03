@@ -31,6 +31,15 @@ async function fetchText(fileUrl: string): Promise<string> {
   return response.text();
 }
 
+async function canPreviewRemoteFile(fileUrl: string): Promise<boolean> {
+  try {
+    const response = await fetch(fileUrl, { method: "HEAD" });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 function normalizeFormat(format: string): string {
   return format.trim().toLowerCase();
 }
@@ -66,6 +75,7 @@ export async function loadDocumentPreview(
   const normalizedFormat = normalizeFormat(document.format);
 
   if (normalizedFormat === "pdf") {
+    // Skip HEAD check — just return the URL, let iframe handle loading
     return { type: "pdf", fileUrl: document.fileUrl };
   }
 

@@ -174,11 +174,24 @@ export const deleteAdminSubject = async (id: string): Promise<unknown> => {
 export interface AdminConfig {
   allowedTypes: string;
   maxSizeMb: number;
+  autoApproveCron: string;
 }
 
 export async function fetchAdminConfig(): Promise<AdminConfig> {
   const result = await apiClient.get(API_ENDPOINTS.ADMIN.CONFIG);
-  return result as unknown as AdminConfig;
+  const raw = result as unknown as {
+    allowedTypes: string;
+    maxSizeMb: string | number;
+    autoApproveCron: string;
+  };
+  return {
+    allowedTypes: raw.allowedTypes,
+    maxSizeMb:
+      typeof raw.maxSizeMb === "string"
+        ? parseInt(raw.maxSizeMb, 10)
+        : raw.maxSizeMb,
+    autoApproveCron: raw.autoApproveCron || "0 * * * * *",
+  };
 }
 
 export async function updateAdminConfig(

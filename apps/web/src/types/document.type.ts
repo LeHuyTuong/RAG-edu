@@ -5,6 +5,16 @@
  */
 
 export type DocumentStatus = "ACTIVE" | "PENDING" | "REJECTED" | "DELETED";
+export type DocumentRagStatus =
+  | "UPLOADING"
+  | "REVIEWING"
+  | "PENDING_REVIEW"
+  | "INDEXING"
+  | "REINDEXING"
+  | "READY"
+  | "FAILED"
+  | "REJECTED"
+  | "SOFT_DELETED";
 
 export interface DocumentAuthor {
   id: string;
@@ -28,17 +38,25 @@ export interface LibraryDocument {
   fileUrl: string;
   format: string;
   sizeInBytes: number;
-  ragStatus?: DocumentStatus;
+  resourceType?: string;
+  ragStatus?: DocumentRagStatus;
   status: DocumentStatus;
   isPublic: boolean;
   pageCount?: number | null;
+  chunkCount?: number | null;
   folderId?: number | null;
+  ownerId?: number;
   createdAt: string;
   updatedAt: string;
   reviewedById?: string | null;
   reviewedAt?: string | null;
   rejectionReason?: string | null;
   rejectionDetail?: string | null;
+  /** Điểm tin cậy AI trả về khi kiểm duyệt nội dung (0.0 - 1.0) */
+  aiConfidence?: number | null;
+  /** Mức cảnh báo AI: NONE (đã auto-approve) | WARNING (vàng) | DANGER (đỏ) */
+  aiWarningLevel?: "NONE" | "WARNING" | "DANGER" | null;
+  aiReviewStatus?: "AUTO_APPROVED" | "PENDING_ADMIN" | "REJECTED_BY_AI" | null;
   author: DocumentAuthor;
   subject: DocumentSubject | null;
 }
@@ -103,8 +121,13 @@ export interface RejectDocumentPayload {
 export interface ListDocumentsQuery {
   page?: number;
   limit?: number;
+  search?: string;
+  folderId?: number;
+  authorId?: string;
   subjectId?: string;
-  status?: DocumentStatus;
+  /** "PENDING_REVIEW" is a backend-only filter value for documents awaiting admin review */
+  status?: DocumentStatus | "PENDING_REVIEW";
+  onlyMine?: boolean;
 }
 
 /**
@@ -120,10 +143,13 @@ export interface DocumentDetail {
   publicId: string;
   /** File extension as stored by Cloudinary, e.g. "pdf", "docx" */
   format: string;
+  resourceType?: string;
   sizeInBytes: number;
   pageCount?: number | null;
+  chunkCount?: number | null;
   createdAt: string;
   status?: DocumentStatus;
+  ragStatus?: DocumentRagStatus;
   isPublic?: boolean;
   ownerId?: number;
   folderId?: number | null;
@@ -133,6 +159,9 @@ export interface DocumentDetail {
   reviewedAt?: string | null;
   rejectionReason?: string | null;
   rejectionDetail?: string | null;
+  aiConfidence?: number | null;
+  aiWarningLevel?: string | null;
+  aiReviewStatus?: string | null;
   author: {
     id: string;
     name: string;
