@@ -40,21 +40,21 @@ function getSubjectIcon(name: string): string {
 }
 
 const SUBJECT_LIGHT_GRADIENTS = [
-  "from-blue-50 to-indigo-50/50",
-  "from-orange-50 to-amber-50/50",
-  "from-violet-50 to-purple-50/50",
-  "from-emerald-50 to-teal-50/50",
-  "from-yellow-50 to-amber-50/50",
-  "from-pink-50 to-rose-50/50",
+  "from-primary-container/40 to-tertiary-container/40",
+  "from-secondary-container/40 to-primary-container/40",
+  "from-tertiary-container/40 to-error-container/30",
+  "from-primary-container/30 to-secondary-container/40",
+  "from-secondary-container/40 to-tertiary-container/40",
+  "from-tertiary-container/40 to-primary-container/40",
 ];
 
 const SUBJECT_ICON_BG = [
-  "bg-blue-100 text-blue-600",
-  "bg-orange-100 text-orange-600",
-  "bg-violet-100 text-violet-600",
-  "bg-emerald-100 text-emerald-600",
-  "bg-yellow-100 text-yellow-600",
-  "bg-pink-100 text-pink-600",
+  "bg-primary-container text-on-primary-container",
+  "bg-secondary-container text-on-secondary-container",
+  "bg-tertiary-container text-on-tertiary-container",
+  "bg-primary-container text-on-primary-container",
+  "bg-secondary-container text-on-secondary-container",
+  "bg-tertiary-container text-on-tertiary-container",
 ];
 
 function getSubjectGradient(index: number): string {
@@ -92,14 +92,13 @@ export default function HomePage(): React.JSX.Element {
     const load = async () => {
       try {
         const [documentsResponse, subjectsResponse] = await Promise.all([
-          fetchDocuments({ page: 1, limit: 10 }),
+          fetchDocuments({ page: 1, limit: 15 }),
           fetchSubjects(6),
         ]);
-        setDocuments(
-          (documentsResponse.documents ?? []).filter(
-            (doc) => doc.isPublic === true,
-          ),
+        const publicDocs = (documentsResponse.documents ?? []).filter(
+          (doc) => doc.isPublic === true,
         );
+        setDocuments(publicDocs);
         setSubjects(subjectsResponse.subjects ?? []);
       } catch {
         setDocuments([]);
@@ -113,7 +112,13 @@ export default function HomePage(): React.JSX.Element {
   }, []);
 
   const recentDocs = documents.slice(0, 5);
-  const recentUpdatedDocs = documents.slice(5, 8);
+  const recentUpdatedDocs = [...documents]
+    .sort(
+      (a, b) =>
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    )
+    .slice(0, 3);
+  const hasRecentUpdated = recentUpdatedDocs.length > 0;
 
   const linkClass =
     "inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-outline-variant bg-surface-container-low px-4 py-2 text-sm font-medium text-on-surface-variant transition-all hover:border-outline hover:bg-surface-container-high hover:text-on-surface";
@@ -123,7 +128,7 @@ export default function HomePage(): React.JSX.Element {
       {/* Subtle background decoration */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 h-[500px] w-[500px] rounded-full bg-primary/5 blur-[120px] dark:bg-primary/5" />
-        <div className="absolute -bottom-20 -left-20 h-[400px] w-[400px] rounded-full bg-violet-500/5 blur-[100px] dark:bg-violet-500/5" />
+        <div className="absolute -bottom-20 -left-20 h-[400px] w-[400px] rounded-full bg-tertiary/5 blur-[100px]" />
       </div>
 
       <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -211,7 +216,7 @@ export default function HomePage(): React.JSX.Element {
                       <Link
                         key={subject.id}
                         href={`/library?subjectId=${subject.id}`}
-                        className="group relative overflow-hidden rounded-2xl border border-outline-variant bg-surface-container-low p-5 transition-all duration-300 hover:border-outline hover:bg-surface-container-high hover:shadow-md"
+                        className="group relative overflow-hidden rounded-2xl border border-outline-variant bg-surface-container-low p-5 transition-all duration-300 hover:border-outline hover:bg-surface-container hover:scale-[1.02]"
                       >
                         <div
                           className={`absolute inset-0 bg-gradient-to-br ${getSubjectGradient(i)} opacity-0 transition-opacity duration-300 group-hover:opacity-100`}
@@ -251,8 +256,8 @@ export default function HomePage(): React.JSX.Element {
                 </p>
               </div>
 
-              <div className="relative space-y-3 rounded-2xl border border-outline-variant bg-surface-container-low/60 p-5">
-                {loading || recentUpdatedDocs.length === 0
+              <div className="relative space-y-3 rounded-2xl border border-outline-variant bg-surface-container-low p-5">
+                {loading
                   ? Array.from({ length: 3 }).map((_, i) => (
                       <div key={i} className="flex gap-3 py-1">
                         <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-surface-variant" />
@@ -262,32 +267,34 @@ export default function HomePage(): React.JSX.Element {
                         </div>
                       </div>
                     ))
-                  : recentUpdatedDocs.map((doc, i) => (
-                      <Link
-                        key={doc.id}
-                        href={`/documents/${doc.id}`}
-                        className="group flex gap-3 rounded-xl px-2 py-2.5 -mx-2 transition-colors hover:bg-surface-container-high"
-                      >
-                        <div className="relative mt-1.5 flex h-2 w-2 shrink-0 items-center justify-center">
-                          <span
-                            className={`block h-2 w-2 rounded-full ${i === 0 ? "bg-primary" : "bg-surface-variant"}`}
-                          />
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <h4 className="text-sm font-semibold leading-snug text-on-surface line-clamp-1">
-                            {doc.title}
-                          </h4>
-                          <div className="mt-1 flex items-center gap-2 text-xs text-on-surface-variant/60">
-                            {doc.subject?.name ? (
-                              <span>{doc.subject.name}</span>
-                            ) : null}
-                            <span>·</span>
-                            <span>{formatRelativeTime(doc.updatedAt)}</span>
+                  : hasRecentUpdated
+                    ? recentUpdatedDocs.map((doc, i) => (
+                        <Link
+                          key={doc.id}
+                          href={`/documents/${doc.id}`}
+                          className="group flex gap-3 rounded-xl px-2 py-2.5 -mx-2 transition-colors hover:bg-surface-container-high"
+                        >
+                          <div className="relative mt-1.5 flex h-2 w-2 shrink-0 items-center justify-center">
+                            <span
+                              className={`block h-2 w-2 rounded-full ${i === 0 ? "bg-primary" : "bg-surface-variant"}`}
+                            />
                           </div>
-                        </div>
-                      </Link>
-                    ))}
+
+                          <div className="min-w-0 flex-1">
+                            <h4 className="text-sm font-semibold leading-snug text-on-surface line-clamp-1">
+                              {doc.title}
+                            </h4>
+                            <div className="mt-1 flex items-center gap-2 text-xs text-on-surface-variant/60">
+                              {doc.subject?.name ? (
+                                <span>{doc.subject.name}</span>
+                              ) : null}
+                              <span>·</span>
+                              <span>{formatRelativeTime(doc.updatedAt)}</span>
+                            </div>
+                          </div>
+                        </Link>
+                      ))
+                    : null}
               </div>
 
               <Link

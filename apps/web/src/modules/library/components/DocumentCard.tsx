@@ -38,12 +38,12 @@ const getFileIcon = (publicId: string): string => {
 };
 
 const subjectGradients = [
-  "from-[#667eea]/20 to-[#764ba2]/20",
-  "from-[#f093fb]/20 to-[#f5576c]/20",
-  "from-[#4facfe]/20 to-[#00f2fe]/20",
-  "from-[#43e97b]/20 to-[#38f9d7]/20",
-  "from-[#fa709a]/20 to-[#fee140]/20",
-  "from-[#a18cd1]/20 to-[#fbc2eb]/20",
+  "from-primary-container/40 to-secondary-container/40",
+  "from-secondary-container/40 to-tertiary-container/40",
+  "from-tertiary-container/40 to-primary-container/40",
+  "from-primary-container/30 to-tertiary-container/30",
+  "from-secondary-container/30 to-primary-container/30",
+  "from-tertiary-container/30 to-secondary-container/30",
 ];
 
 const getGradient = (seed: string): string => {
@@ -86,17 +86,17 @@ export const DocumentCard: FC<DocumentCardProps> = ({ document }) => {
         className="
           relative flex flex-col overflow-hidden
           rounded-2xl
-          border border-outline-variant/60
-          bg-surface/80 backdrop-blur-md
+          border border-outline-variant
+          bg-surface
           shadow-sm shadow-black/5
           transition-all duration-200
           hover:-translate-y-0.5 hover:shadow-md hover:shadow-black/10
-          hover:border-primary/30
+          hover:border-outline
           focus-within:ring-2 focus-within:ring-primary/40
         "
       >
         <div
-          className={`relative flex h-28 items-center justify-center overflow-hidden bg-linear-to-br ${gradient} border-b border-outline-variant/40`}
+          className={`relative flex h-28 items-center justify-center overflow-hidden bg-linear-to-br ${gradient} border-b border-outline-variant`}
         >
           {thumbnailUrl ? (
             <Image
@@ -108,12 +108,12 @@ export const DocumentCard: FC<DocumentCardProps> = ({ document }) => {
               src={thumbnailUrl}
             />
           ) : (
-            <span className="material-symbols-outlined text-5xl text-on-surface/30">
+            <span className="material-symbols-outlined text-5xl text-on-surface/25">
               {fileIcon}
             </span>
           )}
 
-          <div className="absolute inset-0 bg-black/5" />
+          <div className="absolute inset-0 bg-on-surface/[0.03]" />
 
           {document.subject ? (
             <span className="absolute left-3 top-3">
@@ -153,7 +153,7 @@ export const DocumentCard: FC<DocumentCardProps> = ({ document }) => {
             </p>
           ) : null}
 
-          <div className="mt-auto flex items-center justify-between border-t border-outline-variant/40 pt-2">
+          <div className="mt-auto flex items-center justify-between border-t border-outline-variant pt-2">
             <span className="text-[11px] text-on-surface-variant">
               {formatDate(document.createdAt)}
             </span>

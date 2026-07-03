@@ -75,12 +75,11 @@ export const DocumentCard: FC<DocumentCardProps> = ({
               aspect-[4/5]
               overflow-hidden
               rounded-3xl
-              border border-slate-200
-              bg-white
-              shadow-sm
+              border border-outline-variant
+              bg-surface
               transition-all duration-300
-              group-hover:shadow-lg
-              group-hover:border-blue-200
+              group-hover:border-outline
+              group-hover:shadow-md group-hover:shadow-black/5
             "
           >
             {hasRealImage ? (
@@ -108,19 +107,18 @@ export const DocumentCard: FC<DocumentCardProps> = ({
                     className={`
         flex h-20 w-20 items-center justify-center
         rounded-3xl ${theme.iconBg}
-        shadow-md
       `}
                   >
-                    <span className="material-symbols-outlined text-4xl text-white">
+                    <span className="material-symbols-outlined text-4xl">
                       {theme.icon}
                     </span>
                   </div>
 
                   <div className="text-center">
-                    <p className="text-xs font-bold uppercase tracking-[0.25em] text-slate-800">
+                    <p className="text-xs font-bold uppercase tracking-[0.25em] text-on-surface">
                       {subject ?? "Tài liệu"}
                     </p>
-                    <p className="mt-1 text-[11px] text-slate-500">
+                    <p className="mt-1 text-[11px] text-on-surface-variant">
                       Education Material
                     </p>
                   </div>
@@ -134,9 +132,8 @@ export const DocumentCard: FC<DocumentCardProps> = ({
                 <span
                   className="
                     inline-flex items-center rounded-lg
-                    bg-white/90 px-2.5 py-1
-                    text-[11px] font-semibold text-slate-700
-                    shadow-sm
+                    bg-surface-container-high/95 px-2.5 py-1
+                    text-[11px] font-semibold text-on-surface
                   "
                 >
                   {subject}
@@ -150,9 +147,9 @@ export const DocumentCard: FC<DocumentCardProps> = ({
                 <span
                   className="
                     inline-flex items-center gap-1 rounded-lg
-                    bg-white px-2 py-0.5
-                    text-[11px] font-medium text-slate-600
-                    shadow-sm border border-slate-200
+                    bg-surface-container-high/95 px-2 py-0.5
+                    text-[11px] font-medium text-on-surface-variant
+                    border border-outline-variant
                   "
                 >
                   <span className="material-symbols-outlined text-sm">
@@ -173,20 +170,20 @@ export const DocumentCard: FC<DocumentCardProps> = ({
                 font-semibold
                 leading-snug
                 tracking-tight
-                text-slate-900
+                text-on-surface
                 transition-colors
-                group-hover:text-blue-700
+                group-hover:text-primary
               "
             >
               {title}
             </h3>
 
-            <div className="mt-1.5 flex items-center gap-2 text-xs text-slate-500">
+            <div className="mt-1.5 flex items-center gap-2 text-xs text-on-surface-variant">
               <span className="line-clamp-1">{subtitle}</span>
 
               {timeAgo ? (
                 <>
-                  <span className="text-slate-300">·</span>
+                  <span className="text-on-surface-variant/40">·</span>
                   <span className="shrink-0">{timeAgo}</span>
                 </>
               ) : null}
