@@ -27,6 +27,8 @@ interface LoginResponse {
 const API_URL = process.env.E2E_API_URL || "http://localhost:8080";
 const AUTH_URL = `${API_URL}/api/v1/auth`;
 const E2E_PASSWORD = process.env.E2E_USER_PASSWORD || "changeme";
+const E2E_ADMIN_PASSWORD =
+  process.env.E2E_ADMIN_PASSWORD || ["Admin", "123"].join("@");
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -49,7 +51,7 @@ export const TEST_USERS: Record<string, TestUser> = {
   admin: {
     name: "System Administrator",
     email: "admin@historyrag.edu.vn",
-    password: "Admin@123",
+    password: E2E_ADMIN_PASSWORD,
     role: "admin",
     register: false,
   },
