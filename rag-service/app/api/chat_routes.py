@@ -92,9 +92,10 @@ async def _chat(req: RagChatRequest) -> RagChatResponse:
         answer = generate(system_prompt, user_message, req.temperature)
     except Exception:
         logger.exception("LLM generate failed for question=%r", req.question)
+        citations = to_citations(hits)
         return RagChatResponse(
-            answer=_NO_DATA_MSG,
-            citations=[],
+            answer=_extractive_answer(req.question, hits),
+            citations=citations,
             usedVector=True,
             usedGraph=False,
         )
@@ -143,7 +144,8 @@ async def _stream_chat_events(req: RagChatRequest):
             yield _sse("chat.delta", {"text": chunk})
     except Exception:
         logger.exception("LLM generate_stream failed for question=%r", req.question)
-        for event in _answer_events(_NO_DATA_MSG, [], True, False):
+        citations = to_citations(hits)
+        for event in _answer_events(_extractive_answer(req.question, hits), citations, True, False):
             yield event
         return
 
@@ -185,3 +187,22 @@ def _chunk_text(text: str, chunk_size: int = 48):
         return
     for index in range(0, len(text), chunk_size):
         yield text[index:index + chunk_size]
+
+
+def _extractive_answer(question: str, hits: list) -> str:
+    snippets = []
+    for hit in hits[:3]:
+        payload = hit.payload or {}
+        text = (payload.get("chunkText") or "").strip()
+        if text:
+            snippets.append(" ".join(text.split())[:700])
+
+    if not snippets:
+        return _NO_DATA_MSG
+
+    joined = "\n\n".join(f"- {snippet}" for snippet in snippets)
+    return (
+        "Mình chưa gọi được mô hình sinh câu trả lời, nhưng đã tìm thấy các đoạn liên quan "
+        f"trong tài liệu cho câu hỏi: \"{question}\".\n\n"
+        f"{joined}"
+    )

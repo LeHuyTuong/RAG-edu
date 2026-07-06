@@ -15,6 +15,7 @@ import { DocumentPreview } from "@/modules/user/documents/detail/components/Docu
 import type { DocumentPreviewData } from "@/modules/user/documents/detail/type";
 import { loadDocumentPreview } from "@/modules/user/documents/detail/utils/document-preview";
 import { RejectDocumentModal } from "@/modules/moderator/components/RejectDocumentModal";
+import { useAuthStore } from "@/stores/auth/store";
 import type { DocumentDetail, DocumentStatus } from "@/types/document.type";
 import { formatDate, formatFileSize } from "@/utils";
 import { getErrorMessage } from "@/utils/error";
@@ -67,6 +68,7 @@ export default function AdminDocumentDetailPage({
 }: {
   readonly documentId: string;
 }): React.JSX.Element {
+  const accessToken = useAuthStore((state) => state.accessToken);
   const [document, setDocument] = useState<DocumentDetail | null>(null);
   const [preview, setPreview] = useState<DocumentPreviewData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -83,7 +85,12 @@ export default function AdminDocumentDetailPage({
       setDocument(response);
 
       try {
-        setPreview(await loadDocumentPreview(response));
+        if (!accessToken) throw new Error("Missing access token");
+        setPreview((previous) => {
+          if (previous?.objectUrl) URL.revokeObjectURL(previous.objectUrl);
+          return previous;
+        });
+        setPreview(await loadDocumentPreview(response, accessToken));
       } catch {
         setPreview({ type: "unsupported" });
       }
@@ -93,7 +100,13 @@ export default function AdminDocumentDetailPage({
     } finally {
       setLoading(false);
     }
-  }, [documentId]);
+  }, [documentId, accessToken]);
+
+  useEffect(() => {
+    return () => {
+      if (preview?.objectUrl) URL.revokeObjectURL(preview.objectUrl);
+    };
+  }, [preview?.objectUrl]);
 
   useEffect(() => {
     void loadDocument();

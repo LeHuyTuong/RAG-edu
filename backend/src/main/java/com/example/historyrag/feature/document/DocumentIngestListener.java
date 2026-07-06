@@ -1,6 +1,8 @@
 package com.example.historyrag.feature.document;
 
 import com.example.historyrag.feature.document.event.DocumentIngestRequested;
+import com.example.historyrag.feature.document.chunk.DocumentChunk;
+import com.example.historyrag.feature.document.chunk.DocumentChunkRepository;
 import com.example.historyrag.infrastructure.file.FileStorageService;
 import com.example.historyrag.infrastructure.webclient.RagClientService;
 import com.example.historyrag.infrastructure.webclient.dto.RagClassifyRequest;
@@ -24,15 +26,18 @@ public class DocumentIngestListener {
     private final DocumentRepository documentRepository;
     private final RagClientService ragClientService;
     private final FileStorageService fileStorageService;
+    private final DocumentChunkRepository documentChunkRepository;
     private final boolean reviewEnabled;
 
     public DocumentIngestListener(DocumentRepository documentRepository,
                                    RagClientService ragClientService,
                                    FileStorageService fileStorageService,
+                                   DocumentChunkRepository documentChunkRepository,
                                    @Value("${app.document.review.enabled:true}") boolean reviewEnabled) {
         this.documentRepository = documentRepository;
         this.ragClientService = ragClientService;
         this.fileStorageService = fileStorageService;
+        this.documentChunkRepository = documentChunkRepository;
         this.reviewEnabled = reviewEnabled;
     }
 
@@ -48,6 +53,12 @@ public class DocumentIngestListener {
 
         try {
             String filePath = resolveInternalFilePath(doc);
+
+            if (doc.getStatus() == DocumentStatus.READY) {
+                log.info("Document {} manually approved, indexing without AI review", docId);
+                runIngest(doc, filePath);
+                return;
+            }
 
             // Bước 1: AI duyệt nội dung (có thể tắt qua app.document.review.enabled=false)
             RagClassifyResponse verdict = null;
@@ -136,6 +147,7 @@ public class DocumentIngestListener {
         if (current == null) return;
 
         if ("COMPLETED".equals(response.status())) {
+            saveIngestedChunks(current, response);
             current.setStatus(DocumentStatus.READY);
             current.setChunkCount(response.chunks() != null ? response.chunks().size() : 0);
             documentRepository.save(current);
@@ -145,6 +157,27 @@ public class DocumentIngestListener {
             documentRepository.save(current);
             log.warn("Document {} ingestion FAILED: {}", id, response.status());
         }
+    }
+
+    private void saveIngestedChunks(Document doc, RagIngestResponse response) {
+        documentChunkRepository.deleteByDocumentId(doc.getId());
+        if (response.chunks() == null || response.chunks().isEmpty()) {
+            return;
+        }
+
+        java.util.List<DocumentChunk> chunks = response.chunks().stream()
+                .map(chunkResponse -> {
+                    DocumentChunk chunk = new DocumentChunk();
+                    chunk.setDocument(doc);
+                    chunk.setSourceId(response.sourceId());
+                    chunk.setSourceType("DOCUMENT");
+                    chunk.setChunkIndex(chunkResponse.chunkIndex());
+                    chunk.setQdrantPointId(chunkResponse.qdrantPointId());
+                    chunk.setContentHash(chunkResponse.contentHash());
+                    return chunk;
+                })
+                .toList();
+        documentChunkRepository.saveAll(chunks);
     }
 
     private Document findMutableDocument(Long docId) {

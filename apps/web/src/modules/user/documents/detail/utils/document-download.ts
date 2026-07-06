@@ -50,3 +50,11 @@ export function buildCloudinaryDownloadUrl(fileUrl: string): string {
     `${CLOUDINARY_UPLOAD_SEGMENT}${CLOUDINARY_ATTACHMENT_TRANSFORMATION}/`,
   );
 }
+
+export function buildProtectedDownloadUrl(documentId: number | string): string {
+  return `/api/v1/documents/${documentId}/download`;
+}
+
+export function buildProtectedFileUrl(documentId: number | string): string {
+  return `/api/v1/documents/${documentId}/file`;
+}

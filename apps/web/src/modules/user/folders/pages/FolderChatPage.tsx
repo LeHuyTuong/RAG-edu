@@ -47,6 +47,9 @@ const formatFileSize = (bytes: number): string => {
 const citationKey = (citation: RagCitationResponse, index: number): string =>
   `${citation.id ?? citation.url ?? citation.title ?? citation.source ?? index}`;
 
+const isDocumentReadyForAi = (document: LibraryDocument): boolean =>
+  document.ragStatus === "READY" && (document.chunkCount ?? 0) > 0;
+
 export default function FolderChatPage(): React.JSX.Element {
   const params = useParams();
   const router = useRouter();
@@ -129,7 +132,7 @@ export default function FolderChatPage(): React.JSX.Element {
         setSelectedDocumentIds(
           new Set(
             response.documents
-              .filter((d) => d.ragStatus === "READY")
+              .filter(isDocumentReadyForAi)
               .map((document) => String(document.id)),
           ),
         );
@@ -196,7 +199,11 @@ export default function FolderChatPage(): React.JSX.Element {
     (checked: boolean) => {
       setSelectedDocumentIds(
         checked
-          ? new Set(documents.map((document) => String(document.id)))
+          ? new Set(
+              documents
+                .filter(isDocumentReadyForAi)
+                .map((document) => String(document.id)),
+            )
           : new Set(),
       );
     },
@@ -206,6 +213,11 @@ export default function FolderChatPage(): React.JSX.Element {
   const selectDocumentById = useCallback(
     (documentId: string) => {
       if (!documents.some((document) => String(document.id) === documentId)) {
+        return;
+      }
+      const document = documents.find((item) => String(item.id) === documentId);
+      if (!document || !isDocumentReadyForAi(document)) {
+        toast.error("Tài liệu này chưa sẵn sàng cho AI");
         return;
       }
       setSelectedDocumentIds((current) => {
@@ -542,28 +554,32 @@ export default function FolderChatPage(): React.JSX.Element {
               <div className="space-y-2">
                 {documents.map((document) => {
                   const documentId = String(document.id);
+                  const readyForAi = isDocumentReadyForAi(document);
                   const checked = selectedDocumentIds.has(documentId);
 
                   return (
                     <label
                       key={document.id}
-                      draggable
+                      draggable={readyForAi}
                       onDragStart={(event) =>
                         handleDocumentDragStart(event, documentId)
                       }
-                      className={`group flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 transition-all ${
-                        checked
-                          ? "border-primary/60 bg-primary/10"
-                          : "border-outline-variant bg-surface-container-lowest hover:border-primary/40 hover:bg-surface-container-high"
+                      className={`group flex items-start gap-3 rounded-xl border px-3 py-3 transition-all ${
+                        !readyForAi
+                          ? "cursor-not-allowed border-outline-variant bg-surface-container-lowest opacity-60"
+                          : checked
+                            ? "cursor-pointer border-primary/60 bg-primary/10"
+                            : "cursor-pointer border-outline-variant bg-surface-container-lowest hover:border-primary/40 hover:bg-surface-container-high"
                       }`}
                     >
                       <input
                         type="checkbox"
                         checked={checked}
+                        disabled={!readyForAi}
                         onChange={(event) =>
                           toggleDocument(documentId, event.target.checked)
                         }
-                        className="mt-1 h-4 w-4 rounded border-outline accent-primary focus:ring-primary"
+                        className="mt-1 h-4 w-4 rounded border-outline accent-primary focus:ring-primary disabled:cursor-not-allowed"
                       />
                       <span className="material-symbols-outlined mt-0.5 text-[22px] text-primary">
                         {getDocumentIcon(document)}
@@ -577,6 +593,11 @@ export default function FolderChatPage(): React.JSX.Element {
                           {document.format.toUpperCase()} ·{" "}
                           {formatFileSize(document.sizeInBytes)}
                         </span>
+                        {!readyForAi ? (
+                          <span className="mt-1 block text-xs font-medium text-warning">
+                            Chưa sẵn sàng cho AI
+                          </span>
+                        ) : null}
                       </span>
                     </label>
                   );

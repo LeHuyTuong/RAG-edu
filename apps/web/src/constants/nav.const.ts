@@ -33,6 +33,12 @@ export const USER_NAV_ITEMS: SideNavItem[] = [
     section: "main",
   },
   {
+    label: "Gói AI",
+    icon: "workspace_premium",
+    href: ROUTE_PATHS.PROTECTED_ROUTES.BILLING,
+    section: "main",
+  },
+  {
     label: "Cài đặt",
     icon: "settings",
     href: ROUTE_PATHS.PROTECTED_ROUTES.SETTINGS,

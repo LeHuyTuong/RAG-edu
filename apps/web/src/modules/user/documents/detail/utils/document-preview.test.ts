@@ -59,19 +59,31 @@ describe("buildPreviewSkeleton", () => {
     ).toEqual({ type: "unsupported" });
   });
 
-  it("falls back before rendering when a PDF url is not reachable", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(null, {
-        status: 404,
-      }),
-    );
+  it("loads PDF preview through the protected file endpoint", async () => {
+    const blob = new Blob(["pdf"], { type: "application/pdf" });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      blob: () => Promise.resolve(blob),
+    });
+    const createObjectURL = vi.fn().mockReturnValue("blob:preview");
     vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("URL", {
+      ...URL,
+      createObjectURL,
+      revokeObjectURL: vi.fn(),
+    });
 
-    await expect(loadDocumentPreview(pdfDocument)).resolves.toEqual({
-      type: "unsupported",
+    await expect(
+      loadDocumentPreview(pdfDocument, "access-token"),
+    ).resolves.toEqual({
+      type: "pdf",
+      fileUrl: "blob:preview",
+      objectUrl: "blob:preview",
     });
-    expect(fetchMock).toHaveBeenCalledWith(pdfDocument.fileUrl, {
-      method: "HEAD",
-    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/v1/documents/101/file"),
+      { headers: { Authorization: "Bearer access-token" } },
+    );
+    expect(createObjectURL).toHaveBeenCalledWith(blob);
   });
 });

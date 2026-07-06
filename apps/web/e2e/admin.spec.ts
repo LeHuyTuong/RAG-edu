@@ -3,7 +3,9 @@ import { loginViaUI, TEST_USERS, navigateTo } from "./helpers";
 
 test.describe("Admin Flows", () => {
   test.beforeEach(async ({ page }) => {
-    await loginViaUI(page, TEST_USERS.admin.email, TEST_USERS.admin.password);
+    await loginViaUI(page, TEST_USERS.admin.email, TEST_USERS.admin.password, {
+      redirectPattern: /\/admin/,
+    });
   });
 
   test.describe("Dashboard", () => {
@@ -12,9 +14,15 @@ test.describe("Admin Flows", () => {
     });
 
     test("should have admin navigation sidebar", async ({ page }) => {
-      await expect(page.getByText("Bảng điều khiển")).toBeVisible();
-      await expect(page.getByText("Quản lý người dùng")).toBeVisible();
-      await expect(page.getByText("Quản lý môn học")).toBeVisible();
+      await expect(
+        page.getByRole("link", { name: /Bảng điều khiển/ }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("link", { name: /Quản lý người dùng/ }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("link", { name: /Quản lý môn học/ }),
+      ).toBeVisible();
     });
   });
 

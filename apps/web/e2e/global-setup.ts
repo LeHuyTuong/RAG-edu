@@ -1,6 +1,6 @@
 /**
  * Global setup for Playwright e2e tests.
- * Registers 3 test users via the backend API, then stores their auth tokens
+ * Registers/logs in test users via the backend API, then stores their auth tokens
  * in a .env file that Playwright test workers can read.
  *
  * Usage:
@@ -14,6 +14,7 @@ import { FullConfig } from "@playwright/test";
 import axios from "axios";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 
 interface LoginResponse {
   data?: {
@@ -26,13 +27,16 @@ interface LoginResponse {
 const API_URL = process.env.E2E_API_URL || "http://localhost:8080";
 const AUTH_URL = `${API_URL}/api/v1/auth`;
 const E2E_PASSWORD = process.env.E2E_USER_PASSWORD || "changeme";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // ─── Test users ───
 interface TestUser {
   name: string;
   email: string;
   password: string;
-  role: "user" | "moderator" | "admin";
+  role: "user" | "admin";
+  register?: boolean;
 }
 
 export const TEST_USERS: Record<string, TestUser> = {
@@ -42,17 +46,12 @@ export const TEST_USERS: Record<string, TestUser> = {
     password: E2E_PASSWORD,
     role: "user",
   },
-  moderator: {
-    name: "E2E Moderator",
-    email: "e2e-moderator@test.edu.vn",
-    password: E2E_PASSWORD,
-    role: "moderator",
-  },
   admin: {
-    name: "E2E Admin",
-    email: "e2e-admin@test.edu.vn",
-    password: E2E_PASSWORD,
+    name: "System Administrator",
+    email: "admin@historyrag.edu.vn",
+    password: "Admin@123",
     role: "admin",
+    register: false,
   },
 };
 
@@ -63,26 +62,29 @@ export const TEST_USERS: Record<string, TestUser> = {
 async function authenticateUser(user: TestUser): Promise<string | null> {
   console.log(`  [setup] Registering ${user.email}...`);
 
-  // Step 1: Try register
-  try {
-    const regRes = await axios.post(`${AUTH_URL}/register`, {
-      name: user.name,
-      email: user.email,
-      password: user.password,
-      deviceId: "playwright-e2e",
-    });
-    const token = extractToken(regRes.data);
-    if (token) {
-      console.log(`  [setup] Registered ${user.email} successfully`);
-      return token;
+  if (user.register !== false) {
+    try {
+      const regRes = await axios.post(`${AUTH_URL}/register`, {
+        name: user.name,
+        email: user.email,
+        password: user.password,
+        deviceId: "playwright-e2e",
+      });
+      const token = extractToken(regRes.data);
+      if (token) {
+        console.log(`  [setup] Registered ${user.email} successfully`);
+        return token;
+      }
+    } catch (err: any) {
+      // 409 Conflict = user already exists -> fall through to login
+      if (err.response?.status !== 409 && err.response?.status !== 400) {
+        console.log(
+          `  [setup] Register failed (${err.response?.status}), trying login...`,
+        );
+      }
     }
-  } catch (err: any) {
-    // 409 Conflict = user already exists -> fall through to login
-    if (err.response?.status !== 409 && err.response?.status !== 400) {
-      console.log(
-        `  [setup] Register failed (${err.response?.status}), trying login...`,
-      );
-    }
+  } else {
+    console.log(`  [setup] Using existing account ${user.email}...`);
   }
 
   // Step 2: Try login

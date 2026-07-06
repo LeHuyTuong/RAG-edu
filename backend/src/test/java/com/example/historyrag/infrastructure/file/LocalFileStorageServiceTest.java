@@ -20,13 +20,15 @@ class LocalFileStorageServiceTest {
     private Path internalRoot;
 
     private final SettingService settingService = mock(SettingService.class);
+    private final PdfWatermarkService pdfWatermarkService = mock(PdfWatermarkService.class);
 
     @Test
     void resolveInternalPath_returnsPathInsideInternalRoot() {
         LocalFileStorageService service = new LocalFileStorageService(
                 storageRoot.toString(),
                 internalRoot.toString(),
-                settingService
+                settingService,
+                pdfWatermarkService
         );
 
         String resolved = service.resolveInternalPath("lesson.pdf");
@@ -39,7 +41,8 @@ class LocalFileStorageServiceTest {
         LocalFileStorageService service = new LocalFileStorageService(
                 storageRoot.toString(),
                 internalRoot.toString(),
-                settingService
+                settingService,
+                pdfWatermarkService
         );
 
         assertThrows(InvalidRequestException.class, () -> service.resolveInternalPath("../secret.pdf"));

@@ -28,9 +28,9 @@ export async function loginViaUI(
   page: Page,
   email: string,
   password: string,
-  options?: { expectSuccess?: boolean },
+  options?: { expectSuccess?: boolean; redirectPattern?: RegExp | string },
 ) {
-  const { expectSuccess = true } = options ?? {};
+  const { expectSuccess = true, redirectPattern = /\/home/ } = options ?? {};
 
   await page.goto("/login");
   await page.waitForSelector('input[type="email"]', { timeout: 10_000 });
@@ -43,19 +43,15 @@ export async function loginViaUI(
   await page.click('button[type="submit"]');
 
   if (expectSuccess) {
-    // After successful login, user should be redirected to /home
-    await page.waitForURL(/\/home/, { timeout: 15_000 });
+    await page.waitForURL(redirectPattern, { timeout: 15_000 });
   }
 }
 
 /**
- * Log out via UI: click the logout nav item (which has href="#") in the sidebar.
+ * Log out via UI.
  */
 export async function logoutViaUI(page: Page) {
-  // The logout button is the last nav item with href="#" inside the sidebar
-  const logoutBtn = page
-    .locator('nav a[href="#"]')
-    .filter({ hasText: /Đăng xuất|Logout/i });
+  const logoutBtn = page.getByRole("button", { name: /Đăng xuất|Logout/i });
   await logoutBtn.click();
   // Should redirect to /login or /
   await page.waitForURL(/\/(login)?$/, { timeout: 10_000 });
@@ -103,14 +99,9 @@ export const TEST_USERS = {
     email: "e2e-user@test.edu.vn",
     password: E2E_PASSWORD,
   },
-  moderator: {
-    name: "E2E Moderator",
-    email: "e2e-moderator@test.edu.vn",
-    password: E2E_PASSWORD,
-  },
   admin: {
-    name: "E2E Admin",
-    email: "e2e-admin@test.edu.vn",
-    password: E2E_PASSWORD,
+    name: "System Administrator",
+    email: "admin@historyrag.edu.vn",
+    password: "Admin@123",
   },
 } as const;

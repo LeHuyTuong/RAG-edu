@@ -4,15 +4,19 @@ import com.example.historyrag.shared.ResultPaginationDTO;
 import com.example.historyrag.exception.InvalidRequestException;
 import com.example.historyrag.exception.ResourceNotFoundException;
 import com.example.historyrag.feature.document.dto.CreateDocumentRequest;
+import com.example.historyrag.feature.document.dto.DocumentDownload;
 import com.example.historyrag.feature.document.dto.DocumentResponse;
 import com.example.historyrag.feature.document.dto.SubjectDto;
 import com.example.historyrag.feature.document.dto.UpdateDocumentRequest;
 import com.example.historyrag.feature.document.event.DocumentIngestRequested;
+import com.example.historyrag.feature.document.chunk.DocumentChunk;
+import com.example.historyrag.feature.document.chunk.DocumentChunkRepository;
 import com.example.historyrag.feature.folder.FolderService;
 import com.example.historyrag.feature.subject.SubjectService;
 import com.example.historyrag.feature.user.UserService;
 import com.example.historyrag.feature.user.dto.AccountResponse;
 import com.example.historyrag.infrastructure.file.FileStorageService;
+import com.example.historyrag.infrastructure.file.PdfWatermarkService;
 import com.example.historyrag.infrastructure.webclient.RagClientService;
 import com.example.historyrag.infrastructure.webclient.dto.RagIngestMetadata;
 import com.example.historyrag.infrastructure.webclient.dto.RagIngestRequest;
@@ -27,6 +31,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -45,6 +51,8 @@ public class DocumentServiceImpl implements DocumentService {
     private final RagClientService ragClientService;
     private final FileStorageService fileStorageService;
     private final ApplicationEventPublisher eventPublisher;
+    private final DocumentChunkRepository documentChunkRepository;
+    private final PdfWatermarkService pdfWatermarkService;
 
     @Override
     @Transactional
@@ -134,6 +142,39 @@ public class DocumentServiceImpl implements DocumentService {
         AccountResponse author = userService.findById(doc.getOwnerId()).orElse(null);
         SubjectDto subject = buildSubjectDto(doc.getSubjectId());
         return DocumentResponse.fromEntity(doc, toUserEntity(author), subject);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DocumentDownload prepareDownload(Long id, Long currentUserId, String currentUserEmail, boolean canViewAnyDocument) {
+        Document doc = documentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
+
+        boolean isOwner = doc.getOwnerId().equals(currentUserId);
+        if (!canViewAnyDocument && !isOwner) {
+            if (!Boolean.TRUE.equals(doc.getIsPublic()) || doc.getStatus() != DocumentStatus.READY) {
+                throw new ResourceNotFoundException("Document", "id", id);
+            }
+        }
+
+        byte[] content;
+        try {
+            content = Files.readAllBytes(Path.of(resolveInternalFilePath(doc)));
+        } catch (Exception e) {
+            throw new InvalidRequestException("Không thể đọc file tài liệu: " + e.getMessage());
+        }
+
+        String format = normalizeFormat(doc.getFormat(), doc.getPublicId());
+        boolean shouldWatermark = !isOwner && !canViewAnyDocument && Boolean.TRUE.equals(doc.getIsPublic()) && "pdf".equals(format);
+        if (shouldWatermark) {
+            content = pdfWatermarkService.addPublicDownloadWatermark(content, currentUserEmail);
+        }
+
+        return new DocumentDownload(
+                content,
+                buildDownloadFilename(doc, shouldWatermark, format),
+                contentType(format),
+                shouldWatermark);
     }
 
     @Override
@@ -280,9 +321,17 @@ public class DocumentServiceImpl implements DocumentService {
             throw new InvalidRequestException("Tài liệu đã bị từ chối, không thể tự duyệt lại");
         }
 
-        // PENDING_REVIEW/FAILED cần index lại trước rồi mới READY
+        // Manual approval is an admin publishing decision. Keep RAG/indexing state
+        // visible via aiReviewStatus/ragStatus fields, but do not block the request
+        // on a potentially slow ingest pipeline.
         if (doc.getStatus() == DocumentStatus.PENDING_REVIEW || doc.getStatus() == DocumentStatus.FAILED) {
-            triggerIngest(id, userId);
+            doc.setStatus(DocumentStatus.READY);
+            doc.setIsPublic(true);
+            doc.setReviewedById(userId);
+            doc.setReviewedAt(Instant.now());
+            documentRepository.save(doc);
+            eventPublisher.publishEvent(new DocumentIngestRequested(doc.getId()));
+            log.info("Document {} manually approved by userId={}", id, userId);
         } else if (doc.getStatus() == DocumentStatus.READY) {
             doc.setStatus(DocumentStatus.READY);
             doc.setIsPublic(true);
@@ -392,6 +441,7 @@ public class DocumentServiceImpl implements DocumentService {
             RagIngestResponse response = ragClientService.ingest(ingestRequest, null);
 
             if ("COMPLETED".equals(response.status())) {
+                saveIngestedChunks(doc, response);
                 doc.setStatus(DocumentStatus.READY);
                 doc.setChunkCount(response.chunks() != null ? response.chunks().size() : 0);
                 documentRepository.save(doc);
@@ -543,6 +593,28 @@ public class DocumentServiceImpl implements DocumentService {
         return validCount == distinctIds.size();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public boolean allReadyForAiByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return true;
+        }
+        List<Long> distinctIds = ids.stream().distinct().toList();
+        long readyCount = documentRepository.countReadyForAiByIdIn(distinctIds);
+        return readyCount == distinctIds.size();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean allReadyForAiByIdsAndOwner(List<Long> ids, Long ownerId) {
+        if (ids == null || ids.isEmpty()) {
+            return true;
+        }
+        List<Long> distinctIds = ids.stream().distinct().toList();
+        long readyCount = documentRepository.countReadyForAiByIdInAndOwnerId(distinctIds, ownerId);
+        return readyCount == distinctIds.size();
+    }
+
     // --- helpers ---
 
     private SubjectDto buildSubjectDto(Long subjectId) {
@@ -563,5 +635,65 @@ public class DocumentServiceImpl implements DocumentService {
 
     private String resolveInternalFilePath(Document doc) {
         return fileStorageService.resolveInternalPath(doc.getPublicId());
+    }
+
+    private String normalizeFormat(String format, String publicId) {
+        if (format != null && !format.isBlank()) {
+            return format.trim().toLowerCase().replace(".", "");
+        }
+        if (publicId != null && publicId.contains(".")) {
+            return publicId.substring(publicId.lastIndexOf('.') + 1).toLowerCase();
+        }
+        return "bin";
+    }
+
+    private String contentType(String format) {
+        return switch (format) {
+            case "pdf" -> "application/pdf";
+            case "txt", "md" -> "text/plain";
+            case "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            default -> "application/octet-stream";
+        };
+    }
+
+    private String buildDownloadFilename(Document doc, boolean watermarked, String format) {
+        String title = doc.getTitle() == null || doc.getTitle().isBlank() ? "document" : doc.getTitle();
+        String slug = title
+                .trim()
+                .replaceAll("\\p{M}", "")
+                .replaceAll("[^a-zA-Z0-9._-]+", "-")
+                .replaceAll("^-+|-+$", "");
+        if (slug.isBlank()) {
+            slug = "document";
+        }
+        String suffix = watermarked ? "-public-watermarked" : "";
+        if (format == null || format.isBlank() || "bin".equals(format)) {
+            return slug + suffix;
+        }
+        if (slug.toLowerCase().endsWith("." + format)) {
+            slug = slug.substring(0, slug.length() - format.length() - 1);
+        }
+        return slug + suffix + "." + format;
+    }
+
+    private void saveIngestedChunks(Document doc, RagIngestResponse response) {
+        documentChunkRepository.deleteByDocumentId(doc.getId());
+        if (response.chunks() == null || response.chunks().isEmpty()) {
+            return;
+        }
+
+        List<DocumentChunk> chunks = response.chunks().stream()
+                .map(chunkResponse -> {
+                    DocumentChunk chunk = new DocumentChunk();
+                    chunk.setDocument(doc);
+                    chunk.setSourceId(response.sourceId());
+                    chunk.setSourceType("DOCUMENT");
+                    chunk.setChunkIndex(chunkResponse.chunkIndex());
+                    chunk.setQdrantPointId(chunkResponse.qdrantPointId());
+                    chunk.setContentHash(chunkResponse.contentHash());
+                    return chunk;
+                })
+                .toList();
+        documentChunkRepository.saveAll(chunks);
     }
 }

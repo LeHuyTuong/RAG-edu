@@ -1,11 +1,19 @@
+"use client";
+
+import { useState } from "react";
+import { toast } from "sonner";
+
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { APP_CONFIG } from "@/config";
+import { useAuthStore } from "@/stores/auth/store";
 import type { DocumentDetail } from "@/types/document.type";
 import { formatDate } from "@/utils";
 
 import {
-  buildCloudinaryDownloadUrl,
   buildDownloadFileName,
+  buildProtectedFileUrl,
+  buildProtectedDownloadUrl,
 } from "../utils/document-download";
 
 interface Props {
@@ -18,11 +26,78 @@ interface Props {
  * and action buttons (Open document / Download / Save).
  */
 export function DocumentHero({ document }: Props): React.JSX.Element {
-  const downloadUrl = buildCloudinaryDownloadUrl(document.fileUrl);
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const [downloading, setDownloading] = useState(false);
+  const downloadUrl = buildProtectedDownloadUrl(document.id);
   const downloadFileName = buildDownloadFileName(
     document.title,
     document.format,
   );
+
+  const handleDownload = async () => {
+    if (!accessToken) {
+      toast.error("Bạn cần đăng nhập để tải tài liệu");
+      return;
+    }
+
+    try {
+      setDownloading(true);
+      const response = await fetch(`${APP_CONFIG.api.baseUrl}${downloadUrl}`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Không thể tải tài liệu");
+      }
+
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = window.document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = getResponseFilename(response) ?? downloadFileName;
+      window.document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Không thể tải tài liệu",
+      );
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleOpen = async () => {
+    if (!accessToken) {
+      toast.error("Bạn cần đăng nhập để mở tài liệu");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${APP_CONFIG.api.baseUrl}${buildProtectedFileUrl(document.id)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Không thể mở tài liệu");
+      }
+
+      const blob = await response.blob();
+      window.open(URL.createObjectURL(blob), "_blank", "noopener,noreferrer");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Không thể mở tài liệu",
+      );
+    }
+  };
 
   const avatarContent = document.author.avatarUrl ? (
     <img
@@ -71,27 +146,27 @@ export function DocumentHero({ document }: Props): React.JSX.Element {
         </div>
 
         <div className="flex shrink-0 flex-wrap gap-3">
-          <a href={document.fileUrl} target="_blank" rel="noopener noreferrer">
-            <Button variant="outline">
-              <span className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[18px]">
-                  open_in_new
-                </span>
-                Mở tài liệu
+          <Button onClick={handleOpen} type="button" variant="outline">
+            <span className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-[18px]">
+                open_in_new
               </span>
-            </Button>
-          </a>
+              Mở tài liệu
+            </span>
+          </Button>
 
-          <a href={downloadUrl} download={downloadFileName}>
-            <Button variant="primary">
-              <span className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[18px]">
-                  download
-                </span>
-                Tải xuống
+          <Button
+            disabled={downloading}
+            onClick={handleDownload}
+            variant="primary"
+          >
+            <span className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-[18px]">
+                download
               </span>
-            </Button>
-          </a>
+              {downloading ? "Đang tải..." : "Tải xuống"}
+            </span>
+          </Button>
 
           <Button variant="outline">
             <span className="flex items-center gap-2">
@@ -105,4 +180,15 @@ export function DocumentHero({ document }: Props): React.JSX.Element {
       </div>
     </section>
   );
+}
+
+function getResponseFilename(response: Response): string | null {
+  const disposition = response.headers.get("content-disposition");
+  if (!disposition) return null;
+
+  const encoded = disposition.match(/filename\\*=UTF-8''([^;]+)/i)?.[1];
+  if (encoded) return decodeURIComponent(encoded);
+
+  const plain = disposition.match(/filename="?([^";]+)"?/i)?.[1];
+  return plain ?? null;
 }

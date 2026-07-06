@@ -5,6 +5,7 @@ import com.example.historyrag.shared.JwtUtils;
 import com.example.historyrag.shared.ResultPaginationDTO;
 import com.example.historyrag.feature.document.dto.CreateDocumentRequest;
 import com.example.historyrag.feature.document.dto.DocumentPageResponse;
+import com.example.historyrag.feature.document.dto.DocumentDownload;
 import com.example.historyrag.feature.document.dto.DocumentResponse;
 import com.example.historyrag.feature.document.dto.ShareLinkResponse;
 import com.example.historyrag.feature.document.dto.UpdateDocumentRequest;
@@ -12,6 +13,8 @@ import jakarta.validation.Valid;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
@@ -19,6 +22,8 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @RestController
@@ -150,6 +155,42 @@ public class DocumentController {
             @AuthenticationPrincipal Jwt jwt) {
         Long currentUserId = JwtUtils.getUserId(jwt);
         return ResponseEntity.ok(ApiResponse.success(documentService.getById(id, currentUserId, isAdmin(jwt))));
+    }
+
+    @GetMapping("/{id}/download")
+    public ResponseEntity<byte[]> download(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Jwt jwt) {
+        DocumentDownload download = documentService.prepareDownload(
+                id,
+                JwtUtils.getUserId(jwt),
+                jwt.getSubject(),
+                isAdmin(jwt));
+        String encodedFilename = URLEncoder.encode(download.filename(), StandardCharsets.UTF_8)
+                .replace("+", "%20");
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(download.contentType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFilename)
+                .header("X-RAG-Edu-Watermarked", Boolean.toString(download.watermarked()))
+                .body(download.content());
+    }
+
+    @GetMapping("/{id}/file")
+    public ResponseEntity<byte[]> file(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Jwt jwt) {
+        DocumentDownload download = documentService.prepareDownload(
+                id,
+                JwtUtils.getUserId(jwt),
+                jwt.getSubject(),
+                isAdmin(jwt));
+        String encodedFilename = URLEncoder.encode(download.filename(), StandardCharsets.UTF_8)
+                .replace("+", "%20");
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(download.contentType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename*=UTF-8''" + encodedFilename)
+                .header("X-RAG-Edu-Watermarked", Boolean.toString(download.watermarked()))
+                .body(download.content());
     }
 
     private boolean isAdmin(Jwt jwt) {
