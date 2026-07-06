@@ -23,6 +23,7 @@ import { formatDate } from "@/utils";
 import { DocumentPreview } from "@/modules/user/documents/detail/components/DocumentPreview";
 import type { DocumentPreviewData } from "@/modules/user/documents/detail/type";
 import { loadDocumentPreview } from "@/modules/user/documents/detail/utils/document-preview";
+import { useAuthStore } from "@/stores/auth/store";
 
 import {
   EmptyState,
@@ -120,6 +121,7 @@ export default function ModeratorDocumentDetailPage({
   readonly documentId: string;
 }): React.JSX.Element {
   const router = useRouter();
+  const accessToken = useAuthStore((state) => state.accessToken);
   const [document, setDocument] = useState<DocumentDetail | null>(null);
   const [preview, setPreview] = useState<DocumentPreviewData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -136,7 +138,12 @@ export default function ModeratorDocumentDetailPage({
       setDocument(response);
 
       try {
-        setPreview(await loadDocumentPreview(response));
+        if (!accessToken) throw new Error("Missing access token");
+        setPreview((previous) => {
+          if (previous?.objectUrl) URL.revokeObjectURL(previous.objectUrl);
+          return previous;
+        });
+        setPreview(await loadDocumentPreview(response, accessToken));
       } catch (previewError) {
         console.error(
           "Could not load moderator document preview",
@@ -150,7 +157,13 @@ export default function ModeratorDocumentDetailPage({
     } finally {
       setIsLoading(false);
     }
-  }, [documentId]);
+  }, [documentId, accessToken]);
+
+  useEffect(() => {
+    return () => {
+      if (preview?.objectUrl) URL.revokeObjectURL(preview.objectUrl);
+    };
+  }, [preview?.objectUrl]);
 
   useEffect(() => {
     loadDocument();

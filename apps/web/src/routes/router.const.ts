@@ -32,6 +32,7 @@ export const ROUTE_PATHS = {
     PROFILE: "/profile",
     SETTINGS: "/settings",
     UPLOADS: "/uploads",
+    BILLING: "/billing",
     FAVORITES: "/favorites",
     MY_DOCUMENTS: "/my-documents",
     MY_UPLOADS: "/my-uploads",

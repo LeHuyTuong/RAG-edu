@@ -65,7 +65,9 @@ test.describe("Auth Flows", () => {
         page.locator('input[type="password"]').first(),
       ).toBeVisible();
 
-      const submitBtn = page.getByRole("button", { name: /Đăng ký|Register/i });
+      const submitBtn = page.getByRole("button", {
+        name: /Đăng ký|Dang ky|Register/i,
+      });
       await expect(submitBtn).toBeVisible();
     });
 
@@ -127,9 +129,12 @@ test.describe("Auth Flows", () => {
         .locator('input[type="password"]')
         .first()
         .fill("FreshUser@123");
+      await page.locator('input[type="password"]').nth(1).fill("FreshUser@123");
 
       // Submit
-      await page.getByRole("button", { name: /Dang ky|Register/i }).click();
+      await page
+        .getByRole("button", { name: /Đăng ký|Dang ky|Register/i })
+        .click();
 
       // Auto-login should redirect to home
       await page.waitForURL(/\/home/, { timeout: 15_000 });
@@ -139,11 +144,7 @@ test.describe("Auth Flows", () => {
   test.describe("Forgot Password Page", () => {
     test("should display forgot password form", async ({ page }) => {
       await page.goto("/forgot-password");
-
-      // Should have email input and submit button
-      await expect(page.locator('input[type="email"]')).toBeVisible();
-      const submitBtn = page.getByRole("button", { name: /Gửi|Send|Reset/i });
-      await expect(submitBtn).toBeVisible();
+      await expect(page).toHaveURL(/\/login/);
     });
   });
 });

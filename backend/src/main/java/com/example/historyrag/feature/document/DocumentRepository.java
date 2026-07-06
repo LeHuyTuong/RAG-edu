@@ -37,4 +37,10 @@ public interface DocumentRepository extends JpaRepository<Document, Long>, JpaSp
 
     @Query("SELECT COUNT(d) FROM Document d WHERE d.id IN :ids AND d.ownerId = :ownerId AND d.status <> 'SOFT_DELETED' AND d.status <> 'FAILED'")
     long countValidByIdInAndOwnerId(@Param("ids") List<Long> ids, @Param("ownerId") Long ownerId);
+
+    @Query("SELECT COUNT(d) FROM Document d WHERE d.id IN :ids AND d.status = 'READY' AND d.chunkCount > 0")
+    long countReadyForAiByIdIn(@Param("ids") List<Long> ids);
+
+    @Query("SELECT COUNT(d) FROM Document d WHERE d.id IN :ids AND d.ownerId = :ownerId AND d.status = 'READY' AND d.chunkCount > 0")
+    long countReadyForAiByIdInAndOwnerId(@Param("ids") List<Long> ids, @Param("ownerId") Long ownerId);
 }

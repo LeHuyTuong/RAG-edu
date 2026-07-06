@@ -15,4 +15,6 @@ export interface DocumentPreviewData {
   readonly textContent?: string;
 
   readonly images?: readonly string[];
+
+  readonly objectUrl?: string;
 }

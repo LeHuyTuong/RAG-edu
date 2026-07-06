@@ -3,6 +3,7 @@ package com.example.historyrag.feature.document;
 import com.example.historyrag.shared.ResultPaginationDTO;
 import com.example.historyrag.feature.document.dto.CreateDocumentRequest;
 import com.example.historyrag.feature.document.dto.DocumentResponse;
+import com.example.historyrag.feature.document.dto.DocumentDownload;
 import com.example.historyrag.feature.document.dto.UpdateDocumentRequest;
 import org.springframework.data.domain.Pageable;
 
@@ -16,6 +17,8 @@ public interface DocumentService {
     DocumentResponse update(Long id, UpdateDocumentRequest request, Long ownerId);
 
     DocumentResponse getById(Long id, Long currentUserId, boolean canViewAnyDocument);
+
+    DocumentDownload prepareDownload(Long id, Long currentUserId, String currentUserEmail, boolean canViewAnyDocument);
 
     List<DocumentResponse> getMyDocuments(Long ownerId);
 
@@ -57,6 +60,10 @@ public interface DocumentService {
     boolean allExistByIdsAndOwner(List<Long> ids, Long ownerId);
 
     boolean allValidByIdsAndOwner(List<Long> ids, Long ownerId);
+
+    boolean allReadyForAiByIds(List<Long> ids);
+
+    boolean allReadyForAiByIdsAndOwner(List<Long> ids, Long ownerId);
 
     String enableShare(Long id, Long ownerId);
 

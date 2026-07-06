@@ -53,6 +53,11 @@ export const API_ENDPOINTS = {
     INGEST: "/api/v1/rag/ingest",
     SOURCE: (id: string) => `/api/v1/rag/sources/${id}`,
   },
+  BILLING: {
+    SUMMARY: "/api/v1/billing/summary",
+    DEMO_PURCHASE: "/api/v1/billing/demo-purchase",
+    FLOW: "/api/v1/billing/flow",
+  },
 } as const;
 
 export const DEFAULT_AVATAR_URL =

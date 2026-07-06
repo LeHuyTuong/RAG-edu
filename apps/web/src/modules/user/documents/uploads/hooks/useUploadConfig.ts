@@ -30,7 +30,9 @@ const mergeConfig = (server: ServerUploadConfig): UploadConfig => {
 
   const mimeTypes = extensions
     .map((ext) => EXT_TO_MIME[ext.replace(".", "")])
-    .filter((v, i, arr) => v && arr.indexOf(v) === i);
+    .filter((value, index, array): value is string =>
+      Boolean(value) && array.indexOf(value) === index,
+    );
 
   return {
     maxFileSize: server.maxFileSize,
