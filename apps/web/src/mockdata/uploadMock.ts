@@ -6,9 +6,9 @@ export const uploadMock = {
   supportedFormats: ["PDF", "DOCX", "TXT", "PNG", "JPG"],
 
   integrityRule: {
-    title: "Quy tắc liêm chính học thuật",
+    title: "Quy tắc lưu trữ tài liệu lịch sử",
 
     content:
-      "Bằng cách tải lên, bạn cam kết rằng tài liệu này không vi phạm bản quyền và tuân thủ quy định về liêm chính của nhà trường.",
+      "Bằng cách tải lên, bạn xác nhận tài liệu có nguồn gốc rõ ràng và không vi phạm bản quyền.",
   },
 };

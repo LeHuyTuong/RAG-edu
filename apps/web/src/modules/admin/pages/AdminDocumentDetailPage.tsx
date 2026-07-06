@@ -40,6 +40,14 @@ const statusTone: Record<
   DELETED: "neutral",
 };
 
+const ragStatusLabels: Record<string, string> = {
+  UPLOADING: "Đang tải lên",
+  INDEXING: "Đang phân tích",
+  READY: "Sẵn sàng",
+  FAILED: "Lỗi xử lý",
+  REINDEXING: "Đang phân tích lại",
+};
+
 const quickReviewPrompts = [
   "Tài liệu này có liên quan đến lịch sử Việt Nam không?",
   "Có dấu hiệu nên từ chối tài liệu này không?",
@@ -198,7 +206,7 @@ export default function AdminDocumentDetailPage({
           </h1>
           <p className="mt-2 max-w-3xl text-on-surface-variant">
             Xem nội dung, hỏi AI hỗ trợ kiểm duyệt và quyết định duyệt hoặc từ
-            chối tài liệu này.
+            chối tư liệu này.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -257,7 +265,7 @@ export default function AdminDocumentDetailPage({
                 }
               />
               <DetailItem
-                label="Tác giả"
+                label="Người tải"
                 value={
                   <span>
                     {document.author.name}
@@ -268,12 +276,12 @@ export default function AdminDocumentDetailPage({
                 }
               />
               <DetailItem
-                label="Môn học"
+                label="Danh mục lịch sử"
                 value={document.subject?.name ?? "Chưa phân loại"}
               />
               <DetailItem
                 label="Mô tả"
-                value={document.description || "Tài liệu chưa có mô tả."}
+                value={document.description || "Tư liệu chưa có mô tả."}
               />
               <div className="grid grid-cols-2 gap-4">
                 <DetailItem
@@ -285,8 +293,8 @@ export default function AdminDocumentDetailPage({
                   value={formatFileSize(document.sizeInBytes)}
                 />
                 <DetailItem
-                  label="Số trang"
-                  value={document.pageCount ? `${document.pageCount}` : "—"}
+                  label="Số chunks"
+                  value={document.chunkCount ? `${document.chunkCount}` : "—"}
                 />
                 <DetailItem
                   label="Ngày tải"
@@ -295,7 +303,7 @@ export default function AdminDocumentDetailPage({
               </div>
               {document.rejectionReason ? (
                 <DetailItem
-                  label="Lý do từ chối"
+                  label="Nhận xét AI"
                   value={document.rejectionReason}
                 />
               ) : null}
@@ -308,8 +316,12 @@ export default function AdminDocumentDetailPage({
             </h2>
             <dl className="space-y-4">
               <DetailItem
-                label="RAG status"
-                value={String(document.ragStatus ?? "Chưa có")}
+                label="Trạng thái xử lý RAG"
+                value={
+                  ragStatusLabels[document.ragStatus ?? ""] ??
+                  document.ragStatus ??
+                  "Chưa có"
+                }
               />
               <DetailItem
                 label="Độ tin cậy"

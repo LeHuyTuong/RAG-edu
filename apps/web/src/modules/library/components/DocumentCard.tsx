@@ -37,7 +37,7 @@ const getFileIcon = (publicId: string): string => {
   return "draft";
 };
 
-const subjectGradients = [
+const historyGradients = [
   "from-primary-container/40 to-secondary-container/40",
   "from-secondary-container/40 to-tertiary-container/40",
   "from-tertiary-container/40 to-primary-container/40",
@@ -51,7 +51,7 @@ const getGradient = (seed: string): string => {
   for (let i = 0; i < seed.length; i++) {
     hash = (hash * 31 + seed.charCodeAt(i)) & 0xffff;
   }
-  return subjectGradients[hash % subjectGradients.length] as string;
+  return historyGradients[hash % historyGradients.length] as string;
 };
 
 const buildCloudinaryThumbnailUrl = (publicId: string): string => {
@@ -115,10 +115,10 @@ export const DocumentCard: FC<DocumentCardProps> = ({ document }) => {
 
           <div className="absolute inset-0 bg-on-surface/[0.03]" />
 
-          {document.subject ? (
+          {document.format ? (
             <span className="absolute left-3 top-3">
               <Badge tone="neutral" className="text-[11px]">
-                {document.subject.code}
+                {document.format.toUpperCase()}
               </Badge>
             </span>
           ) : null}
@@ -149,7 +149,7 @@ export const DocumentCard: FC<DocumentCardProps> = ({ document }) => {
 
           {document.subject ? (
             <p className="truncate text-xs text-on-surface-variant">
-              {document.subject.name}
+              Giai đoạn: {document.subject.name}
             </p>
           ) : null}
 

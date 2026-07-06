@@ -13,7 +13,6 @@ import { Badge } from "@/components/ui/Badge";
 import { Pagination } from "@/components/ui/Pagination";
 import { Table, type TableRow } from "@/components/ui/Table";
 import type { LibraryDocument } from "@/types/document.type";
-import { formatFileSize } from "@/utils";
 import { getErrorMessage } from "@/utils/error";
 
 import { AdminDocumentAiAssistant } from "../components/AdminDocumentAiAssistant";
@@ -22,30 +21,33 @@ import { AdminCard, MaterialIcon } from "../components/AdminPrimitives";
 const columns = [
   { key: "select", label: "Chọn", align: "center" as const },
   { key: "title", label: "Tiêu đề", sortable: true },
-  { key: "author", label: "Tác giả" },
-  { key: "subject", label: "Môn học" },
-  { key: "confidence", label: "AI đánh giá", align: "center" as const },
-  { key: "status", label: "Trạng thái" },
+  { key: "author", label: "Người tải" },
+  { key: "subject", label: "Danh mục lịch sử" },
+  { key: "confidence", label: "Chỉ số AI", align: "center" as const },
+  { key: "status", label: "Trạng thái xử lý" },
   { key: "actions", label: "Thao tác", align: "center" as const },
 ] as const;
 
 const pageSize = 10;
 
-const statusLabels: Record<string, string> = {
-  ACTIVE: "Đã duyệt",
-  PENDING: "Chờ duyệt",
-  REJECTED: "Từ chối",
-  DELETED: "Đã xóa",
-  FAILED: "Thất bại",
+const ragStatusLabels: Record<string, string> = {
+  UPLOADING: "Đang tải lên",
+  INDEXING: "Đang phân tích",
+  READY: "Sẵn sàng",
+  FAILED: "Lỗi xử lý",
+  REINDEXING: "Đang phân tích lại",
 };
 
-const statusTone: Record<string, "success" | "warning" | "error" | "neutral"> =
-  {
-    ACTIVE: "success",
-    PENDING: "warning",
-    REJECTED: "error",
-    DELETED: "neutral",
-  };
+const ragStatusTone: Record<
+  string,
+  "success" | "warning" | "error" | "neutral"
+> = {
+  UPLOADING: "neutral",
+  INDEXING: "warning",
+  READY: "success",
+  FAILED: "error",
+  REINDEXING: "warning",
+};
 
 const suggestedQuestions = [
   "Các tài liệu đã chọn có phù hợp để duyệt không?",
@@ -231,7 +233,8 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
       <div key="title" className="min-w-56">
         <p className="font-medium text-on-surface line-clamp-1">{doc.title}</p>
         <p className="mt-1 text-xs text-on-surface-variant">
-          {doc.format.toUpperCase()} · {formatFileSize(doc.sizeInBytes)}
+          {doc.format.toUpperCase()} · {doc.chunkCount ?? 0} chunks ·{" "}
+          {doc.isPublic ? "Công khai" : "Riêng tư"}
         </p>
       </div>,
       <span key="author" className="text-sm text-on-surface-variant">
@@ -241,8 +244,11 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
         {doc.subject?.name ?? "—"}
       </span>,
       <ConfidenceBadge key="confidence" confidence={doc.aiConfidence} />,
-      <Badge key="status" tone={statusTone[doc.status] ?? "neutral"}>
-        {statusLabels[doc.status] ?? doc.status}
+      <Badge
+        key="status"
+        tone={ragStatusTone[doc.ragStatus ?? ""] ?? "neutral"}
+      >
+        {ragStatusLabels[doc.ragStatus ?? ""] ?? doc.ragStatus ?? "—"}
       </Badge>,
       <div key="actions" className="flex items-center justify-center gap-1">
         {doc.ragStatus === "FAILED" && (
@@ -282,7 +288,8 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
       <div>
         <h1 className="text-3xl font-bold text-on-surface">Quản lý tài liệu</h1>
         <p className="mt-2 text-on-surface-variant">
-          Duyệt, phân tích bằng AI và quản lý tài liệu người dùng tải lên.
+          Duyệt, phân tích bằng AI và quản lý tư liệu lịch sử người dùng tải
+          lên.
         </p>
       </div>
 

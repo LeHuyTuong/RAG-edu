@@ -27,7 +27,7 @@ const pageSize = 10;
 const documentColumns = [
   { key: "title", label: "TIÊU ĐỀ TÀI LIỆU" },
   { key: "author", label: "TÁC GIẢ" },
-  { key: "subject", label: "MÔN HỌC" },
+  { key: "subject", label: "GIAI ĐOẠN" },
   { key: "uploadDate", label: "NGÀY TẢI" },
   { key: "status", label: "TRẠNG THÁI" },
   { key: "actions", label: "THAO TÁC", align: "right" as const },

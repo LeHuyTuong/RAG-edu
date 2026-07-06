@@ -34,10 +34,10 @@ const buildStats = (stats: AdminDashboardStats): AdminStat[] => [
     trend: "API",
   },
   {
-    label: "Môn học",
+    label: "Giai đoạn",
     value: formatCount(stats.subjects.total),
-    caption: "Tổng môn học hiện có trong hệ thống",
-    icon: "menu_book",
+    caption: "Tổng giai đoạn lịch sử hiện có trong hệ thống",
+    icon: "history_edu",
     tone: "secondary",
     trend: "API",
   },

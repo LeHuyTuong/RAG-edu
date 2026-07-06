@@ -12,7 +12,7 @@ interface DocumentCardProps {
   subtitle: string;
   coverImage?: string;
   pageCount?: number;
-  subject?: string;
+  period?: string;
   updatedAt?: string;
   className?: string;
 }
@@ -23,7 +23,7 @@ export const DocumentCard: FC<DocumentCardProps> = ({
   subtitle,
   coverImage,
   pageCount,
-  subject,
+  period,
   updatedAt,
   className = "",
 }) => {
@@ -50,7 +50,7 @@ export const DocumentCard: FC<DocumentCardProps> = ({
   const hasRealImage =
     coverImage && !imageFailed && !coverImage.includes("default.svg");
 
-  const theme = getSubjectTheme(subject);
+  const theme = getSubjectTheme(period);
 
   return (
     <Link href={`/documents/${id}`}>
@@ -98,16 +98,16 @@ export const DocumentCard: FC<DocumentCardProps> = ({
             ) : (
               <div
                 className={`
-    flex h-full items-center justify-center
-    bg-gradient-to-br ${theme.gradient}
-  `}
+                  flex h-full items-center justify-center
+                  bg-gradient-to-br ${theme.gradient}
+                `}
               >
                 <div className="flex flex-col items-center gap-4">
                   <div
                     className={`
-        flex h-20 w-20 items-center justify-center
-        rounded-3xl ${theme.iconBg}
-      `}
+                      flex h-20 w-20 items-center justify-center
+                      rounded-3xl ${theme.iconBg}
+                    `}
                   >
                     <span className="material-symbols-outlined text-4xl">
                       {theme.icon}
@@ -116,27 +116,30 @@ export const DocumentCard: FC<DocumentCardProps> = ({
 
                   <div className="text-center">
                     <p className="text-xs font-bold uppercase tracking-[0.25em] text-on-surface">
-                      {subject ?? "Tài liệu"}
+                      {period ?? "Tư liệu"}
                     </p>
                     <p className="mt-1 text-[11px] text-on-surface-variant">
-                      Education Material
+                      Historical Archive
                     </p>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Subject badge */}
-            {subject ? (
+            {/* Period badge */}
+            {period ? (
               <div className="absolute left-3 top-3">
                 <span
                   className="
-                    inline-flex items-center rounded-lg
+                    inline-flex items-center gap-1 rounded-lg
                     bg-surface-container-high/95 px-2.5 py-1
                     text-[11px] font-semibold text-on-surface
                   "
                 >
-                  {subject}
+                  <span className="material-symbols-outlined text-xs">
+                    history_edu
+                  </span>
+                  {period}
                 </span>
               </div>
             ) : null}

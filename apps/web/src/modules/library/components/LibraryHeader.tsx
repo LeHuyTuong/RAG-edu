@@ -23,8 +23,8 @@ export const LibraryHeader: FC<LibraryHeaderProps> = ({
   const headline = activeSearch
     ? `Kết quả cho "${activeSearch}"`
     : activeSubjectName
-      ? `Tài liệu môn "${activeSubjectName}"`
-      : "Thư viện tài liệu";
+      ? `Tư liệu giai đoạn "${activeSubjectName}"`
+      : "Kho tư liệu lịch sử";
 
   return (
     <div className="mb-6">
@@ -35,7 +35,7 @@ export const LibraryHeader: FC<LibraryHeaderProps> = ({
       ) : (
         <p className="mt-1 text-sm text-on-surface-variant">
           {pagination
-            ? `Tìm thấy ${pagination.total.toLocaleString("vi-VN")} tài liệu liên quan`
+            ? `Tìm thấy ${pagination.total.toLocaleString("vi-VN")} tư liệu liên quan`
             : "Đang tải dữ liệu…"}
           {hasFilter ? (
             <span className="ml-1 text-primary">

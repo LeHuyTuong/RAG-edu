@@ -16,8 +16,8 @@
  *  - onSubmittingChange  — callback so the parent can mirror the loading state.
  *  - onSuccess           — called after the document record is created.
  *
- * Subjects come from GET /api/v1/subjects (real API, not mock data).
- * "Trường học" is read-only — it is derived from the subject on the backend.
+ * Historical periods come from GET /api/v1/subjects (real API, not mock data).
+ * Document types are fixed categories suitable for a historical archive.
  *
  * Error handling:
  *   - Client-side validation (missing file/title/config) uses fixed
@@ -40,6 +40,18 @@ import { getErrorMessage } from "@/utils/error";
 import type { Subject } from "@/types/document.type";
 import { uploadFileToCloudinary } from "../utils/cloudinary-upload";
 
+// ── History-specific document types ──────────────────────────────────────────
+
+const DOCUMENT_TYPE_OPTIONS = [
+  { label: "Chọn loại tài liệu", value: "" },
+  { label: "Tư liệu lịch sử", value: "historical_document" },
+  { label: "Bài nghiên cứu", value: "research_paper" },
+  { label: "Biên niên sử", value: "chronicle" },
+  { label: "Sách lịch sử", value: "history_book" },
+  { label: "Bản đồ lịch sử", value: "historical_map" },
+  { label: "Tài liệu lưu trữ", value: "archival_material" },
+];
+
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface Props {
@@ -61,12 +73,13 @@ export function DocumentUploadForm({
   // Form values
   const [title, setTitle] = useState("");
   const [subjectId, setSubjectId] = useState("");
+  const [documentType, setDocumentType] = useState("");
   const [description, setDescription] = useState("");
 
-  // Visibility toggle — replaces the two-button draft/publish pattern
+  // Visibility toggle
   const [isPublic, setIsPublic] = useState(false);
 
-  // Subjects from API
+  // Subjects from API (historical periods)
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [subjectsLoading, setSubjectsLoading] = useState(true);
 
@@ -105,7 +118,6 @@ export function DocumentUploadForm({
       setSubmitError(UPLOAD_ERROR_MESSAGES.MISSING_TITLE);
       return;
     }
-    // Bypass Cloudinary preset check — upload utility handles fallback
 
     setIsSubmitting(true);
     onSubmittingChange(true);
@@ -141,13 +153,12 @@ export function DocumentUploadForm({
       // Reset form on success
       setTitle("");
       setSubjectId("");
+      setDocumentType("");
       setDescription("");
       setIsPublic(false);
       setFolderId("");
       onSuccess();
     } catch (err) {
-      // Logged for debugging — the user only sees a mapped message,
-      // never the raw backend error.
       console.error("createDocument failed:", err);
       setSubmitError(
         getErrorMessage(err, {
@@ -174,7 +185,7 @@ export function DocumentUploadForm({
 
   const canSubmit = Boolean(selectedFile) && !isSubmitting;
   const subjectOptions = [
-    { label: "Chọn môn học", value: "" },
+    { label: "Chọn giai đoạn lịch sử", value: "" },
     ...subjects.map((subject) => ({
       label: subject.name,
       value: subject.id,
@@ -193,34 +204,31 @@ export function DocumentUploadForm({
       {/* Title */}
       <InputField
         label="Tên tài liệu"
-        placeholder="Ví dụ: Đề cương Giải tích 1 - K65"
+        placeholder="Ví dụ: Chiến dịch Điện Biên Phủ (1954)"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         required
         disabled={isSubmitting}
       />
 
-      {/* Subject + School */}
+      {/* Historical period + Document type */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {/* Subject — populated from GET /api/v1/subjects */}
         <SelectField
           disabled={subjectsLoading || isSubmitting}
-          label="Môn học"
+          label="Giai đoạn lịch sử"
           onChange={setSubjectId}
           options={subjectOptions}
-          placeholder="Chọn môn học"
+          placeholder="Chọn giai đoạn lịch sử"
           value={subjectId}
         />
 
-        {/*
-         * "Trường học" is not part of CreateDocumentDto — the backend
-         * derives it from the chosen subject. Shown as read-only context.
-         */}
-        <InputField
-          label="Trường học"
-          value="ĐH FPT (mặc định)"
-          readOnly
-          className="cursor-not-allowed opacity-60"
+        <SelectField
+          disabled={isSubmitting}
+          label="Loại tài liệu"
+          onChange={setDocumentType}
+          options={DOCUMENT_TYPE_OPTIONS}
+          placeholder="Chọn loại tài liệu"
+          value={documentType}
         />
       </div>
 
@@ -230,7 +238,7 @@ export function DocumentUploadForm({
           Mô tả chi tiết
         </span>
         <textarea
-          placeholder="Tóm tắt nội dung tài liệu để người khác dễ tìm thấy..."
+          placeholder="Mô tả ngắn về nội dung, bối cảnh hoặc sự kiện lịch sử trong tài liệu..."
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={4}
@@ -257,15 +265,15 @@ export function DocumentUploadForm({
       )}
 
       {/* Visibility toggle */}
-      <div className="flex items-center justify-between rounded-xl border border-outline bg-surface-variant/40 px-4 py-3">
+      <div className="flex items-center justify-between rounded-xl border border-outline-variant bg-surface-container-low px-4 py-3">
         <div className="flex flex-col gap-0.5">
           <span className="text-sm font-medium text-on-surface">
-            Công khai tài liệu
+            Công khai tư liệu
           </span>
           <span className="text-xs text-on-surface-variant">
             {isPublic
-              ? "Mọi người có thể tìm và xem tài liệu này sau khi được duyệt."
-              : "Chỉ mình bạn thấy tài liệu này."}
+              ? "Cộng đồng có thể tìm và tham khảo tư liệu này."
+              : "Công khai để cộng đồng có thể tham khảo"}
           </span>
         </div>
 
@@ -278,7 +286,7 @@ export function DocumentUploadForm({
           disabled={isSubmitting}
           onClick={() => setIsPublic((prev) => !prev)}
           className={`
-            relative h-6 w-11 shrink-0 rounded-full transition-colors duration-200
+            relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors duration-200
             focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary
             disabled:cursor-not-allowed disabled:opacity-50
             ${isPublic ? "bg-primary" : "bg-outline"}
@@ -286,12 +294,22 @@ export function DocumentUploadForm({
         >
           <span
             className={`
-              pointer-events-none absolute top-0.5 left-0.5 h-5 w-5 rounded-full
-              bg-white shadow-sm transition-transform duration-200
-              ${isPublic ? "translate-x-5" : "translate-x-0"}
+              pointer-events-none inline-block h-5 w-5 rounded-full
+              bg-surface shadow-sm transition-transform duration-200 ease-out
+              ${isPublic ? "translate-x-5" : "translate-x-0.5"}
             `}
           />
         </button>
+      </div>
+
+      {/* Upload policy notice */}
+      <div className="rounded-xl border border-outline-variant bg-surface-container-low p-4">
+        <p className="text-xs font-semibold text-on-surface mb-1">
+          Quy tắc lưu trữ tài liệu lịch sử
+        </p>
+        <p className="text-xs text-on-surface-variant leading-relaxed">
+          Bằng cách tải lên, bạn xác nhận tài liệu có nguồn gốc rõ ràng và không vi phạm bản quyền.
+        </p>
       </div>
 
       {/* No-file hint */}
@@ -316,20 +334,17 @@ export function DocumentUploadForm({
       <div className="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:justify-end">
         <Button
           type="button"
-          variant={isPublic ? "primary" : "outline"}
+          variant="primary"
           className="w-full sm:w-auto"
           disabled={!canSubmit}
           onClick={handleSubmit}
         >
           {isSubmitting
-            ? isPublic
-              ? "Đang tải lên..."
-              : "Đang lưu..."
-            : isPublic
-              ? "Công khai tài liệu"
-              : "Chỉ mình tôi"}
+            ? "Đang tải lên..."
+            : "Lưu tư liệu"}
         </Button>
       </div>
     </form>
   );
 }
+

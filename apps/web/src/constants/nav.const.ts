@@ -107,8 +107,8 @@ export const ADMIN_NAV_ITEMS: SideNavItem[] = [
     section: "main",
   },
   {
-    label: "Quản lý môn học",
-    icon: "menu_book",
+    label: "Quản lý giai đoạn",
+    icon: "history_edu",
     href: ROUTE_PATHS.ADMIN_ROUTES.SUBJECTS,
     section: "main",
   },

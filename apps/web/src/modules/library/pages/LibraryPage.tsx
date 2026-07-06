@@ -99,7 +99,7 @@ export default function LibraryPage(): React.JSX.Element {
             <div className="shrink-0 mt-4 flex items-center justify-between border-t border-outline-variant/40 pt-4">
               <p className="text-sm text-on-surface-variant">
                 Trang {pagination.page} / {pagination.totalPages} —{" "}
-                {pagination.total.toLocaleString("vi-VN")} tài liệu
+                {pagination.total.toLocaleString("vi-VN")} tư liệu
               </p>
               <Pagination
                 currentPage={pagination.page}

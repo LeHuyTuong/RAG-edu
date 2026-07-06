@@ -6,40 +6,53 @@ import { useEffect, useState } from "react";
 import { DocumentCard } from "../components/DocumentCard";
 import { DocumentCarousel } from "../components/DocumentCarousel";
 import { DocumentCardSkeleton } from "../components/DocumentSkeleton";
-import { fetchDocuments, fetchSubjects } from "@/apis/document.api";
-import type { LibraryDocument, Subject } from "@/types/document.type";
+import { fetchDocuments } from "@/apis/document.api";
+import type { LibraryDocument } from "@/types/document.type";
 
-const SUBJECT_ICONS: Record<string, string> = {
-  lịch: "history_edu",
-  sử: "history_edu",
-  văn: "menu_book",
-  toán: "function",
-  lý: "science",
-  hóa: "biotech",
-  sinh: "psychology",
-  anh: "translate",
-  ngoại: "language",
-  tin: "computer",
-  công: "engineering",
-  kinh: "finance",
-  luật: "gavel",
-  triết: "lightbulb",
-  địa: "public",
-  giáo: "school",
-  y: "medical_services",
-  mỹ: "palette",
-  nhạc: "music_note",
-};
+const HISTORY_PERIODS = [
+  {
+    id: "ancient",
+    name: "Cổ đại",
+    icon: "account_balance",
+    period: "Trước thế kỷ X",
+  },
+  {
+    id: "medieval",
+    name: "Trung đại",
+    icon: "castle",
+    period: "Thế kỷ X - XV",
+  },
+  {
+    id: "early-modern",
+    name: "Cận đại",
+    icon: "history_edu",
+    period: "Thế kỷ XVI - XIX",
+  },
+  { id: "modern", name: "Hiện đại", icon: "flag", period: "Thế kỷ XX - nay" },
+  {
+    id: "war",
+    name: "Chiến tranh",
+    icon: "military_tech",
+    period: "Kháng chiến",
+  },
+  {
+    id: "culture",
+    name: "Văn hóa",
+    icon: "palette",
+    period: "Di sản & Văn hóa",
+  },
+];
 
-function getSubjectIcon(name: string): string {
-  const lower = name.toLowerCase();
-  for (const [key, icon] of Object.entries(SUBJECT_ICONS)) {
-    if (lower.includes(key)) return icon;
-  }
-  return "auto_stories";
-}
+const PERIOD_ICON_BG = [
+  "bg-primary-container text-on-primary-container",
+  "bg-secondary-container text-on-secondary-container",
+  "bg-tertiary-container text-on-tertiary-container",
+  "bg-primary-container text-on-primary-container",
+  "bg-secondary-container text-on-secondary-container",
+  "bg-tertiary-container text-on-tertiary-container",
+];
 
-const SUBJECT_LIGHT_GRADIENTS = [
+const PERIOD_GRADIENTS = [
   "from-primary-container/40 to-tertiary-container/40",
   "from-secondary-container/40 to-primary-container/40",
   "from-tertiary-container/40 to-error-container/30",
@@ -48,21 +61,12 @@ const SUBJECT_LIGHT_GRADIENTS = [
   "from-tertiary-container/40 to-primary-container/40",
 ];
 
-const SUBJECT_ICON_BG = [
-  "bg-primary-container text-on-primary-container",
-  "bg-secondary-container text-on-secondary-container",
-  "bg-tertiary-container text-on-tertiary-container",
-  "bg-primary-container text-on-primary-container",
-  "bg-secondary-container text-on-secondary-container",
-  "bg-tertiary-container text-on-tertiary-container",
-];
-
-function getSubjectGradient(index: number): string {
-  return SUBJECT_LIGHT_GRADIENTS[index % SUBJECT_LIGHT_GRADIENTS.length]!;
+function getPeriodGradient(index: number): string {
+  return PERIOD_GRADIENTS[index % PERIOD_GRADIENTS.length]!;
 }
 
-function getSubjectIconBg(index: number): string {
-  return SUBJECT_ICON_BG[index % SUBJECT_ICON_BG.length]!;
+function getPeriodIconBg(index: number): string {
+  return PERIOD_ICON_BG[index % PERIOD_ICON_BG.length]!;
 }
 
 function formatRelativeTime(dateStr: string): string {
@@ -85,24 +89,18 @@ function formatRelativeTime(dateStr: string): string {
 
 export default function HomePage(): React.JSX.Element {
   const [documents, setDocuments] = useState<LibraryDocument[]>([]);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [documentsResponse, subjectsResponse] = await Promise.all([
-          fetchDocuments({ page: 1, limit: 15 }),
-          fetchSubjects(6),
-        ]);
+        const documentsResponse = await fetchDocuments({ page: 1, limit: 15 });
         const publicDocs = (documentsResponse.documents ?? []).filter(
           (doc) => doc.isPublic === true,
         );
         setDocuments(publicDocs);
-        setSubjects(subjectsResponse.subjects ?? []);
       } catch {
         setDocuments([]);
-        setSubjects([]);
       } finally {
         setLoading(false);
       }
@@ -111,7 +109,7 @@ export default function HomePage(): React.JSX.Element {
     load();
   }, []);
 
-  const recentDocs = documents.slice(0, 5);
+  const featuredDocs = documents.slice(0, 5);
   const recentUpdatedDocs = [...documents]
     .sort(
       (a, b) =>
@@ -127,25 +125,25 @@ export default function HomePage(): React.JSX.Element {
     <div className="min-w-0">
       {/* Subtle background decoration */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 h-[500px] w-[500px] rounded-full bg-primary/5 blur-[120px] dark:bg-primary/5" />
+        <div className="absolute -top-40 -right-40 h-[500px] w-[500px] rounded-full bg-primary/5 blur-[120px]" />
         <div className="absolute -bottom-20 -left-20 h-[400px] w-[400px] rounded-full bg-tertiary/5 blur-[100px]" />
       </div>
 
       <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {/* ================= SECTION 1: RECENT DOCUMENTS ================= */}
+        {/* ================= SECTION 1: FEATURED HISTORICAL DOCUMENTS ================= */}
         <section className="mb-16">
           <div className="mb-8 flex items-end justify-between">
             <div>
               <h2 className="text-[28px] font-bold tracking-tight text-on-surface">
-                Tài liệu gần đây
+                Tư liệu lịch sử tiêu biểu
               </h2>
               <p className="mt-1.5 text-sm font-medium text-on-surface-variant/70">
-                Tiếp tục khám phá những tài liệu mới nhất từ cộng đồng
+                Khám phá những tài liệu lịch sử mới nhất từ kho lưu trữ
               </p>
             </div>
 
             <Link href="/library" className={linkClass}>
-              Xem tất cả
+              Khám phá thêm
               <span className="material-symbols-outlined text-base">
                 arrow_forward
               </span>
@@ -157,22 +155,22 @@ export default function HomePage(): React.JSX.Element {
               ? Array.from({ length: 5 }).map((_, index) => (
                   <DocumentCardSkeleton key={index} />
                 ))
-              : recentDocs.map((doc) => (
+              : featuredDocs.map((doc) => (
                   <DocumentCard
                     id={doc.id}
                     key={doc.id}
                     title={doc.title}
                     subtitle={
                       doc.subject?.name
-                        ? `Môn học: ${doc.subject.name}`
+                        ? `Giai đoạn: ${doc.subject.name}`
                         : doc.author?.name
                           ? `Tác giả: ${doc.author.name}`
-                          : "Tài liệu học tập mới"
+                          : "Tư liệu lịch sử"
                     }
                     coverImage={undefined}
                     pageCount={doc.pageCount ?? undefined}
                     updatedAt={doc.updatedAt}
-                    subject={doc.subject?.name}
+                    period={doc.subject?.name}
                   />
                 ))}
           </DocumentCarousel>
@@ -181,15 +179,15 @@ export default function HomePage(): React.JSX.Element {
         {/* ================= SECTION 2: TWO-COLUMN LAYOUT ================= */}
         <section className="mb-16">
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-[2.2fr_1fr]">
-            {/* LEFT: EXPLORE BY SUBJECT */}
+            {/* LEFT: EXPLORE BY HISTORICAL PERIOD */}
             <div>
               <div className="mb-8 flex items-end justify-between">
                 <div>
                   <h2 className="text-[28px] font-bold tracking-tight text-on-surface">
-                    Khám phá theo môn học
+                    Khám phá theo giai đoạn lịch sử
                   </h2>
                   <p className="mt-1.5 text-sm font-medium text-on-surface-variant/70">
-                    Chọn môn học bạn quan tâm để tìm tài liệu phù hợp
+                    Chọn giai đoạn bạn quan tâm để tìm tư liệu phù hợp
                   </p>
                 </div>
 
@@ -205,40 +203,38 @@ export default function HomePage(): React.JSX.Element {
               </div>
 
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
-                {loading || subjects.length === 0
+                {loading
                   ? Array.from({ length: 6 }).map((_, i) => (
                       <div
                         key={i}
                         className="h-[104px] animate-pulse rounded-2xl border border-outline-variant bg-surface-container-low"
                       />
                     ))
-                  : subjects.map((subject, i) => (
+                  : HISTORY_PERIODS.map((period, i) => (
                       <Link
-                        key={subject.id}
-                        href={`/library?subjectId=${subject.id}`}
+                        key={period.id}
+                        href={`/library?period=${period.id}`}
                         className="group relative overflow-hidden rounded-2xl border border-outline-variant bg-surface-container-low p-5 transition-all duration-300 hover:border-outline hover:bg-surface-container hover:scale-[1.02]"
                       >
                         <div
-                          className={`absolute inset-0 bg-gradient-to-br ${getSubjectGradient(i)} opacity-0 transition-opacity duration-300 group-hover:opacity-100`}
+                          className={`absolute inset-0 bg-gradient-to-br ${getPeriodGradient(i)} opacity-0 transition-opacity duration-300 group-hover:opacity-100`}
                         />
 
                         <div className="relative">
                           <span
-                            className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl ${getSubjectIconBg(i)} transition-transform duration-300 group-hover:scale-110`}
+                            className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl ${getPeriodIconBg(i)} transition-transform duration-300 group-hover:scale-110`}
                           >
                             <span className="material-symbols-outlined text-xl">
-                              {getSubjectIcon(subject.name)}
+                              {period.icon}
                             </span>
                           </span>
 
                           <h3 className="text-sm font-semibold leading-tight text-on-surface line-clamp-1">
-                            {subject.name}
+                            {period.name}
                           </h3>
-                          {subject.code ? (
-                            <p className="mt-1 text-xs font-medium text-on-surface-variant/60 line-clamp-1">
-                              {subject.code}
-                            </p>
-                          ) : null}
+                          <p className="mt-1 text-xs font-medium text-on-surface-variant/60 line-clamp-1">
+                            {period.period}
+                          </p>
                         </div>
                       </Link>
                     ))}
@@ -252,7 +248,7 @@ export default function HomePage(): React.JSX.Element {
                   Mới cập nhật
                 </h2>
                 <p className="mt-1.5 text-sm font-medium text-on-surface-variant/70">
-                  Tài liệu vừa được chỉnh sửa
+                  Tư liệu vừa được bổ sung hoặc chỉnh sửa
                 </p>
               </div>
 
@@ -301,7 +297,7 @@ export default function HomePage(): React.JSX.Element {
                 href="/library"
                 className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary transition-colors hover:text-primary/80"
               >
-                Xem tất cả tài liệu
+                Xem tất cả tư liệu
                 <span className="material-symbols-outlined text-sm">
                   arrow_forward
                 </span>

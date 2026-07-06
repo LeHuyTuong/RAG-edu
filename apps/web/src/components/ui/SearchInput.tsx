@@ -17,7 +17,9 @@ export function SearchInput({
   return (
     <InputField
       label={label}
-      placeholder={props.placeholder ?? "Tìm kiếm tài liệu, khóa học..."}
+      placeholder={
+        props.placeholder ?? "Tìm tư liệu lịch sử, sự kiện, nhân vật..."
+      }
       leftIcon={
         <span className="material-symbols-outlined text-[20px]">search</span>
       }
