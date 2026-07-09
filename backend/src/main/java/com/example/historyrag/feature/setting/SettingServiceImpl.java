@@ -53,8 +53,8 @@ public class SettingServiceImpl implements SettingService {
                 .findFirst()
                 .orElseGet(() -> {
                     AppSetting c = new AppSetting();
-                    c.setAllowedTypes("pdf,docx,txt,md");
-                    c.setMaxSizeMb(20);
+                    c.setAllowedTypes(SettingDefaults.ALLOWED_UPLOAD_TYPES);
+                    c.setMaxSizeMb(SettingDefaults.MAX_UPLOAD_SIZE_MB);
                     return appSettingRepository.save(c);
                 });
     }

@@ -167,6 +167,78 @@ export const deleteAdminSubject = async (id: string): Promise<unknown> => {
   return apiClient.delete(API_ENDPOINTS.SUBJECTS.DETAIL(id));
 };
 
+export type AdminBillingCycle = "MONTHLY" | "YEARLY";
+
+export interface AdminBillingPlan {
+  readonly id: number;
+  readonly code: string;
+  readonly name: string;
+  readonly description?: string | null;
+  readonly priceVnd: number;
+  readonly billingCycle: AdminBillingCycle;
+  readonly chatCreditsPerMonth: number;
+  readonly documentQuota: number;
+  readonly storageMb: number;
+  readonly maxFileSizeMb: number;
+  readonly displayOrder: number;
+  readonly active: boolean;
+  readonly createdAt?: string;
+  readonly updatedAt?: string;
+}
+
+export interface AdminBillingPlanPayload {
+  readonly code: string;
+  readonly name: string;
+  readonly description?: string | null;
+  readonly priceVnd: number;
+  readonly billingCycle: AdminBillingCycle;
+  readonly chatCreditsPerMonth: number;
+  readonly documentQuota: number;
+  readonly storageMb: number;
+  readonly maxFileSizeMb: number;
+  readonly displayOrder: number;
+  readonly active: boolean;
+}
+
+export const fetchAdminBillingPlans = async (): Promise<AdminBillingPlan[]> => {
+  return apiClient.get<unknown, AdminBillingPlan[]>(
+    API_ENDPOINTS.ADMIN.BILLING_PLANS,
+  );
+};
+
+export const fetchAdminBillingPlanDetail = async (
+  id: number,
+): Promise<AdminBillingPlan> => {
+  return apiClient.get<unknown, AdminBillingPlan>(
+    API_ENDPOINTS.ADMIN.BILLING_PLAN_DETAIL(id),
+  );
+};
+
+export const createAdminBillingPlan = async (
+  payload: AdminBillingPlanPayload,
+): Promise<AdminBillingPlan> => {
+  return apiClient.post<unknown, AdminBillingPlan>(
+    API_ENDPOINTS.ADMIN.BILLING_PLANS,
+    payload,
+  );
+};
+
+export const updateAdminBillingPlan = async (
+  id: number,
+  payload: AdminBillingPlanPayload,
+): Promise<AdminBillingPlan> => {
+  return apiClient.patch<unknown, AdminBillingPlan>(
+    API_ENDPOINTS.ADMIN.BILLING_PLAN_DETAIL(id),
+    payload,
+  );
+};
+
+export const deactivateAdminBillingPlan = async (
+  id: number,
+): Promise<unknown> => {
+  return apiClient.delete(API_ENDPOINTS.ADMIN.BILLING_PLAN_DETAIL(id));
+};
+
 // ─── Admin Config ───
 // Khớp SettingResponse/SettingUpdateRequest ở backend (feature/setting):
 // backend chỉ quản lý 2 cấu hình upload, không có site/email/maintenance settings.

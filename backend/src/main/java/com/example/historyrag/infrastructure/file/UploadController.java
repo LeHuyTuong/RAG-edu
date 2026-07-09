@@ -1,5 +1,6 @@
 package com.example.historyrag.infrastructure.file;
 
+import com.example.historyrag.feature.setting.SettingDefaults;
 import com.example.historyrag.feature.setting.SettingService;
 import com.example.historyrag.shared.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,7 +29,7 @@ public class UploadController {
         try {
             maxSizeMb = Integer.parseInt(config.maxSizeMb());
         } catch (NumberFormatException e) {
-            maxSizeMb = 20;
+            maxSizeMb = SettingDefaults.MAX_UPLOAD_SIZE_MB;
         }
         return ResponseEntity.ok(ApiResponse.success(Map.of(
                 "maxFileSize", maxSizeMb * 1024 * 1024,

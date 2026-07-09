@@ -48,6 +48,7 @@ export const ROUTE_PATHS = {
     DOCUMENT_DETAIL: "/admin/documents/:id",
     CATEGORIES: "/admin/categories",
     SUBJECTS: "/admin/subjects",
+    BILLING: "/admin/billing",
     REPORTS: "/admin/reports",
 
     SETTINGS: "/admin/settings",

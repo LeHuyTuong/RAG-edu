@@ -12,6 +12,8 @@ export const ADMIN_ROUTES = [
   ROUTE_PATHS.ADMIN_ROUTES.USERS,
   ROUTE_PATHS.ADMIN_ROUTES.DOCUMENTS,
   ROUTE_PATHS.ADMIN_ROUTES.CATEGORIES,
+  ROUTE_PATHS.ADMIN_ROUTES.SUBJECTS,
+  ROUTE_PATHS.ADMIN_ROUTES.BILLING,
   ROUTE_PATHS.ADMIN_ROUTES.REPORTS,
   ROUTE_PATHS.ADMIN_ROUTES.SETTINGS,
 ];
@@ -41,6 +43,13 @@ export const adminRouterConfig = {
   CATEGORIES: {
     path: ROUTE_PATHS.ADMIN_ROUTES.CATEGORIES,
     title: "Quản lý danh mục",
+    public: false,
+    requiresAuth: true,
+    requiresRole: "admin" as const,
+  },
+  BILLING: {
+    path: ROUTE_PATHS.ADMIN_ROUTES.BILLING,
+    title: "Quản lý gói",
     public: false,
     requiresAuth: true,
     requiresRole: "admin" as const,

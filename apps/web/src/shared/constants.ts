@@ -25,6 +25,9 @@ export const API_ENDPOINTS = {
   ADMIN: {
     DASHBOARD: "/api/v1/admin/dashboard",
     CONFIG: "/api/v1/admin/config",
+    BILLING_PLANS: "/api/v1/admin/billing/plans",
+    BILLING_PLAN_DETAIL: (id: number | string) =>
+      `/api/v1/admin/billing/plans/${id}`,
   },
   DOCUMENTS: {
     BASE: "/api/v1/documents",

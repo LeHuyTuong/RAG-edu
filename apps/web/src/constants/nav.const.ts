@@ -112,6 +112,12 @@ export const ADMIN_NAV_ITEMS: SideNavItem[] = [
     href: ROUTE_PATHS.ADMIN_ROUTES.SUBJECTS,
     section: "main",
   },
+  {
+    label: "Quản lý gói",
+    icon: "workspace_premium",
+    href: ROUTE_PATHS.ADMIN_ROUTES.BILLING,
+    section: "main",
+  },
 
   {
     label: "Cài đặt",
