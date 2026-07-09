@@ -93,7 +93,7 @@ export const verifyEmail = async (payload: {
 }) => {
   try {
     return unwrap<{ accessToken?: string } | null>(
-      await client.post("/api/v1/auth/verify-email", payload),
+      await client.post(API_ENDPOINTS.AUTH.VERIFY_EMAIL, payload),
     );
   } catch (error) {
     throw new Error(getErrorMessage(error, "Email verification failed"));
@@ -106,7 +106,7 @@ export const resetPassword = async (payload: {
 }) => {
   try {
     return unwrap<null>(
-      await client.post("/api/v1/auth/reset-password", payload),
+      await client.post(API_ENDPOINTS.AUTH.RESET_PASSWORD, payload),
     );
   } catch (error) {
     throw new Error(getErrorMessage(error, "Could not reset password"));

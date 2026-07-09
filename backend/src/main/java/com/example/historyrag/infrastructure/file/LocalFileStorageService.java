@@ -1,6 +1,7 @@
 package com.example.historyrag.infrastructure.file;
 
 import com.example.historyrag.exception.InvalidRequestException;
+import com.example.historyrag.feature.setting.SettingDefaults;
 import com.example.historyrag.feature.setting.SettingService;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
@@ -49,7 +50,7 @@ public class LocalFileStorageService implements FileStorageService {
         try {
             maxSizeMb = Integer.parseInt(config.maxSizeMb());
         } catch (NumberFormatException e) {
-            maxSizeMb = 20;
+            maxSizeMb = SettingDefaults.MAX_UPLOAD_SIZE_MB;
         }
         long maxSizeBytes = (long) maxSizeMb * 1024 * 1024;
 

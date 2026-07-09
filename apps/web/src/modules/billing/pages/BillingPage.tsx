@@ -15,17 +15,11 @@ import { AppDialog } from "@/components/ui/AppDialog";
 import { Button } from "@/components/ui/Button";
 import { cn } from "@/lib/utils";
 
-const planToneClasses = {
-  FREE: "border-outline-variant bg-surface",
-  STUDENT_PLUS: "border-primary bg-primary-container/25",
-  PRO: "border-tertiary bg-tertiary-container/25",
-} as const;
-
-const planIcon: Record<string, string> = {
-  FREE: "school",
-  STUDENT_PLUS: "auto_awesome",
-  PRO: "workspace_premium",
-};
+const planToneClasses = [
+  "border-outline-variant bg-surface",
+  "border-primary bg-primary-container/25",
+  "border-tertiary bg-tertiary-container/25",
+] as const;
 
 function formatCurrency(value: number): string {
   if (value === 0) return "Miễn phí";
@@ -181,26 +175,25 @@ function CurrentPlan({
 function PlanCard({
   plan,
   currentCode,
+  icon,
+  toneClass,
   purchasing,
   onSelect,
 }: {
   readonly plan: BillingPlan;
   readonly currentCode: string;
+  readonly icon: string;
+  readonly toneClass: string;
   readonly purchasing: boolean;
   readonly onSelect: (plan: BillingPlan) => void;
 }): React.JSX.Element {
   const isCurrent = plan.code === currentCode;
-  const tone =
-    planToneClasses[plan.code as keyof typeof planToneClasses] ??
-    "border-outline-variant bg-surface";
 
   return (
-    <article className={cn("rounded-lg border p-5", tone)}>
+    <article className={cn("rounded-lg border p-5", toneClass)}>
       <div className="mb-5 flex items-start justify-between gap-4">
         <span className="inline-flex h-11 w-11 items-center justify-center rounded-lg bg-surface text-primary">
-          <span className="material-symbols-outlined text-[24px]">
-            {planIcon[plan.code] ?? "bolt"}
-          </span>
+          <span className="material-symbols-outlined text-[24px]">{icon}</span>
         </span>
         {isCurrent ? (
           <span className="rounded-full bg-primary px-3 py-1 font-label-sm text-label-sm text-on-primary">
@@ -368,6 +361,12 @@ export function BillingPage(): React.JSX.Element {
   }
 
   const usage: UsageQuota = summary.usage;
+  const getPlanIcon = (plan: BillingPlan, index: number): string => {
+    if (plan.priceVnd === 0) return "school";
+    if (index === sortedPlans.length - 1) return "workspace_premium";
+
+    return "auto_awesome";
+  };
 
   return (
     <div className="space-y-6">
@@ -396,13 +395,18 @@ export function BillingPage(): React.JSX.Element {
           </div>
         </div>
         <div className="grid gap-4 lg:grid-cols-3">
-          {sortedPlans.map((plan) => (
+          {sortedPlans.map((plan, index) => (
             <PlanCard
               currentCode={currentCode}
+              icon={getPlanIcon(plan, index)}
               key={plan.code}
               onSelect={setSelectedPlan}
               plan={plan}
               purchasing={purchasing}
+              toneClass={
+                planToneClasses[index % planToneClasses.length] ??
+                planToneClasses[0]
+              }
             />
           ))}
         </div>

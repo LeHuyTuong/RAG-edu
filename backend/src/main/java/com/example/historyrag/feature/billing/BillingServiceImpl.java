@@ -7,7 +7,6 @@ import com.example.historyrag.feature.billing.dto.BillingSummaryResponse;
 import com.example.historyrag.feature.billing.dto.SubscriptionResponse;
 import com.example.historyrag.feature.billing.dto.UsageQuotaResponse;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -15,11 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class BillingServiceImpl implements BillingService {
-
-    private static final String ACTIVE = "ACTIVE";
-    private static final String CANCELLED = "CANCELLED";
-    private static final String FREE_PLAN = "FREE";
-    private static final String CHAT_EVENT = "AI_CHAT";
 
     private final BillingPlanRepository planRepository;
     private final UserSubscriptionRepository subscriptionRepository;
@@ -52,20 +46,22 @@ public class BillingServiceImpl implements BillingService {
                 .orElseThrow(() -> new ResourceNotFoundException("BillingPlan", "code", planCode));
 
         Instant now = Instant.now();
-        subscriptionRepository.findByUserIdAndStatus(userId, ACTIVE)
+        subscriptionRepository.findByUserIdAndStatus(userId, BillingConstants.STATUS_ACTIVE)
                 .forEach(subscription -> {
-                    subscription.setStatus(CANCELLED);
+                    subscription.setStatus(BillingConstants.STATUS_CANCELLED);
                     subscriptionRepository.save(subscription);
                 });
 
         UserSubscription subscription = new UserSubscription();
         subscription.setUserId(userId);
         subscription.setPlan(plan);
-        subscription.setStatus(ACTIVE);
+        subscription.setStatus(BillingConstants.STATUS_ACTIVE);
         subscription.setStartedAt(now);
         subscription.setCurrentPeriodStart(now);
-        subscription.setCurrentPeriodEnd(now.plus(30, ChronoUnit.DAYS));
-        subscription.setDemoPaymentReference("DEMO-" + UUID.randomUUID());
+        subscription.setCurrentPeriodEnd(now.plus(
+                BillingConstants.SUBSCRIPTION_PERIOD_AMOUNT,
+                BillingConstants.SUBSCRIPTION_PERIOD_UNIT));
+        subscription.setDemoPaymentReference(BillingConstants.DEMO_PAYMENT_PREFIX + UUID.randomUUID());
         subscription = subscriptionRepository.save(subscription);
 
         UsagePeriod usage = createUsagePeriod(userId, subscription);
@@ -88,7 +84,7 @@ public class BillingServiceImpl implements BillingService {
         UsageEvent event = new UsageEvent();
         event.setUserId(userId);
         event.setUsagePeriod(usage);
-        event.setEventType(CHAT_EVENT);
+        event.setEventType(BillingConstants.CHAT_EVENT_TYPE);
         event.setAmount(1);
         event.setDescription(description);
         usageEventRepository.save(event);
@@ -112,22 +108,26 @@ public class BillingServiceImpl implements BillingService {
     private UserSubscription getOrCreateActiveSubscription(Long userId) {
         Instant now = Instant.now();
         return subscriptionRepository
-                .findFirstByUserIdAndStatusAndCurrentPeriodEndAfterOrderByCreatedAtDesc(userId, ACTIVE, now)
+                .findFirstByUserIdAndStatusAndCurrentPeriodEndAfterOrderByCreatedAtDesc(
+                        userId, BillingConstants.STATUS_ACTIVE, now)
                 .orElseGet(() -> createFreeSubscription(userId));
     }
 
     private UserSubscription createFreeSubscription(Long userId) {
-        BillingPlan freePlan = planRepository.findByCodeAndActiveTrue(FREE_PLAN)
-                .orElseThrow(() -> new ResourceNotFoundException("BillingPlan", "code", FREE_PLAN));
+        BillingPlan freePlan = planRepository.findByCodeAndActiveTrue(BillingConstants.FREE_PLAN_CODE)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "BillingPlan", "code", BillingConstants.FREE_PLAN_CODE));
         Instant now = Instant.now();
         UserSubscription subscription = new UserSubscription();
         subscription.setUserId(userId);
         subscription.setPlan(freePlan);
-        subscription.setStatus(ACTIVE);
+        subscription.setStatus(BillingConstants.STATUS_ACTIVE);
         subscription.setStartedAt(now);
         subscription.setCurrentPeriodStart(now);
-        subscription.setCurrentPeriodEnd(now.plus(30, ChronoUnit.DAYS));
-        subscription.setDemoPaymentReference("AUTO-FREE");
+        subscription.setCurrentPeriodEnd(now.plus(
+                BillingConstants.SUBSCRIPTION_PERIOD_AMOUNT,
+                BillingConstants.SUBSCRIPTION_PERIOD_UNIT));
+        subscription.setDemoPaymentReference(BillingConstants.AUTO_FREE_PAYMENT_REFERENCE);
         return subscriptionRepository.save(subscription);
     }
 
