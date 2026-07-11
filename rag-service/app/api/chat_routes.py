@@ -195,14 +195,47 @@ def _extractive_answer(question: str, hits: list) -> str:
         payload = hit.payload or {}
         text = (payload.get("chunkText") or "").strip()
         if text:
-            snippets.append(" ".join(text.split())[:700])
+            title = payload.get("title") or "Tài liệu tham khảo"
+            source_type = payload.get("sourceType") or ""
+            source_id = payload.get("sourceId")
+            snippet = " ".join(text.split())[:700]
+            snippets.append((title, source_type, source_id, snippet))
 
     if not snippets:
         return _NO_DATA_MSG
 
-    joined = "\n\n".join(f"- {snippet}" for snippet in snippets)
-    return (
-        "Mình chưa gọi được mô hình sinh câu trả lời, nhưng đã tìm thấy các đoạn liên quan "
-        f"trong tài liệu cho câu hỏi: \"{question}\".\n\n"
-        f"{joined}"
+    parts = [
+        "[Hệ thống AI tạm thời không khả dụng]",
+        "",
+        f"Câu hỏi: \"{question}\"",
+        "",
+        "Hệ thống đã tìm ra các đoạn tư liệu dưới đây. "
+        "Đây là nguyên văn từ tài liệu gốc, chưa qua tổng hợp. "
+        "Bạn có thể dựa vào đó để tự trả lời.",
+        "",
+        "—— CÁC ĐOẠN TƯ LIỆU LIÊN QUAN ——",
+    ]
+
+    for i, (title, source_type, source_id, snippet) in enumerate(snippets, start=1):
+        loc = f"  Nguồn: {title}"
+        if source_type:
+            ref = source_type
+            if source_id:
+                ref += f" #{source_id}"
+            loc += f" ({ref})"
+        parts.append("")
+        parts.append(f"[Đoạn {i}]")
+        parts.append(loc)
+        parts.append("  " + "-" * 40)
+        parts.append(snippet)
+
+    parts.append("")
+    parts.append("——")
+    parts.append("")
+    parts.append(
+        "Các tư liệu trên được trích nguyên văn từ tài liệu gốc, "
+        "chưa qua tổng hợp. Hãy đọc kỹ và tự suy luận câu trả lời. "
+        "Thử lại sau nếu muốn AI tổng hợp giúp bạn."
     )
+
+    return "\n".join(parts)

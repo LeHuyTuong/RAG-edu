@@ -190,7 +190,7 @@ class RagControllerTest {
         when(documentService.existsByIdAndOwner(7L, 10L))
                 .thenReturn(true);
         when(ragService.ingest(eq(securedRequest), eq(null)))
-                .thenReturn(new RagIngestResponse(7L, "COMPLETED", "history", "embed", List.of()));
+                .thenReturn(new RagIngestResponse(7L, "COMPLETED", "history", "embed", "hash", List.of()));
 
         mockMvc.perform(post("/api/v1/rag/ingest")
                         .contentType(MediaType.APPLICATION_JSON)

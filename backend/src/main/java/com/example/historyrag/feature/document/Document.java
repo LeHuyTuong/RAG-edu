@@ -65,6 +65,9 @@ public class Document extends BaseEntity {
     @Column(name = "chunk_count")
     private Integer chunkCount;
 
+    @Column(name = "content_hash", length = 64)
+    private String contentHash;
+
     @Column(name = "uploaded_at", updatable = false)
     private Instant uploadedAt;
 

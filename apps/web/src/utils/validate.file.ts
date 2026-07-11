@@ -12,20 +12,18 @@ export const validateFile = (
   // validate mime type
   const validMime = config.allowedMimeTypes.includes(file.type);
 
-  // validate extension
+  const allowedExts = [".pdf", ".doc", ".docx", ".txt"];
+
   const extension = file.name.includes(".")
     ? `.${file.name.split(".").pop()?.toLowerCase()}`
     : "";
-  const normalizedAllowedExtensions = config.allowedExtensions.map((ext) =>
-    ext.startsWith(".") ? ext.toLowerCase() : `.${ext.toLowerCase()}`,
-  );
 
-  const validExtension = normalizedAllowedExtensions.includes(extension);
+  const validExtension = allowedExts.includes(extension);
 
   if (!validMime || !validExtension) {
     return {
       valid: false,
-      error: "Unsupported file type",
+      error: "Chỉ nhận tài liệu!",
     };
   }
 

@@ -126,6 +126,9 @@ public class FolderController {
             @Valid @RequestBody FolderChatRequest request) {
         // Look up folder by share token (no JWT)
         FolderResponse folder = folderService.getByShareToken(token);
+        // Chat công khai không yêu cầu đăng nhập, nhưng vẫn phải tốn chi phí LLM thật —
+        // trừ vào quota của chủ sở hữu folder để tránh bị lạm dụng vô hạn miễn phí.
+        billingService.consumeChatCredit(folder.ownerId(), "Chat công khai qua folder share");
         RagChatRequest ragRequest = new RagChatRequest(
                 request.question(),
                 request.topK(),

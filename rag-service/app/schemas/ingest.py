@@ -62,4 +62,5 @@ class RagIngestResponse(BaseModel):
     status: str  # "COMPLETED" | "EMPTY" | "FAILED"
     collection: str
     embeddingModel: str
+    documentContentHash: str  # sha256(normalized_full_text) — fingerprint cấp tài liệu
     chunks: list[IngestedChunk]

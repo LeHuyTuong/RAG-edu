@@ -20,6 +20,7 @@ tạo bản sao — đây là lý do delete đứng trước upsert trong flow.
 Trả "EMPTY" nếu không extract được chunk, "COMPLETED" nếu thành công.
 Exception từ bất kỳ bước nào sẽ bubble lên ingest_routes và trả 500.
 """
+import hashlib
 import re
 from datetime import datetime, timezone
 
@@ -59,6 +60,11 @@ def ingest(req: RagIngestRequest) -> RagIngestResponse:
         file_path=req.filePath,
         source_url=req.sourceUrl,
     )
+
+    full_text = " ".join(p.text for p in pages)
+    normalized = re.sub(r"\s+", " ", full_text).strip().lower()
+    document_content_hash = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
     chunks = chunk(pages, chunk_size, chunk_overlap)
 
     if not chunks:
@@ -67,6 +73,7 @@ def ingest(req: RagIngestRequest) -> RagIngestResponse:
             status="EMPTY",
             collection=collection,
             embeddingModel=settings.embedding_model,
+            documentContentHash=document_content_hash,
             chunks=[],
         )
 
@@ -111,6 +118,7 @@ def ingest(req: RagIngestRequest) -> RagIngestResponse:
         status="COMPLETED",
         collection=collection,
         embeddingModel=settings.embedding_model,
+        documentContentHash=document_content_hash,
         chunks=[
             IngestedChunk(
                 chunkIndex=chunks[i].chunk_index,

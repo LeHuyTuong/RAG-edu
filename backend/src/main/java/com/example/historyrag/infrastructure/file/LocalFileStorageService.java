@@ -7,6 +7,7 @@ import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.apache.tika.Tika;
 
 import java.io.IOException;
 import java.io.ByteArrayInputStream;
@@ -63,13 +64,10 @@ public class LocalFileStorageService implements FileStorageService {
         String originalFilename = file.getOriginalFilename();
         String ext = extractExtension(originalFilename);
 
-        Set<String> allowed = Arrays.stream(config.allowedTypes().split(","))
-                .map(String::trim)
-                .map(String::toLowerCase)
-                .collect(Collectors.toSet());
+        Set<String> allowed = Set.of("pdf", "doc", "docx", "txt");
         if (!allowed.contains(ext)) {
             throw new InvalidRequestException(
-                    "Định dạng file không được hỗ trợ: ." + ext + ". Các định dạng được phép: " + config.allowedTypes());
+                    "Định dạng file không được hỗ trợ: ." + ext + ". Chỉ chấp nhận: pdf, doc, docx, txt");
         }
 
         byte[] bytes;
@@ -77,6 +75,12 @@ public class LocalFileStorageService implements FileStorageService {
             bytes = file.getBytes();
         } catch (IOException e) {
             throw new InvalidRequestException("Không thể đọc file upload: " + e.getMessage());
+        }
+
+        Tika tika = new Tika();
+        String detectedMime = tika.detect(bytes);
+        if (detectedMime != null && (detectedMime.startsWith("image/") || detectedMime.startsWith("video/"))) {
+            throw new InvalidRequestException("Hệ thống phát hiện file thực chất là Hình ảnh/Video. Hành động bị từ chối!");
         }
 
         if ("pdf".equals(ext) && pdfWatermarkService.hasPublicDownloadWatermark(bytes)) {

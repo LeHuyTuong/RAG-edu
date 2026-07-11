@@ -49,6 +49,7 @@ class DocumentIngestListenerTest {
                         "COMPLETED",
                         "history_chunks",
                         "gemini-embedding-001",
+                        "abc123hash",
                         List.of(new RagIngestedChunkResponse(0, "point-1", "hash-1"))
                 ));
         DocumentIngestListener listener = new DocumentIngestListener(
@@ -56,7 +57,8 @@ class DocumentIngestListenerTest {
                 ragClientService,
                 fileStorageService,
                 documentChunkRepository,
-                true
+                true,
+                new ContentHashLockRegistry()
         );
 
         listener.handleDocumentIngest(new DocumentIngestRequested(7L));
@@ -89,6 +91,7 @@ class DocumentIngestListenerTest {
                         "COMPLETED",
                         "history_chunks",
                         "gemini-embedding-001",
+                        "abc123hash",
                         List.of(new RagIngestedChunkResponse(0, "point-1", "hash-1"))
                 ));
         DocumentIngestListener listener = new DocumentIngestListener(
@@ -96,7 +99,8 @@ class DocumentIngestListenerTest {
                 ragClientService,
                 fileStorageService,
                 documentChunkRepository,
-                false // review disabled
+                false, // review disabled
+                new ContentHashLockRegistry()
         );
 
         listener.handleDocumentIngest(new DocumentIngestRequested(7L));
@@ -121,7 +125,8 @@ class DocumentIngestListenerTest {
                 ragClientService,
                 fileStorageService,
                 documentChunkRepository,
-                true
+                true,
+                new ContentHashLockRegistry()
         );
 
         listener.handleDocumentIngest(new DocumentIngestRequested(8L));

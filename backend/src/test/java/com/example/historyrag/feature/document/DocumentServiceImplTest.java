@@ -46,6 +46,7 @@ class DocumentServiceImplTest {
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private DocumentChunkRepository documentChunkRepository;
     @Mock private PdfWatermarkService pdfWatermarkService;
+    @Mock private com.example.historyrag.feature.billing.BillingService billingService;
 
     private DocumentServiceImpl documentService;
 
@@ -60,7 +61,9 @@ class DocumentServiceImplTest {
                 fileStorageService,
                 eventPublisher,
                 documentChunkRepository,
-                pdfWatermarkService);
+                pdfWatermarkService,
+                billingService,
+                new ContentHashLockRegistry());
     }
 
     @Test

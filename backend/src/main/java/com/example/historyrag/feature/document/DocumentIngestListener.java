@@ -28,17 +28,20 @@ public class DocumentIngestListener {
     private final FileStorageService fileStorageService;
     private final DocumentChunkRepository documentChunkRepository;
     private final boolean reviewEnabled;
+    private final ContentHashLockRegistry contentHashLockRegistry;
 
     public DocumentIngestListener(DocumentRepository documentRepository,
                                    RagClientService ragClientService,
                                    FileStorageService fileStorageService,
                                    DocumentChunkRepository documentChunkRepository,
-                                   @Value("${app.document.review.enabled:true}") boolean reviewEnabled) {
+                                   @Value("${app.document.review.enabled:true}") boolean reviewEnabled,
+                                   ContentHashLockRegistry contentHashLockRegistry) {
         this.documentRepository = documentRepository;
         this.ragClientService = ragClientService;
         this.fileStorageService = fileStorageService;
         this.documentChunkRepository = documentChunkRepository;
         this.reviewEnabled = reviewEnabled;
+        this.contentHashLockRegistry = contentHashLockRegistry;
     }
 
     @Async
@@ -148,8 +151,42 @@ public class DocumentIngestListener {
 
         if ("COMPLETED".equals(response.status())) {
             saveIngestedChunks(current, response);
-            current.setStatus(DocumentStatus.READY);
             current.setChunkCount(response.chunks() != null ? response.chunks().size() : 0);
+            current.setContentHash(response.documentContentHash());
+
+            String contentHash = response.documentContentHash();
+            if (contentHash != null && !contentHash.isBlank()) {
+                // Khóa theo contentHash để 2 tài liệu cùng nội dung được ingest gần như đồng
+                // thời (2 lượt admin duyệt, hoặc 2 lượt auto-approve) không thể cùng SELECT
+                // "không thấy nhau" rồi cùng lọt qua bước gắn cờ DANGER. content_hash chỉ có
+                // INDEX thường, không có UNIQUE constraint, nên đây là hàng rào duy nhất.
+                Object lock = contentHashLockRegistry.acquire(contentHash);
+                synchronized (lock) {
+                    Document duplicate = documentRepository
+                            .findFirstByContentHashAndOwnerIdNotAndStatusNot(
+                                    contentHash, current.getOwnerId(), DocumentStatus.SOFT_DELETED)
+                            .orElse(null);
+                    if (duplicate != null) {
+                        current.setStatus(DocumentStatus.PENDING_REVIEW);
+                        current.setAiWarningLevel("DANGER");
+                        current.setReviewReason("Trùng nội dung với tài liệu #" + duplicate.getId()
+                                + " của người dùng khác — nghi ngờ tải lại tài liệu công khai");
+                        current.setAiReviewStatus("PENDING_ADMIN");
+                        documentRepository.save(current);
+                        log.warn("Document {} content-hash collides with doc #{} (owner {}), set PENDING_REVIEW",
+                                id, duplicate.getId(), duplicate.getOwnerId());
+                        return;
+                    }
+                    // Lưu ngay trong lúc giữ lock (save() ở đây tự commit vì không có
+                    // @Transactional bao ngoài trong luồng @Async này) để thread khác đang
+                    // chờ lock sẽ thấy bản ghi này ngay khi tới lượt SELECT của nó.
+                    current.setContentHash(contentHash);
+                    documentRepository.save(current);
+                }
+                contentHashLockRegistry.release(contentHash, lock);
+            }
+
+            current.setStatus(DocumentStatus.READY);
             documentRepository.save(current);
             log.info("Document {} ingestion COMPLETED, chunks={}", id, current.getChunkCount());
         } else {

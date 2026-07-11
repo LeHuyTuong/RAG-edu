@@ -54,7 +54,7 @@ class RagServiceImplTest {
         RagHealthResponse healthResponse = new RagHealthResponse("ok", "rag-history");
         RagChatResponse chatResponse = new RagChatResponse("Answer", List.of(), true, false);
         RagRetrieveResponse retrieveResponse = new RagRetrieveResponse("Question", 5, List.of());
-        RagIngestResponse ingestResponse = new RagIngestResponse(1L, "COMPLETED", "history", "embed", List.of());
+        RagIngestResponse ingestResponse = new RagIngestResponse(1L, "COMPLETED", "history", "embed", "hash", List.of());
         RagDeleteResponse deleteResponse = new RagDeleteResponse("deleted", 1L);
         when(ragClientService.getHealth("00-trace")).thenReturn(healthResponse);
         when(ragClientService.chat(chatRequest, "00-trace")).thenReturn(chatResponse);

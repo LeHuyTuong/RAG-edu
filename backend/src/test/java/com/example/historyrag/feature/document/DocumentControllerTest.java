@@ -1,5 +1,6 @@
 package com.example.historyrag.feature.document;
 
+import com.example.historyrag.feature.audit.DownloadAuditService;
 import com.example.historyrag.feature.document.dto.DocumentResponse;
 import com.example.historyrag.shared.ResultPaginationDTO;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,13 +31,16 @@ class DocumentControllerTest {
     private DocumentService documentService;
 
     @Mock
+    private DownloadAuditService downloadAuditService;
+
+    @Mock
     private Jwt jwt;
 
     private DocumentController controller;
 
     @BeforeEach
     void setUp() {
-        controller = new DocumentController(documentService);
+        controller = new DocumentController(documentService, downloadAuditService);
         when(jwt.getClaim("userId")).thenReturn(10L);
     }
 

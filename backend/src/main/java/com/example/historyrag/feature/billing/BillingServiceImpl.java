@@ -72,7 +72,7 @@ public class BillingServiceImpl implements BillingService {
     @Transactional
     public void consumeChatCredit(Long userId, String description) {
         UserSubscription subscription = getOrCreateActiveSubscription(userId);
-        UsagePeriod usage = getOrCreateCurrentUsage(userId, subscription);
+        UsagePeriod usage = getOrCreateCurrentUsageForUpdate(userId, subscription);
 
         if (usage.getChatUsed() >= usage.getChatLimit()) {
             throw new QuotaExceededException("Bạn đã dùng hết lượt hỏi AI của gói hiện tại. Vui lòng mua hoặc nâng cấp gói.");
@@ -86,6 +86,35 @@ public class BillingServiceImpl implements BillingService {
         event.setUsagePeriod(usage);
         event.setEventType(BillingConstants.CHAT_EVENT_TYPE);
         event.setAmount(1);
+        event.setDescription(description);
+        usageEventRepository.save(event);
+    }
+
+    @Override
+    @Transactional
+    public void consumeDocumentQuota(Long userId, String description, long sizeInBytes) {
+        UserSubscription subscription = getOrCreateActiveSubscription(userId);
+        UsagePeriod usage = getOrCreateCurrentUsageForUpdate(userId, subscription);
+
+        if (usage.getDocumentUsed() >= usage.getDocumentLimit()) {
+            throw new QuotaExceededException("Bạn đã tải lên tối đa số lượng tài liệu của gói hiện tại. Vui lòng nâng cấp gói.");
+        }
+
+        int fileSizeMb = Math.max(1, (int) Math.ceil(sizeInBytes / 1048576.0));
+        
+        if (usage.getStorageMbUsed() + fileSizeMb > usage.getStorageMbLimit()) {
+            throw new QuotaExceededException("Bạn đã dùng hết dung lượng lưu trữ của gói hiện tại. Vui lòng nâng cấp gói.");
+        }
+
+        usage.setDocumentUsed(usage.getDocumentUsed() + 1);
+        usage.setStorageMbUsed(usage.getStorageMbUsed() + fileSizeMb);
+        usagePeriodRepository.save(usage);
+
+        UsageEvent event = new UsageEvent();
+        event.setUserId(userId);
+        event.setUsagePeriod(usage);
+        event.setEventType("DOCUMENT_UPLOAD");
+        event.setAmount(fileSizeMb);
         event.setDescription(description);
         usageEventRepository.save(event);
     }
@@ -136,6 +165,19 @@ public class BillingServiceImpl implements BillingService {
         return usagePeriodRepository
                 .findFirstByUserIdAndPeriodStartLessThanEqualAndPeriodEndAfterOrderByCreatedAtDesc(userId, now, now)
                 .orElseGet(() -> createUsagePeriod(userId, subscription));
+    }
+
+    // Dùng riêng cho consumeChatCredit/consumeDocumentQuota: khóa SELECT ... FOR UPDATE ở
+    // tầng DB nên request thứ 2 phải đợi transaction của request thứ 1 commit xong mới được
+    // đọc, đóng được race condition kiểu "đọc số đếm cũ rồi cùng tăng" khi nhiều request tới
+    // gần như đồng thời lúc quota sắp cạn.
+    private UsagePeriod getOrCreateCurrentUsageForUpdate(Long userId, UserSubscription subscription) {
+        Instant now = Instant.now();
+        List<UsagePeriod> locked = usagePeriodRepository.lockCurrentUsageForUpdate(userId, now);
+        if (!locked.isEmpty()) {
+            return locked.get(0);
+        }
+        return createUsagePeriod(userId, subscription);
     }
 
     private UsagePeriod createUsagePeriod(Long userId, UserSubscription subscription) {

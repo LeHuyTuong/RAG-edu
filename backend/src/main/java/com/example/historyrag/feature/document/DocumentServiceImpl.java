@@ -53,6 +53,8 @@ public class DocumentServiceImpl implements DocumentService {
     private final ApplicationEventPublisher eventPublisher;
     private final DocumentChunkRepository documentChunkRepository;
     private final PdfWatermarkService pdfWatermarkService;
+    private final com.example.historyrag.feature.billing.BillingService billingService;
+    private final ContentHashLockRegistry contentHashLockRegistry;
 
     @Override
     @Transactional
@@ -62,6 +64,8 @@ public class DocumentServiceImpl implements DocumentService {
                 throw new ResourceNotFoundException("Folder", "id", request.folderId());
             }
         }
+
+        billingService.consumeDocumentQuota(ownerId, "Tải lên tài liệu: " + request.title(), request.sizeInBytes());
 
         Document document = new Document();
         document.setTitle(request.title());
@@ -167,7 +171,11 @@ public class DocumentServiceImpl implements DocumentService {
         String format = normalizeFormat(doc.getFormat(), doc.getPublicId());
         boolean shouldWatermark = !isOwner && !canViewAnyDocument && Boolean.TRUE.equals(doc.getIsPublic()) && "pdf".equals(format);
         if (shouldWatermark) {
-            content = pdfWatermarkService.addPublicDownloadWatermark(content, currentUserEmail);
+            String ownerName = userService.findById(doc.getOwnerId())
+                    .map(AccountResponse::name)
+                    .orElse("unknown");
+            content = pdfWatermarkService.addPublicDownloadWatermark(
+                    content, currentUserEmail, ownerName, Instant.now());
         }
 
         return new DocumentDownload(
@@ -442,8 +450,38 @@ public class DocumentServiceImpl implements DocumentService {
 
             if ("COMPLETED".equals(response.status())) {
                 saveIngestedChunks(doc, response);
-                doc.setStatus(DocumentStatus.READY);
                 doc.setChunkCount(response.chunks() != null ? response.chunks().size() : 0);
+                doc.setContentHash(response.documentContentHash());
+
+                String contentHash = response.documentContentHash();
+                if (contentHash != null && !contentHash.isBlank()) {
+                    // Khóa theo contentHash để 2 ingest đồng thời cùng nội dung không thể cùng
+                    // lúc SELECT "không thấy nhau" rồi cùng lọt qua bước gắn cờ DANGER.
+                    Object lock = contentHashLockRegistry.acquire(contentHash);
+                    synchronized (lock) {
+                        Document duplicate = documentRepository
+                                .findFirstByContentHashAndOwnerIdNotAndStatusNot(
+                                        contentHash, doc.getOwnerId(), DocumentStatus.SOFT_DELETED)
+                                .orElse(null);
+                        if (duplicate != null) {
+                            doc.setStatus(DocumentStatus.PENDING_REVIEW);
+                            doc.setAiWarningLevel("DANGER");
+                            doc.setReviewReason("Trùng nội dung với tài liệu #" + duplicate.getId()
+                                    + " của người dùng khác — nghi ngờ tải lại tài liệu công khai");
+                            doc.setAiReviewStatus("PENDING_ADMIN");
+                            documentRepository.save(doc);
+                            log.warn("Document {} content-hash collides with doc #{} (owner {}), set PENDING_REVIEW",
+                                    id, duplicate.getId(), duplicate.getOwnerId());
+                            return;
+                        }
+                        // Lưu ngay trong lúc giữ lock để thread khác (đang chờ) sẽ thấy bản ghi
+                        // này khi tới lượt SELECT của nó.
+                        documentRepository.save(doc);
+                    }
+                    contentHashLockRegistry.release(contentHash, lock);
+                }
+
+                doc.setStatus(DocumentStatus.READY);
                 documentRepository.save(doc);
                 log.info("Document {} ingestion COMPLETED, chunks={}", id, doc.getChunkCount());
             } else {

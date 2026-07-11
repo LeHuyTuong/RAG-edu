@@ -11,5 +11,7 @@ public interface BillingService {
 
     void consumeChatCredit(Long userId, String description);
 
+    void consumeDocumentQuota(Long userId, String description, long sizeInBytes);
+
     List<String> getFlowSteps();
 }

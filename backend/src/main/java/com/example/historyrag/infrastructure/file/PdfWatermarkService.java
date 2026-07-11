@@ -3,6 +3,9 @@ package com.example.historyrag.infrastructure.file;
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDDocumentInformation;
@@ -29,12 +32,20 @@ public class PdfWatermarkService {
         }
     }
 
-    public byte[] addPublicDownloadWatermark(byte[] source, String downloaderEmail) {
+    private static final DateTimeFormatter DTF = DateTimeFormatter
+            .ofPattern("yyyy-MM-dd HH:mm 'UTC'")
+            .withZone(ZoneId.of("UTC"));
+
+    public byte[] addPublicDownloadWatermark(byte[] source, String downloaderEmail,
+                                              String ownerName, Instant downloadedAt) {
         try (PDDocument document = Loader.loadPDF(source)) {
-            PDType1Font font = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
-            String emailText = downloaderEmail == null || downloaderEmail.isBlank()
-                    ? ""
-                    : " - " + downloaderEmail;
+            PDType1Font fontBold = new PDType1Font(Standard14Fonts.FontName.HELVETICA_BOLD);
+
+            String footerLine1 = "Downloaded from RAG-edu by "
+                    + (downloaderEmail == null || downloaderEmail.isBlank() ? "unknown" : downloaderEmail)
+                    + " at " + DTF.format(downloadedAt);
+            String footerLine2 = "Owner: "
+                    + (ownerName == null || ownerName.isBlank() ? "unknown" : ownerName);
 
             for (PDPage page : document.getPages()) {
                 float width = page.getMediaBox().getWidth();
@@ -47,7 +58,7 @@ public class PdfWatermarkService {
                         true,
                         true)) {
                     stream.beginText();
-                    stream.setFont(font, 26);
+                    stream.setFont(fontBold, 26);
                     stream.setNonStrokingColor(new Color(190, 190, 190));
                     stream.setTextMatrix(Matrix.getRotateInstance(
                             Math.toRadians(35),
@@ -56,14 +67,20 @@ public class PdfWatermarkService {
                     stream.showText(WATERMARK_TEXT);
                     stream.endText();
 
-                    if (!emailText.isBlank()) {
-                        stream.beginText();
-                        stream.setFont(font, 10);
-                        stream.setNonStrokingColor(new Color(140, 140, 140));
-                        stream.newLineAtOffset(36, 28);
-                        stream.showText("Downloaded from RAG-edu" + emailText);
-                        stream.endText();
-                    }
+                    PDType1Font fontSmall = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
+                    stream.beginText();
+                    stream.setFont(fontSmall, 10);
+                    stream.setNonStrokingColor(new Color(140, 140, 140));
+                    stream.newLineAtOffset(36, 28);
+                    stream.showText(footerLine1);
+                    stream.endText();
+
+                    stream.beginText();
+                    stream.setFont(fontSmall, 10);
+                    stream.setNonStrokingColor(new Color(140, 140, 140));
+                    stream.newLineAtOffset(36, 16);
+                    stream.showText(footerLine2);
+                    stream.endText();
                 }
             }
 

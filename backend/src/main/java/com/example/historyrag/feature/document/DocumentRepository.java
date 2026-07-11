@@ -43,4 +43,6 @@ public interface DocumentRepository extends JpaRepository<Document, Long>, JpaSp
 
     @Query("SELECT COUNT(d) FROM Document d WHERE d.id IN :ids AND d.ownerId = :ownerId AND d.status = 'READY' AND d.chunkCount > 0")
     long countReadyForAiByIdInAndOwnerId(@Param("ids") List<Long> ids, @Param("ownerId") Long ownerId);
+
+    Optional<Document> findFirstByContentHashAndOwnerIdNotAndStatusNot(String contentHash, Long ownerId, DocumentStatus status);
 }

@@ -1,5 +1,6 @@
 package com.example.historyrag.feature.document;
 
+import com.example.historyrag.feature.audit.DownloadAuditService;
 import com.example.historyrag.shared.ApiResponse;
 import com.example.historyrag.shared.JwtUtils;
 import com.example.historyrag.shared.ResultPaginationDTO;
@@ -9,6 +10,7 @@ import com.example.historyrag.feature.document.dto.DocumentDownload;
 import com.example.historyrag.feature.document.dto.DocumentResponse;
 import com.example.historyrag.feature.document.dto.ShareLinkResponse;
 import com.example.historyrag.feature.document.dto.UpdateDocumentRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -31,9 +33,12 @@ import java.util.List;
 public class DocumentController {
 
     private final DocumentService documentService;
+    private final DownloadAuditService downloadAuditService;
 
-    public DocumentController(DocumentService documentService) {
+    public DocumentController(DocumentService documentService,
+                              DownloadAuditService downloadAuditService) {
         this.documentService = documentService;
+        this.downloadAuditService = downloadAuditService;
     }
 
     @PostMapping
@@ -160,12 +165,19 @@ public class DocumentController {
     @GetMapping("/{id}/download")
     public ResponseEntity<byte[]> download(
             @PathVariable Long id,
-            @AuthenticationPrincipal Jwt jwt) {
+            @AuthenticationPrincipal Jwt jwt,
+            HttpServletRequest request) {
         DocumentDownload download = documentService.prepareDownload(
                 id,
                 JwtUtils.getUserId(jwt),
                 jwt.getSubject(),
                 isAdmin(jwt));
+        downloadAuditService.record(
+                id,
+                JwtUtils.getUserId(jwt),
+                jwt.getSubject(),
+                download.watermarked(),
+                request.getRemoteAddr());
         String encodedFilename = URLEncoder.encode(download.filename(), StandardCharsets.UTF_8)
                 .replace("+", "%20");
         return ResponseEntity.ok()
@@ -178,12 +190,19 @@ public class DocumentController {
     @GetMapping("/{id}/file")
     public ResponseEntity<byte[]> file(
             @PathVariable Long id,
-            @AuthenticationPrincipal Jwt jwt) {
+            @AuthenticationPrincipal Jwt jwt,
+            HttpServletRequest request) {
         DocumentDownload download = documentService.prepareDownload(
                 id,
                 JwtUtils.getUserId(jwt),
                 jwt.getSubject(),
                 isAdmin(jwt));
+        downloadAuditService.record(
+                id,
+                JwtUtils.getUserId(jwt),
+                jwt.getSubject(),
+                download.watermarked(),
+                request.getRemoteAddr());
         String encodedFilename = URLEncoder.encode(download.filename(), StandardCharsets.UTF_8)
                 .replace("+", "%20");
         return ResponseEntity.ok()
