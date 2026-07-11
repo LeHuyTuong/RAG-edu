@@ -2,16 +2,16 @@
 Bước 3/4 trong chat pipeline: gọi LLM sinh câu trả lời.
 
 Vai trò: nhận system_prompt + user_message đã được prompt_service build,
-gọi LLM (Cerebras chính → OpenRouter fallback), trả về answer string.
+gọi LLM (Cerebras chính → OpenRouter → Groq fallback cuối), trả về answer string.
 
-Flow: Cerebras → nếu lỗi → OpenRouter (Gemini 2.5 Flash)
+Flow: Cerebras → nếu lỗi → OpenRouter (Gemini 2.5 Flash) → nếu lỗi → Groq
 
 Flow trong /rag/chat:
   prompt_service  →  (system_prompt, user_message)
     → generate(system_prompt, user_message, temperature)
     → answer  →  citation_service
 
-Raise ValueError nếu cả 2 provider đều trả rỗng.
+Raise ValueError nếu cả 3 provider đều trả rỗng.
 """
 import json
 import logging
@@ -41,10 +41,16 @@ def generate(system_prompt: str, user_message: str, temperature: float = 0.2) ->
     try:
         return _clean_text(_generate_cerebras(system_prompt, user_message, temperature))
     except Exception as e:
-        logger.warning("Cerebras failed, falling back to Gemini: %s", e)
+        logger.warning("Cerebras failed, falling back to OpenRouter: %s", e)
 
     # Fallback sang OpenRouter (Gemini 2.5 Flash)
-    return _clean_text(_generate_openrouter(system_prompt, user_message, temperature))
+    try:
+        return _clean_text(_generate_openrouter(system_prompt, user_message, temperature))
+    except Exception as e:
+        logger.warning("OpenRouter failed, falling back to Groq: %s", e)
+
+    # Fallback cuối sang Groq
+    return _clean_text(_generate_groq(system_prompt, user_message, temperature))
 
 
 def generate_stream(system_prompt: str, user_message: str, temperature: float = 0.2):
@@ -54,10 +60,18 @@ def generate_stream(system_prompt: str, user_message: str, temperature: float = 
             yield text
         return
     except Exception as e:
-        logger.warning("Cerebras stream failed, falling back to Gemini: %s", e)
+        logger.warning("Cerebras stream failed, falling back to OpenRouter: %s", e)
 
     # Fallback sang OpenRouter (Gemini 2.5 Flash)
-    for text in _stream_openrouter(system_prompt, user_message, temperature):
+    try:
+        for text in _stream_openrouter(system_prompt, user_message, temperature):
+            yield text
+        return
+    except Exception as e:
+        logger.warning("OpenRouter stream failed, falling back to Groq: %s", e)
+
+    # Fallback cuối sang Groq
+    for text in _stream_groq(system_prompt, user_message, temperature):
         yield text
 
 
@@ -169,6 +183,37 @@ def _stream_openrouter(system_prompt: str, user_message: str, temperature: float
             "POST",
             f"{settings.openrouter_base_url}/chat/completions",
             headers=_openrouter_headers(),
+            json=payload,
+        ) as resp:
+            resp.raise_for_status()
+            yield from _stream_openai_lines(resp)
+
+
+# ─── Groq fallback cuối ─────────────────────────────────────────────────────
+
+
+def _generate_groq(system_prompt: str, user_message: str, temperature: float) -> str:
+    payload = _openai_payload(settings.groq_model, system_prompt, user_message, temperature, stream=False)
+    with httpx.Client(timeout=120) as client:
+        resp = client.post(
+            f"{settings.groq_base_url}/chat/completions",
+            headers=_openai_headers(settings.groq_api_key),
+            json=payload,
+        )
+        resp.raise_for_status()
+        text = _parse_openai_response(resp.json())
+    if not text:
+        raise ValueError("Groq returned empty response")
+    return text
+
+
+def _stream_groq(system_prompt: str, user_message: str, temperature: float):
+    payload = _openai_payload(settings.groq_model, system_prompt, user_message, temperature, stream=True)
+    with httpx.Client(timeout=120) as client:
+        with client.stream(
+            "POST",
+            f"{settings.groq_base_url}/chat/completions",
+            headers=_openai_headers(settings.groq_api_key),
             json=payload,
         ) as resp:
             resp.raise_for_status()

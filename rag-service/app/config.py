@@ -56,6 +56,11 @@ class Settings(BaseSettings):
     openrouter_model: str = "google/gemini-2.5-flash"
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
 
+    # Groq — fallback cuối khi cả Cerebras và OpenRouter đều lỗi/hết quota
+    groq_api_key: str = ""
+    groq_model: str = "llama-3.3-70b-versatile"
+    groq_base_url: str = "https://api.groq.com/openai/v1"
+
     # Giá trị mặc định cho pipeline — request có thể override
     default_chunk_size: int = 800
     default_chunk_overlap: int = 120
