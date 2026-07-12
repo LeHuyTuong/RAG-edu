@@ -3,7 +3,8 @@ export type DocumentPreviewType =
   | "docx"
   | "txt"
   | "image"
-  | "unsupported";
+  | "unsupported"
+  | "error";
 
 export interface DocumentPreviewData {
   readonly type: DocumentPreviewType;

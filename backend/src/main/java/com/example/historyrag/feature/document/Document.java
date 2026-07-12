@@ -30,6 +30,10 @@ public class Document extends BaseEntity {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    @Size(max = 255)
+    @Column(name = "original_author", length = 255)
+    private String originalAuthor;
+
     @Column(name = "file_url", length = 2000)
     private String fileUrl;
 

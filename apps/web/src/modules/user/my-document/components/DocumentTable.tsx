@@ -9,6 +9,7 @@
  */
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -110,6 +111,7 @@ interface Props {
   readonly skeletonCount: number;
   readonly onPageChange: (page: number) => void;
   readonly onView: (document: LibraryDocument) => void;
+  readonly onEdit: (document: LibraryDocument) => void;
   readonly deletingId: string | null;
   readonly savingId: string | null;
 }
@@ -122,9 +124,11 @@ export function DocumentTable({
   skeletonCount,
   onPageChange,
   onView,
+  onEdit,
   deletingId,
   savingId,
 }: Props): React.JSX.Element {
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const normalizedSearchTerm = searchTerm.trim();
   const isSearching = normalizedSearchTerm.length > 0;
@@ -170,24 +174,39 @@ export function DocumentTable({
         <div key="status" className="flex justify-center">
           <Badge tone={status.tone}>{status.label}</Badge>
         </div>,
-        <div key="actions" className="flex justify-center gap-2">
+        <div key="actions" className="flex justify-center gap-1">
           <Button
-            aria-label={`Xem chi tiết ${doc.title}`}
+            aria-label={`Chỉnh sửa ${doc.title}`}
             variant="ghost"
             size="sm"
             className="h-9 w-9 p-0 text-on-surface-variant hover:bg-surface-container-high hover:text-primary"
-            onClick={() => onView(doc)}
+            onClick={() => onEdit(doc)}
             disabled={savingId === doc.id || deletingId === doc.id}
-            title={`Xem chi tiết ${doc.title}`}
+            title={`Chỉnh sửa ${doc.title}`}
             type="button"
           >
             <span
               aria-hidden="true"
-              className="material-symbols-outlined text-[22px]"
+              className="material-symbols-outlined text-[20px]"
             >
-              {savingId === doc.id || deletingId === doc.id
-                ? "sync"
-                : "visibility"}
+              {savingId === doc.id || deletingId === doc.id ? "sync" : "edit"}
+            </span>
+          </Button>
+          <Button
+            aria-label={`Xem trước ${doc.title}`}
+            variant="ghost"
+            size="sm"
+            className="h-9 w-9 p-0 text-on-surface-variant hover:bg-surface-container-high hover:text-primary"
+            onClick={() => router.push(`/documents/${doc.id}`)}
+            disabled={savingId === doc.id || deletingId === doc.id}
+            title={`Xem trước ${doc.title}`}
+            type="button"
+          >
+            <span
+              aria-hidden="true"
+              className="material-symbols-outlined text-[20px]"
+            >
+              visibility
             </span>
           </Button>
         </div>,
@@ -270,9 +289,8 @@ export function DocumentTable({
           <Table
             columns={COLUMNS}
             rows={tableRows}
-            onRowClick={(row) => {
-              const doc = documents.find((d) => d.id === row.id);
-              if (doc) onView(doc);
+            onRowDoubleClick={(row) => {
+              router.push(`/documents/${row.id}`);
             }}
           />
         )}

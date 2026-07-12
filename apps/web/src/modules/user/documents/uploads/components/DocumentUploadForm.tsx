@@ -75,6 +75,7 @@ export function DocumentUploadForm({
   const [subjectId, setSubjectId] = useState("");
   const [documentType, setDocumentType] = useState("");
   const [description, setDescription] = useState("");
+  const [originalAuthor, setOriginalAuthor] = useState("");
 
   // Visibility toggle
   const [isPublic, setIsPublic] = useState(false);
@@ -140,6 +141,7 @@ export function DocumentUploadForm({
       await createDocument({
         title: title.trim(),
         description: description.trim() || undefined,
+        originalAuthor: originalAuthor.trim() || undefined,
         fileUrl: cloudResult.url,
         publicId: cloudResult.publicId,
         sizeInBytes: cloudResult.bytes,
@@ -155,6 +157,7 @@ export function DocumentUploadForm({
       setSubjectId("");
       setDocumentType("");
       setDescription("");
+      setOriginalAuthor("");
       setIsPublic(false);
       setFolderId("");
       onSuccess();
@@ -174,6 +177,7 @@ export function DocumentUploadForm({
     selectedFile,
     title,
     description,
+    originalAuthor,
     subjectId,
     folderId,
     isPublic,
@@ -251,6 +255,16 @@ export function DocumentUploadForm({
           "
         />
       </label>
+
+      {/* Original author */}
+      <InputField
+        label="Tác giả gốc (nếu có)"
+        placeholder="Tên người/tổ chức tạo ra nội dung gốc của tài liệu"
+        value={originalAuthor}
+        onChange={(e) => setOriginalAuthor(e.target.value)}
+        disabled={isSubmitting}
+        maxLength={255}
+      />
 
       {/* Folder selection */}
       {folders.length > 0 && (

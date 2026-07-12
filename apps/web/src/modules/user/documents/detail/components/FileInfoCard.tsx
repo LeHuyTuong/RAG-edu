@@ -7,6 +7,8 @@ interface Props {
   readonly format: string;
   /** Raw file size in bytes from the API */
   readonly sizeInBytes: number;
+  /** Tác giả gốc của nội dung tài liệu, nếu người tải lên đã khai báo */
+  readonly originalAuthor?: string | null;
 }
 
 /**
@@ -19,6 +21,7 @@ interface Props {
 export function FileInfoCard({
   format,
   sizeInBytes,
+  originalAuthor,
 }: Props): React.JSX.Element {
   return (
     <Card className="p-5">
@@ -38,6 +41,14 @@ export function FileInfoCard({
           <span className="text-on-surface-variant">Dung lượng</span>
           <span className="font-medium">{formatFileSize(sizeInBytes)}</span>
         </div>
+
+        {/* Original content author, only shown when the uploader declared it */}
+        {originalAuthor ? (
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-on-surface-variant">Tác giả gốc</span>
+            <span className="font-medium text-right">{originalAuthor}</span>
+          </div>
+        ) : null}
       </div>
     </Card>
   );

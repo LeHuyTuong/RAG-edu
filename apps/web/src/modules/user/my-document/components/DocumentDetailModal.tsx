@@ -25,6 +25,7 @@ interface Props {
   readonly isSaving: boolean;
   readonly deletingId: string | null;
   readonly error: string | null;
+  readonly initialMode?: DialogMode;
   readonly onCancel: () => void;
   readonly onDelete: (document: LibraryDocument) => void;
   readonly onSave: (
@@ -79,12 +80,14 @@ export function DocumentDetailModal({
   isSaving,
   deletingId,
   error,
+  initialMode,
   onCancel,
   onDelete,
   onSave,
 }: Props): React.JSX.Element | null {
   const [mode, setMode] = useState<DialogMode>("view");
   const [title, setTitle] = useState("");
+  const [originalAuthor, setOriginalAuthor] = useState("");
   const [subjectId, setSubjectId] = useState("");
   const [isPublic, setIsPublic] = useState(false);
   const [folderId, setFolderId] = useState("");
@@ -93,12 +96,13 @@ export function DocumentDetailModal({
   useEffect(() => {
     if (!document) return;
 
-    setMode("view");
+    setMode(initialMode ?? "view");
     setTitle(document.title);
+    setOriginalAuthor(document.originalAuthor ?? "");
     setSubjectId(document.subject?.id ?? "");
     setIsPublic(document.isPublic);
     setFolderId(document.folderId ? String(document.folderId) : "");
-  }, [document]);
+  }, [document, initialMode]);
 
   useEffect(() => {
     listFolders()
@@ -149,6 +153,7 @@ export function DocumentDetailModal({
 
     await onSave(document, {
       title: nextTitle,
+      originalAuthor: originalAuthor.trim() || undefined,
       subjectId: subjectId || undefined,
       isPublic,
       folderId: folderId ? Number(folderId) : undefined,
@@ -192,6 +197,15 @@ export function DocumentDetailModal({
             onChange={(event) => setTitle(event.target.value)}
             required
             value={title}
+          />
+
+          <InputField
+            disabled={isSaving}
+            label="Tác giả gốc (nếu có)"
+            onChange={(event) => setOriginalAuthor(event.target.value)}
+            placeholder="Tên người/tổ chức tạo ra nội dung gốc của tài liệu"
+            value={originalAuthor}
+            maxLength={255}
           />
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -329,6 +343,10 @@ export function DocumentDetailModal({
       <div className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2">
           <DetailItem label="Tên tài liệu" value={document.title} />
+          <DetailItem
+            label="Tác giả gốc"
+            value={document.originalAuthor || "Chưa cập nhật"}
+          />
           <DetailItem
             label="Môn học"
             value={document.subject?.name ?? "Chưa phân loại"}

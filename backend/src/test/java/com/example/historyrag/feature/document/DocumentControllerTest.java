@@ -124,6 +124,7 @@ class DocumentControllerTest {
                 id,
                 "Pending document",
                 null,
+                null,
                 "http://localhost:8080/uploads/pending.pdf",
                 "pending.pdf",
                 1000L,

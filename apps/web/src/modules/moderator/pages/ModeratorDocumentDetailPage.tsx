@@ -286,6 +286,14 @@ export default function ModeratorDocumentDetailPage({
                   {document.description || "Tài liệu chưa có mô tả."}
                 </dd>
               </div>
+              <div>
+                <dt className="mb-1 font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
+                  Tác giả gốc
+                </dt>
+                <dd className="font-body-md text-body-md">
+                  {document.originalAuthor || "Người tải lên chưa khai báo"}
+                </dd>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <dt className="mb-1 font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">

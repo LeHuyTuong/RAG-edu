@@ -70,6 +70,7 @@ public class DocumentServiceImpl implements DocumentService {
         Document document = new Document();
         document.setTitle(request.title());
         document.setDescription(request.description());
+        document.setOriginalAuthor(request.originalAuthor());
         document.setFileUrl(request.fileUrl());
         document.setPublicId(request.publicId());
         document.setSizeInBytes(request.sizeInBytes());
@@ -107,6 +108,9 @@ public class DocumentServiceImpl implements DocumentService {
         }
         if (request.description() != null) {
             doc.setDescription(request.description());
+        }
+        if (request.originalAuthor() != null) {
+            doc.setOriginalAuthor(request.originalAuthor());
         }
         if (request.folderId() != null) {
             if (!folderService.existsByIdAndOwner(request.folderId(), ownerId)) {
@@ -175,7 +179,7 @@ public class DocumentServiceImpl implements DocumentService {
                     .map(AccountResponse::name)
                     .orElse("unknown");
             content = pdfWatermarkService.addPublicDownloadWatermark(
-                    content, currentUserEmail, ownerName, Instant.now());
+                    content, currentUserEmail, ownerName, doc.getOriginalAuthor(), Instant.now());
         }
 
         return new DocumentDownload(

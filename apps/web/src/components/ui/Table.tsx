@@ -17,6 +17,7 @@ export interface TableProps {
   readonly columns: readonly TableColumn[];
   readonly rows: readonly TableRow[];
   readonly onRowClick?: (row: TableRow) => void;
+  readonly onRowDoubleClick?: (row: TableRow) => void;
 }
 
 const getAlignmentClass = (align: TableColumn["align"]): string => {
@@ -31,7 +32,12 @@ const getAlignmentClass = (align: TableColumn["align"]): string => {
   return "";
 };
 
-export const Table: FC<TableProps> = ({ columns, rows, onRowClick }) => {
+export const Table: FC<TableProps> = ({
+  columns,
+  rows,
+  onRowClick,
+  onRowDoubleClick,
+}) => {
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-left">
@@ -69,8 +75,15 @@ export const Table: FC<TableProps> = ({ columns, rows, onRowClick }) => {
                 }
                 onRowClick?.(row);
               }}
+              onDoubleClick={(event) => {
+                const target = event.target as HTMLElement;
+                if (target.closest("a, button, input, select, label")) {
+                  return;
+                }
+                onRowDoubleClick?.(row);
+              }}
               className={`border-b border-outline-variant transition-colors ${
-                onRowClick
+                onRowClick || onRowDoubleClick
                   ? "cursor-pointer hover:bg-surface-container-high"
                   : ""
               } ${row.highlighted ? "bg-surface-container" : ""}`}

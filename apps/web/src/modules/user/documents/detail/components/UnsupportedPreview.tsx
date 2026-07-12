@@ -1,4 +1,12 @@
-export function UnsupportedPreview(): React.JSX.Element {
+interface Props {
+  readonly title?: string;
+  readonly message?: string;
+}
+
+export function UnsupportedPreview({
+  title = "Không hỗ trợ preview",
+  message = "Định dạng tài liệu hiện chưa được hỗ trợ.",
+}: Props = {}): React.JSX.Element {
   return (
     <div
       className="
@@ -23,11 +31,9 @@ export function UnsupportedPreview(): React.JSX.Element {
       </span>
 
       <div className="text-center">
-        <h3 className="text-lg font-semibold">Không hỗ trợ preview</h3>
+        <h3 className="text-lg font-semibold">{title}</h3>
 
-        <p className="mt-2 text-sm text-on-surface-variant">
-          Định dạng tài liệu hiện chưa được hỗ trợ.
-        </p>
+        <p className="mt-2 text-sm text-on-surface-variant">{message}</p>
       </div>
     </div>
   );

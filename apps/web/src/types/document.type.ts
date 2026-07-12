@@ -33,6 +33,8 @@ export interface LibraryDocument {
   id: string;
   title: string;
   description?: string | null;
+  /** Tác giả gốc của nội dung tài liệu (khác với người tải lên) */
+  originalAuthor?: string | null;
   /** Cloudinary public ID — usable for thumbnail generation */
   publicId: string;
   fileUrl: string;
@@ -96,6 +98,7 @@ export interface SubjectsListResponse {
 export interface CreateDocumentPayload {
   title: string;
   description?: string;
+  originalAuthor?: string;
   fileUrl: string;
   publicId: string;
   sizeInBytes: number;
@@ -109,6 +112,7 @@ export interface CreateDocumentPayload {
 export interface UpdateDocumentPayload {
   title?: string;
   description?: string;
+  originalAuthor?: string;
   subjectId?: string;
   isPublic?: boolean;
   folderId?: number;
@@ -138,6 +142,8 @@ export interface DocumentDetail {
   id: string;
   title: string;
   description: string | null;
+  /** Tác giả gốc của nội dung tài liệu (khác với người tải lên) */
+  originalAuthor?: string | null;
   /** Direct Cloudinary URL — used for download and PDF preview */
   fileUrl: string;
   publicId: string;

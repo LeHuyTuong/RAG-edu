@@ -283,6 +283,10 @@ export default function AdminDocumentDetailPage({
                 label="Mô tả"
                 value={document.description || "Tư liệu chưa có mô tả."}
               />
+              <DetailItem
+                label="Tác giả gốc"
+                value={document.originalAuthor || "Người tải lên chưa khai báo"}
+              />
               <div className="grid grid-cols-2 gap-4">
                 <DetailItem
                   label="Định dạng"

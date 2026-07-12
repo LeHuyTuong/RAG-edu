@@ -81,7 +81,7 @@ class DocumentServiceImplTest {
         assertThrows(ResourceNotFoundException.class,
                 () -> documentService.update(
                         1L,
-                        new UpdateDocumentRequest(null, null, foreignFolderId, null, null),
+                        new UpdateDocumentRequest(null, null, null, foreignFolderId, null, null),
                         ownerId));
 
         verify(documentRepository, never()).save(document);
@@ -91,7 +91,7 @@ class DocumentServiceImplTest {
     @DisplayName("create — should reject folder that does not belong to owner")
     void create_folderOwnedByAnotherUser_throwsNotFound() {
         CreateDocumentRequest request = new CreateDocumentRequest(
-                "Lesson", null,
+                "Lesson", null, null,
                 "https://res.cloudinary.com/demo/lesson.pdf",
                 "demo/lesson.pdf",1000L,"pdf","raw",null,false,99L);
         when(folderService.existsByIdAndOwner(99L, 10L)).thenReturn(false);

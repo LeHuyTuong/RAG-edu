@@ -16,7 +16,7 @@ from typing import Optional
 
 from app.schemas.classify import RagClassifyRequest, RagClassifyResponse
 from app.services.extract_service import extract
-from app.services.llm_service import generate
+from app.services.llm_service import generate_with_wikipedia
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +93,7 @@ def classify(req: RagClassifyRequest) -> RagClassifyResponse:
             title_hint = f'Tiêu đề tài liệu: "{req.title}"\n\n' if req.title else ""
             user_message = f"{title_hint}Văn bản mẫu cần phân loại:\n{sample}"
 
-            raw = generate(system_prompt, user_message, temperature=0.0)
+            raw = generate_with_wikipedia(system_prompt, user_message, temperature=0.0)
             return _parse_response(req.sourceId, raw)
         except Exception as exc:
             last_error = exc

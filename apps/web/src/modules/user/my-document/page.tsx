@@ -42,6 +42,7 @@ export default function MyDocumentPage(): React.JSX.Element {
     useState<LibraryDocument | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
+  const [openInEditMode, setOpenInEditMode] = useState(false);
 
   const load = useCallback(async (page: number) => {
     setIsLoading(true);
@@ -87,6 +88,13 @@ export default function MyDocumentPage(): React.JSX.Element {
 
   const handleView = (document: LibraryDocument) => {
     setEditError(null);
+    setOpenInEditMode(false);
+    setViewingDocument(document);
+  };
+
+  const handleEdit = (document: LibraryDocument) => {
+    setEditError(null);
+    setOpenInEditMode(true);
     setViewingDocument(document);
   };
 
@@ -129,6 +137,7 @@ export default function MyDocumentPage(): React.JSX.Element {
         skeletonCount={ITEMS_PER_PAGE}
         onPageChange={setCurrentPage}
         onView={handleView}
+        onEdit={handleEdit}
         deletingId={deletingId}
         savingId={savingId}
       />
@@ -140,10 +149,12 @@ export default function MyDocumentPage(): React.JSX.Element {
         isOpen={viewingDocument !== null}
         isSaving={savingId !== null}
         error={editError}
+        initialMode={openInEditMode ? "edit" : "view"}
         onCancel={() => {
           if (savingId || deletingId) return;
           setViewingDocument(null);
           setEditError(null);
+          setOpenInEditMode(false);
         }}
         onDelete={(document) => void handleDelete(document.id)}
         onSave={handleSaveEdit}
