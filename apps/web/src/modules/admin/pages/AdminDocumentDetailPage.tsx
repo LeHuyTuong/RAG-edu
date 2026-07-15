@@ -19,6 +19,7 @@ import { useAuthStore } from "@/stores/auth/store";
 import type { DocumentDetail, DocumentStatus } from "@/types/document.type";
 import { formatDate, formatFileSize } from "@/utils";
 import { getErrorMessage } from "@/utils/error";
+import { getRagStatusDisplay } from "@/shared/documentStatus";
 
 import { AdminDocumentAiAssistant } from "../components/AdminDocumentAiAssistant";
 import { AdminCard, MaterialIcon } from "../components/AdminPrimitives";
@@ -38,14 +39,6 @@ const statusTone: Record<
   PENDING: "warning",
   REJECTED: "error",
   DELETED: "neutral",
-};
-
-const ragStatusLabels: Record<string, string> = {
-  UPLOADING: "Đang tải lên",
-  INDEXING: "Đang phân tích",
-  READY: "Sẵn sàng",
-  FAILED: "Lỗi xử lý",
-  REINDEXING: "Đang phân tích lại",
 };
 
 const quickReviewPrompts = [
@@ -180,7 +173,8 @@ export default function AdminDocumentDetailPage({
   }
 
   const status = document.status ?? "PENDING";
-  const canReview = status === "PENDING";
+  // Chỉ duyệt được khi đang chờ kiểm duyệt (theo state machine thật).
+  const canReview = document.ragStatus === "PENDING_REVIEW";
   const assistantDocuments = [
     {
       id: document.id,
@@ -322,9 +316,12 @@ export default function AdminDocumentDetailPage({
               <DetailItem
                 label="Trạng thái xử lý RAG"
                 value={
-                  ragStatusLabels[document.ragStatus ?? ""] ??
-                  document.ragStatus ??
-                  "Chưa có"
+                  document.ragStatus
+                    ? getRagStatusDisplay(
+                        document.ragStatus,
+                        document.isPublic ?? false,
+                      ).label
+                    : "Chưa có"
                 }
               />
               <DetailItem

@@ -15,6 +15,7 @@ import type {
   UpdateDocumentPayload,
 } from "@/types/document.type";
 import { formatDate } from "@/utils";
+import { getDisplayFromStatus } from "@/shared/documentStatus";
 
 type DialogMode = "view" | "edit" | "delete";
 
@@ -34,26 +35,12 @@ interface Props {
   ) => Promise<void> | void;
 }
 
-function getStatusDisplay(status: string, isPublic: boolean) {
-  const normalizedStatus = status.toLowerCase();
-
-  if (normalizedStatus === "approved" || (status === "ACTIVE" && isPublic)) {
-    return { label: "Đã duyệt", tone: "success" as const };
-  }
-  if (normalizedStatus === "pending" || status === "PENDING") {
-    return { label: "Chờ duyệt", tone: "warning" as const };
-  }
-  if (normalizedStatus === "rejected" || status === "REJECTED") {
-    return { label: "Bị từ chối", tone: "error" as const };
-  }
-  if (normalizedStatus === "deleted" || status === "DELETED") {
-    return { label: "Đã xóa", tone: "neutral" as const };
-  }
-  if (!isPublic || normalizedStatus === "private") {
-    return { label: "Riêng tư", tone: "neutral" as const };
-  }
-
-  return { label: status, tone: "neutral" as const };
+function getStatusDisplay(document: LibraryDocument) {
+  return getDisplayFromStatus(
+    document.status,
+    document.ragStatus,
+    document.isPublic,
+  );
 }
 
 function DetailItem({
@@ -134,7 +121,7 @@ export function DocumentDetailModal({
 
   if (!isOpen || !document) return null;
 
-  const status = getStatusDisplay(document.status, document.isPublic);
+  const status = getStatusDisplay(document);
   const isDeleting = deletingId === document.id;
   const selectedFolderName =
     folders.find((folder) => String(folder.id) === String(document.folderId))

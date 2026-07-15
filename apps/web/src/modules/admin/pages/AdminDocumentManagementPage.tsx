@@ -12,6 +12,7 @@ import {
 import { Badge } from "@/components/ui/Badge";
 import { Pagination } from "@/components/ui/Pagination";
 import { Table, type TableRow } from "@/components/ui/Table";
+import { getRagStatusDisplay } from "@/shared/documentStatus";
 import type { LibraryDocument } from "@/types/document.type";
 import { getErrorMessage } from "@/utils/error";
 
@@ -30,33 +31,16 @@ const columns = [
 
 const pageSize = 10;
 
-const ragStatusLabels: Record<string, string> = {
-  UPLOADING: "Đang tải lên",
-  INDEXING: "Đang phân tích",
-  READY: "Sẵn sàng",
-  FAILED: "Lỗi xử lý",
-  REINDEXING: "Đang phân tích lại",
-};
-
-const ragStatusTone: Record<
-  string,
-  "success" | "warning" | "error" | "neutral"
-> = {
-  UPLOADING: "neutral",
-  INDEXING: "warning",
-  READY: "success",
-  FAILED: "error",
-  REINDEXING: "warning",
-};
-
 const suggestedQuestions = [
   "Các tài liệu đã chọn có phù hợp để duyệt không?",
   "Có tài liệu nào không liên quan đến lịch sử không?",
   "Tóm tắt lý do nên duyệt hoặc cần từ chối.",
 ] as const;
 
+// Chỉ tài liệu đang chờ kiểm duyệt mới được chọn để duyệt (không phải doc
+// đang INDEXING/FAILED/READY). Dựa trên state machine thật qua ragStatus.
 const canSelectForReview = (document: LibraryDocument): boolean =>
-  document.status === "PENDING";
+  document.ragStatus === "PENDING_REVIEW";
 
 function ConfidenceBadge({
   confidence,
@@ -246,9 +230,9 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
       <ConfidenceBadge key="confidence" confidence={doc.aiConfidence} />,
       <Badge
         key="status"
-        tone={ragStatusTone[doc.ragStatus ?? ""] ?? "neutral"}
+        tone={getRagStatusDisplay(doc.ragStatus, doc.isPublic).tone}
       >
-        {ragStatusLabels[doc.ragStatus ?? ""] ?? doc.ragStatus ?? "—"}
+        {getRagStatusDisplay(doc.ragStatus, doc.isPublic).label}
       </Badge>,
       <div key="actions" className="flex items-center justify-center gap-1">
         {doc.ragStatus === "FAILED" && (

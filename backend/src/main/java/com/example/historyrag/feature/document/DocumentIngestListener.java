@@ -57,8 +57,13 @@ public class DocumentIngestListener {
         try {
             String filePath = resolveInternalFilePath(doc);
 
-            if (doc.getStatus() == DocumentStatus.READY) {
-                log.info("Document {} manually approved, indexing without AI review", docId);
+            // Đã duyệt thủ công (approve -> INDEXING) hoặc yêu cầu index lại
+            // (reindex -> REINDEXING): bỏ qua bước AI review, ingest thẳng.
+            // runIngest sẽ chuyển sang READY (thành công) hoặc FAILED (lỗi).
+            if (doc.getStatus() == DocumentStatus.INDEXING
+                    || doc.getStatus() == DocumentStatus.REINDEXING) {
+                log.info("Document {} approved/reindex requested ({}), indexing without AI review",
+                        docId, doc.getStatus());
                 runIngest(doc, filePath);
                 return;
             }

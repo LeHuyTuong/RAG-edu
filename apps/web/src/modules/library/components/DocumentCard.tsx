@@ -6,6 +6,7 @@ import type { FC } from "react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { formatDate } from "@/utils";
+import { getRagStatusDisplay } from "@/shared/documentStatus";
 import type { LibraryDocument } from "@/types/document.type";
 
 interface DocumentCardProps {
@@ -123,13 +124,19 @@ export const DocumentCard: FC<DocumentCardProps> = ({ document }) => {
             </span>
           ) : null}
 
-          {document.status !== "ACTIVE" ? (
+          {document.ragStatus && document.ragStatus !== "READY" ? (
             <span className="absolute right-3 top-3">
               <Badge
-                tone={document.status === "PENDING" ? "warning" : "error"}
+                tone={
+                  getRagStatusDisplay(document.ragStatus, document.isPublic)
+                    .tone
+                }
                 className="text-[11px]"
               >
-                {document.status === "PENDING" ? "Chờ duyệt" : document.status}
+                {
+                  getRagStatusDisplay(document.ragStatus, document.isPublic)
+                    .label
+                }
               </Badge>
             </span>
           ) : null}

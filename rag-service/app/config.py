@@ -34,9 +34,29 @@ class Settings(BaseSettings):
 
     # Google AI Studio — dùng cho embedding (Gemini)
     google_api_key: str = Field(validation_alias=AliasChoices("GOOGLE_API_KEY", "LLM_API_KEY"))
+    # Nhiều key xoay vòng để né quota 429 (cùng model Gemini → cùng không gian
+    # vector). Định dạng .env: GOOGLE_API_KEYS=key1,key2,... — nếu trống thì
+    # dùng lại google_api_key đơn.
+    google_api_keys_raw: str = Field(default="", validation_alias=AliasChoices("GOOGLE_API_KEYS"))
     embedding_model: str = "gemini-embedding-001"
     # embedding_dim phải khớp với collection đã tạo trong Qdrant — đổi model thì phải tạo lại collection
     embedding_dim: int = 768
+
+    @property
+    def google_api_keys(self) -> list[str]:
+        """Danh sách key Gemini để xoay vòng. Ưu tiên GOOGLE_API_KEYS, luôn gồm
+        cả google_api_key; dedupe giữ thứ tự."""
+        keys = [k.strip() for k in self.google_api_keys_raw.split(",") if k.strip()]
+        if self.google_api_key and self.google_api_key not in keys:
+            keys.insert(0, self.google_api_key)
+        # dedupe giữ thứ tự
+        seen: set[str] = set()
+        result: list[str] = []
+        for k in keys:
+            if k not in seen:
+                seen.add(k)
+                result.append(k)
+        return result
 
     # Local embedding fallback — dùng khi Gemini API hết quota hoặc lỗi
     embedding_provider: str = "gemini"  # "gemini" | "local"

@@ -333,24 +333,26 @@ public class DocumentServiceImpl implements DocumentService {
             throw new InvalidRequestException("Tài liệu đã bị từ chối, không thể tự duyệt lại");
         }
 
-        // Manual approval is an admin publishing decision. Keep RAG/indexing state
-        // visible via aiReviewStatus/ragStatus fields, but do not block the request
-        // on a potentially slow ingest pipeline.
+        // Manual approval = quyết định kiểm duyệt của admin. Theo UML state machine,
+        // duyệt tài liệu chưa index đưa nó vào INDEXING (không set READY lạc quan);
+        // DocumentIngestListener sẽ ingest rồi chuyển INDEXING -> READY (thành công)
+        // hoặc INDEXING -> FAILED (index lỗi). reviewedAt/reviewedById ghi lại việc
+        // đã qua kiểm duyệt, nên ca "đã duyệt nhưng index lỗi" = FAILED + reviewedAt.
         if (doc.getStatus() == DocumentStatus.PENDING_REVIEW || doc.getStatus() == DocumentStatus.FAILED) {
-            doc.setStatus(DocumentStatus.READY);
+            doc.setStatus(DocumentStatus.INDEXING);
             doc.setIsPublic(true);
             doc.setReviewedById(userId);
             doc.setReviewedAt(Instant.now());
             documentRepository.save(doc);
             eventPublisher.publishEvent(new DocumentIngestRequested(doc.getId()));
-            log.info("Document {} manually approved by userId={}", id, userId);
+            log.info("Document {} manually approved by userId={}, status -> INDEXING", id, userId);
         } else if (doc.getStatus() == DocumentStatus.READY) {
-            doc.setStatus(DocumentStatus.READY);
+            // Đã index sẵn — chỉ cập nhật quyết định publish, không ingest lại.
             doc.setIsPublic(true);
             doc.setReviewedById(userId);
             doc.setReviewedAt(Instant.now());
             documentRepository.save(doc);
-            log.info("Document {} approved by userId={}", id, userId);
+            log.info("Document {} re-approved by userId={} (already READY)", id, userId);
         } else {
             throw new InvalidRequestException("Chỉ có thể duyệt tài liệu ở trạng thái PENDING_REVIEW, FAILED hoặc READY");
         }

@@ -136,13 +136,21 @@ public class DocumentController {
 
     private DocumentStatus mapStatusFilter(String status) {
         if (status == null || status.isBlank()) return null;
-        return switch (status.toUpperCase()) {
-            case "ACTIVE" -> DocumentStatus.READY;
-            case "REJECTED" -> DocumentStatus.REJECTED;
-            case "DELETED" -> DocumentStatus.SOFT_DELETED;
-            case "PENDING_REVIEW" -> DocumentStatus.PENDING_REVIEW;
-            default -> null; // PENDING covers all other processing states
-        };
+        String value = status.trim().toUpperCase();
+        // Alias tương thích ngược với chuỗi collapsed cũ của frontend.
+        switch (value) {
+            case "ACTIVE" -> { return DocumentStatus.READY; }
+            case "PENDING" -> { return DocumentStatus.PENDING_REVIEW; }
+            case "DELETED" -> { return DocumentStatus.SOFT_DELETED; }
+            default -> { /* rơi xuống parse trực tiếp theo tên enum */ }
+        }
+        // Cho phép lọc theo đúng từng state của UML state machine:
+        // UPLOADING, REVIEWING, PENDING_REVIEW, INDEXING, REINDEXING, READY, FAILED, REJECTED, SOFT_DELETED.
+        try {
+            return DocumentStatus.valueOf(value);
+        } catch (IllegalArgumentException ex) {
+            return null; // giá trị không hợp lệ -> không áp filter thay vì trả sai
+        }
     }
 
     private PageRequest newestFirstPageRequest(int page, int limit) {

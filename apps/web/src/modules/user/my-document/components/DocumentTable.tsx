@@ -26,6 +26,7 @@ type BadgeStatusTone = Extract<
 >;
 
 import { formatDate } from "@/utils";
+import { getDisplayFromStatus } from "@/shared/documentStatus";
 import type { LibraryDocument, PaginationMeta } from "@/types/document.type";
 
 const COLUMNS = [
@@ -35,45 +36,13 @@ const COLUMNS = [
   { key: "actions", label: "Thao tác", align: "center" as const },
 ] as const;
 
-function getStatusDisplay(
-  status: string,
-  isPublic: boolean,
-): { label: string; tone: BadgeStatusTone } {
-  const normalizedStatus = status.toLowerCase();
-
-  if (normalizedStatus === "approved") {
-    return { label: "Đã duyệt", tone: "success" };
-  }
-  if (normalizedStatus === "private") {
-    return { label: "Riêng tư", tone: "neutral" };
-  }
-  if (normalizedStatus === "pending") {
-    return { label: "Chờ duyệt", tone: "warning" };
-  }
-  if (normalizedStatus === "rejected") {
-    return { label: "Bị từ chối", tone: "error" };
-  }
-  if (normalizedStatus === "deleted") {
-    return { label: "Đã xóa", tone: "neutral" };
-  }
-
-  if (status === "ACTIVE" && isPublic) {
-    return { label: "Đã duyệt", tone: "success" };
-  }
-  if (status === "ACTIVE" && !isPublic) {
-    return { label: "Riêng tư", tone: "neutral" };
-  }
-  if (status === "PENDING") {
-    return { label: "Chờ duyệt", tone: "warning" };
-  }
-  if (status === "REJECTED") {
-    return { label: "Bị từ chối", tone: "error" };
-  }
-  if (status === "DELETED") {
-    return { label: "Đã xóa", tone: "neutral" };
-  }
-
-  return { label: status, tone: "neutral" };
+// Hiển thị trạng thái theo state machine thật (ragStatus). Fallback về chuỗi
+// `status` collapsed nếu response chưa có ragStatus.
+function getStatusDisplay(doc: LibraryDocument): {
+  label: string;
+  tone: BadgeStatusTone;
+} {
+  return getDisplayFromStatus(doc.status, doc.ragStatus, doc.isPublic);
 }
 
 function formatToIcon(publicId: string): string {
@@ -144,7 +113,7 @@ export function DocumentTable({
   }, [documents, normalizedSearchTerm]);
 
   const tableRows: TableRow[] = visibleDocuments.map((doc) => {
-    const status = getStatusDisplay(doc.status, doc.isPublic);
+    const status = getStatusDisplay(doc);
     const icon = formatToIcon(doc.publicId);
 
     return {

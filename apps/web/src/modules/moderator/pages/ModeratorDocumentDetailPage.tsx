@@ -218,7 +218,9 @@ export default function ModeratorDocumentDetailPage({
   }
 
   const status = document.status ?? "PENDING";
-  const canReview = status === "PENDING";
+  // Chỉ duyệt được tài liệu đang chờ kiểm duyệt (theo state machine thật),
+  // không phải doc đang INDEXING/FAILED/READY.
+  const canReview = document.ragStatus === "PENDING_REVIEW";
 
   return (
     <>
