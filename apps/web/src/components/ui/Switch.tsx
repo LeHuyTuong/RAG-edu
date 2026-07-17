@@ -17,8 +17,8 @@ export const Switch: FC<SwitchProps> = ({ checked, onChange }) => {
       }`}
     >
       <span
-        className={`w-4 h-4 rounded-full absolute top-[3px] transition-all ${
-          checked ? "bg-surface right-1" : "bg-outline left-1"
+        className={`w-4 h-4 rounded-full absolute top-[3px] left-0 transition-transform duration-300 ${
+          checked ? "bg-surface translate-x-7" : "bg-outline translate-x-1"
         }`}
       />
     </button>

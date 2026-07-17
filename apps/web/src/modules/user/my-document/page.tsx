@@ -28,7 +28,7 @@ import { DocumentDetailModal } from "./components/DocumentDetailModal";
 import { DocumentStats } from "./components/DocumentStats";
 import { DocumentTable } from "./components/DocumentTable";
 
-const ITEMS_PER_PAGE = 4;
+const ITEMS_PER_PAGE = 10;
 
 export default function MyDocumentPage(): React.JSX.Element {
   const [documents, setDocuments] = useState<LibraryDocument[]>([]);

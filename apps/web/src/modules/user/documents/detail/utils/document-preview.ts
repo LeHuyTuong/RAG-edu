@@ -80,7 +80,13 @@ export async function loadDocumentPreview(
   }
 
   if (normalizedFormat === "txt") {
-    return { type: "txt", textContent: await file.text(), objectUrl };
+    let textContent = await file.text();
+    if (textContent.length > 50000) {
+      textContent =
+        textContent.slice(0, 50000) +
+        "\n\n... (Nội dung hiển thị được cắt ngắn vì file quá lớn)";
+    }
+    return { type: "txt", textContent, objectUrl };
   }
 
   if (IMAGE_FORMATS.has(normalizedFormat)) {

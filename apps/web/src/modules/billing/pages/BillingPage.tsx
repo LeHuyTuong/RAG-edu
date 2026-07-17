@@ -5,7 +5,6 @@ import { toast } from "sonner";
 
 import {
   demoPurchasePlan,
-  fetchBillingFlow,
   fetchBillingSummary,
   type BillingPlan,
   type BillingSummary,
@@ -260,50 +259,18 @@ function PlanCard({
   );
 }
 
-function FlowPanel({ steps }: { readonly steps: string[] }): React.JSX.Element {
-  return (
-    <section className="rounded-lg border border-outline-variant bg-surface p-5">
-      <div className="mb-4 flex items-center gap-2">
-        <span className="material-symbols-outlined text-primary">
-          account_tree
-        </span>
-        <h2 className="font-title-md text-title-md text-on-surface">
-          Flow demo
-        </h2>
-      </div>
-      <ol className="grid gap-3 md:grid-cols-3">
-        {steps.map((step, index) => (
-          <li
-            className="rounded-lg border border-outline-variant bg-surface-container-low p-3"
-            key={`${step}-${index}`}
-          >
-            <span className="font-label-sm text-label-sm text-primary">
-              {String(index + 1).padStart(2, "0")}
-            </span>
-            <p className="mt-1 font-body-sm text-body-sm text-on-surface">
-              {step}
-            </p>
-          </li>
-        ))}
-      </ol>
-    </section>
-  );
-}
-
 export function BillingPage(): React.JSX.Element {
   const [summary, setSummary] = useState<BillingSummary | null>(null);
-  const [flowSteps, setFlowSteps] = useState<string[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<BillingPlan | null>(null);
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(false);
 
   useEffect(() => {
     let mounted = true;
-    Promise.all([fetchBillingSummary(), fetchBillingFlow()])
-      .then(([billingSummary, steps]) => {
+    fetchBillingSummary()
+      .then((billingSummary) => {
         if (!mounted) return;
         setSummary(billingSummary);
-        setFlowSteps(steps);
       })
       .catch(() => {
         if (mounted) toast.error("Không tải được thông tin gói AI");
@@ -411,8 +378,6 @@ export function BillingPage(): React.JSX.Element {
           ))}
         </div>
       </section>
-
-      <FlowPanel steps={flowSteps} />
 
       <AppDialog
         description={

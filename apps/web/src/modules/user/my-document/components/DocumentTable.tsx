@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { InputField } from "@/components/ui/InputField";
 import { Pagination } from "@/components/ui/Pagination";
+import { SelectField } from "@/components/ui/SelectField";
 import { Table, type TableRow } from "@/components/ui/Table";
 import type { StatusTone } from "@/types";
 
@@ -72,6 +73,26 @@ function SkeletonRows({ count }: { count: number }): React.JSX.Element {
   );
 }
 
+const STATUS_OPTIONS = [
+  { label: "Tất cả trạng thái", value: "ALL" },
+  { label: "Đang tải lên", value: "UPLOADING" },
+  { label: "Đang kiểm duyệt", value: "REVIEWING" },
+  { label: "Chờ duyệt", value: "PENDING_REVIEW" },
+  { label: "Đang index", value: "INDEXING" },
+  { label: "Đang index lại", value: "REINDEXING" },
+  { label: "Hoàn tất (READY)", value: "READY" },
+  { label: "Index lỗi", value: "FAILED" },
+  { label: "Bị từ chối", value: "REJECTED" },
+  { label: "Đã xóa", value: "SOFT_DELETED" },
+];
+
+const SORT_OPTIONS = [
+  { label: "Mới nhất", value: "NEWEST" },
+  { label: "Cũ nhất", value: "OLDEST" },
+  { label: "Tên A-Z", value: "NAME_ASC" },
+  { label: "Tên Z-A", value: "NAME_DESC" },
+];
+
 interface Props {
   readonly documents: LibraryDocument[];
   readonly pagination: PaginationMeta | null;
@@ -99,18 +120,51 @@ export function DocumentTable({
 }: Props): React.JSX.Element {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState("ALL");
+  const [sortOption, setSortOption] = useState("NEWEST");
   const normalizedSearchTerm = searchTerm.trim();
-  const isSearching = normalizedSearchTerm.length > 0;
+  const isSearching = normalizedSearchTerm.length > 0 || filterStatus !== "ALL";
 
   const visibleDocuments = useMemo(() => {
+    let filtered = documents;
+
     const term = normalizedSearchTerm.toLowerCase();
-    if (!term) return documents;
-    return documents.filter(
-      (document) =>
-        document.title.toLowerCase().includes(term) ||
-        (document.subject?.name.toLowerCase().includes(term) ?? false),
-    );
-  }, [documents, normalizedSearchTerm]);
+    if (term) {
+      filtered = filtered.filter(
+        (document) =>
+          document.title.toLowerCase().includes(term) ||
+          (document.subject?.name.toLowerCase().includes(term) ?? false),
+      );
+    }
+
+    if (filterStatus !== "ALL") {
+      filtered = filtered.filter(
+        (doc) =>
+          doc.ragStatus === filterStatus ||
+          (!doc.ragStatus && filterStatus === doc.status),
+      );
+    }
+
+    const sorted = [...filtered];
+    sorted.sort((a, b) => {
+      if (sortOption === "NEWEST") {
+        return (
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      } else if (sortOption === "OLDEST") {
+        return (
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+      } else if (sortOption === "NAME_ASC") {
+        return a.title.localeCompare(b.title);
+      } else if (sortOption === "NAME_DESC") {
+        return b.title.localeCompare(a.title);
+      }
+      return 0;
+    });
+
+    return sorted;
+  }, [documents, normalizedSearchTerm, filterStatus, sortOption]);
 
   const tableRows: TableRow[] = visibleDocuments.map((doc) => {
     const status = getStatusDisplay(doc);
@@ -214,22 +268,20 @@ export function DocumentTable({
               }
             />
           </div>
-          <Button variant="outline" type="button" size="sm">
-            <span className="flex items-center gap-1">
-              <span className="material-symbols-outlined text-[16px]">
-                filter_list
-              </span>
-              Bộ lọc
-            </span>
-          </Button>
-          <Button variant="outline" type="button" size="sm">
-            <span className="flex items-center gap-1">
-              <span className="material-symbols-outlined text-[16px]">
-                sort
-              </span>
-              Sắp xếp
-            </span>
-          </Button>
+          <div className="w-48">
+            <SelectField
+              options={STATUS_OPTIONS}
+              value={filterStatus}
+              onChange={setFilterStatus}
+            />
+          </div>
+          <div className="w-36">
+            <SelectField
+              options={SORT_OPTIONS}
+              value={sortOption}
+              onChange={setSortOption}
+            />
+          </div>
         </div>
       </div>
 

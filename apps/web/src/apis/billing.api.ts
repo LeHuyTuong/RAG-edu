@@ -54,7 +54,3 @@ export const demoPurchasePlan = async (
     planCode,
   })) as BillingSummary;
 };
-
-export const fetchBillingFlow = async (): Promise<string[]> => {
-  return (await apiClient.get(API_ENDPOINTS.BILLING.FLOW)) as string[];
-};
