@@ -25,7 +25,10 @@ public class SettingServiceImpl implements SettingService {
         return new SettingResponse(
                 config.getAllowedTypes(),
                 String.valueOf(config.getMaxSizeMb()),
-                defaultAutoApproveCron
+                defaultAutoApproveCron,
+                config.getGeminiApiKeys() != null ? config.getGeminiApiKeys() : "",
+                config.getCerebrasApiKey() != null ? config.getCerebrasApiKey() : "",
+                config.getActiveLlmProvider() != null ? config.getActiveLlmProvider() : "cerebras"
         );
     }
 
@@ -39,12 +42,24 @@ public class SettingServiceImpl implements SettingService {
         if (request.maxSizeMb() != null) {
             config.setMaxSizeMb(request.maxSizeMb());
         }
+        if (request.geminiApiKeys() != null) {
+            config.setGeminiApiKeys(request.geminiApiKeys().trim());
+        }
+        if (request.cerebrasApiKey() != null) {
+            config.setCerebrasApiKey(request.cerebrasApiKey().trim());
+        }
+        if (request.activeLlmProvider() != null) {
+            config.setActiveLlmProvider(request.activeLlmProvider().trim());
+        }
         // autoApproveCron chỉ lưu trong application.yml, không lưu DB
         appSettingRepository.save(config);
         return new SettingResponse(
                 config.getAllowedTypes(),
                 String.valueOf(config.getMaxSizeMb()),
-                defaultAutoApproveCron
+                defaultAutoApproveCron,
+                config.getGeminiApiKeys() != null ? config.getGeminiApiKeys() : "",
+                config.getCerebrasApiKey() != null ? config.getCerebrasApiKey() : "",
+                config.getActiveLlmProvider() != null ? config.getActiveLlmProvider() : "cerebras"
         );
     }
 

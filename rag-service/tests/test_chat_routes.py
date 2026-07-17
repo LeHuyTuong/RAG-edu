@@ -36,7 +36,7 @@ def test_chat_success_returns_answer_citations_and_filters(monkeypatch):
     captured = {}
     monkeypatch.setattr(question_router_service, "route", lambda question, use_graph: {"use_vector": True, "use_graph": False})
 
-    def fake_retrieve(question, top_k, source_ids, tag_ids, folder_id=None, user_id=None):
+    def fake_retrieve(question, top_k, source_ids, tag_ids, folder_id=None, user_id=None, ai_config=None, **kwargs):
         captured.update({
             "question": question,
             "top_k": top_k,

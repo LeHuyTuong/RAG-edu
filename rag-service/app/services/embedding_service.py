@@ -15,6 +15,7 @@ Flow trong chat:
 import logging
 
 from app.config import settings
+from app.schemas.config import AiConfig
 
 logger = logging.getLogger(__name__)
 
@@ -55,12 +56,12 @@ def _get_local_model():
 
 # --- Public API ---
 
-def embed_documents(texts: list[str]) -> list[list[float]]:
-    return _embed(texts, task_type="RETRIEVAL_DOCUMENT")
+def embed_documents(texts: list[str], ai_config: AiConfig = None) -> list[list[float]]:
+    return _embed(texts, task_type="RETRIEVAL_DOCUMENT", ai_config=ai_config)
 
 
-def embed_query(text: str) -> list[float]:
-    return _embed([text], task_type="RETRIEVAL_QUERY")[0]
+def embed_query(text: str, ai_config: AiConfig = None) -> list[float]:
+    return _embed([text], task_type="RETRIEVAL_QUERY", ai_config=ai_config)[0]
 
 
 # --- Internal ---
@@ -68,13 +69,13 @@ def embed_query(text: str) -> list[float]:
 _GEMINI_BATCH_SIZE = 100
 
 
-def _embed(texts: list[str], task_type: str) -> list[list[float]]:
+def _embed(texts: list[str], task_type: str, ai_config: AiConfig = None) -> list[list[float]]:
     if settings.embedding_provider == "local":
         return _embed_local(texts)
 
     # Mặc định: thử Gemini trước, fallback local nếu lỗi
     try:
-        return _embed_gemini(texts, task_type)
+        return _embed_gemini(texts, task_type, ai_config)
     except Exception as exc:
         logger.warning(
             "Gemini embedding failed (provider=%s, model=%s): %s. Falling back to local model %s.",
@@ -84,7 +85,7 @@ def _embed(texts: list[str], task_type: str) -> list[list[float]]:
         return _embed_local(texts)
 
 
-def _embed_gemini(texts: list[str], task_type: str) -> list[list[float]]:
+def _embed_gemini(texts: list[str], task_type: str, ai_config: AiConfig = None) -> list[list[float]]:
     """Embed qua Gemini, xoay vòng qua tất cả key khi gặp 429/hết quota.
 
     Chỉ raise (để _embed fallback sang local) khi: (a) tất cả key đều hết quota,
@@ -94,7 +95,7 @@ def _embed_gemini(texts: list[str], task_type: str) -> list[list[float]]:
     global _current_key_idx
     from google.genai import types
 
-    keys = settings.google_api_keys
+    keys = [k.strip() for k in ai_config.gemini_api_keys.split(",") if k.strip()] if ai_config and ai_config.gemini_api_keys else settings.google_api_keys
     if not keys:
         raise RuntimeError("Không có Google API key nào được cấu hình")
 

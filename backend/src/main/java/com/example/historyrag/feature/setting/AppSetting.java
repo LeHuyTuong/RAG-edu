@@ -28,6 +28,15 @@ public class AppSetting {
     @Transient
     private String autoApproveCron = "0 * * * * *";
 
+    @Column(name = "gemini_api_keys", columnDefinition = "TEXT")
+    private String geminiApiKeys;
+
+    @Column(name = "cerebras_api_key")
+    private String cerebrasApiKey;
+
+    @Column(name = "active_llm_provider")
+    private String activeLlmProvider;
+
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 

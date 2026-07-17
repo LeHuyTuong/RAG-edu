@@ -10,6 +10,7 @@ from qdrant_client.models import ScoredPoint
 from app.config import settings
 from app.services.embedding_service import embed_query
 from app.vectorstore.vector_repository import search
+from app.schemas.config import AiConfig
 from typing import Optional
 
 
@@ -27,13 +28,14 @@ def retrieve(
     tag_ids: list[int] | None = None,
     folder_id: Optional[int] = None,
     user_id: Optional[int] = None,
+    ai_config: AiConfig = None,
 ) -> list[ScoredPoint]:
     year = _extract_year_from_question(question)
     # Boost query với năm nếu có
     if year:
         question = f"{question} năm {year}"
 
-    query_vector = embed_query(question)
+    query_vector = embed_query(question, ai_config)
     return search(
         collection=settings.qdrant_collection,
         query_vector=query_vector,

@@ -31,6 +31,7 @@ from app.services.embedding_service import embed_documents
 from app.services.extract_service import extract
 from app.vectorstore.qdrant_client import ensure_collection
 from app.vectorstore.vector_repository import delete_by_source_id, point_id, upsert
+from app.schemas.config import AiConfig
 from typing import Optional
 
 
@@ -50,7 +51,7 @@ def _parse_year_range(title: str) -> tuple[int | None, int | None]:
     return None, None
 
 
-def ingest(req: RagIngestRequest) -> RagIngestResponse:
+def ingest(req: RagIngestRequest, ai_config: AiConfig = None) -> RagIngestResponse:
     chunk_size = req.settings.chunkSize or settings.default_chunk_size
     chunk_overlap = req.settings.chunkOverlap or settings.default_chunk_overlap
     collection = settings.qdrant_collection
@@ -78,7 +79,7 @@ def ingest(req: RagIngestRequest) -> RagIngestResponse:
         )
 
     texts = [c.text for c in chunks]
-    vectors = embed_documents(texts)
+    vectors = embed_documents(texts, ai_config)
 
     created_at = datetime.now(timezone.utc).isoformat()
     # Chỉ upsert vector + metadata gọn (bỏ chunkText để tránh vượt 32MB limit)

@@ -4,14 +4,14 @@ from app.services import retrieval_service
 def test_retrieve_embeds_query_and_searches_configured_collection(monkeypatch):
     calls = {}
 
-    def fake_embed_query(question):
+    def fake_embed_query(question, **kwargs):
         calls["question"] = question
         return [0.1, 0.2]
 
     monkeypatch.setattr(retrieval_service, "embed_query", fake_embed_query)
 
     def fake_search(collection, query_vector, top_k, score_threshold, source_ids, tag_ids,
-                     folder_id=None, user_id=None):
+                     folder_id=None, user_id=None, ai_config=None):
         calls.update({
             "collection": collection,
             "query_vector": query_vector,

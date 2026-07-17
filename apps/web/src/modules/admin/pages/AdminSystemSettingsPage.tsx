@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/Button";
 import { InputField } from "@/components/ui/InputField";
+import { SelectField } from "@/components/ui/SelectField";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { fetchAdminConfig, updateAdminConfig } from "../api";
@@ -11,6 +12,9 @@ export default function AdminSystemSettingsPage(): React.JSX.Element {
   const [allowedTypes, setAllowedTypes] = useState("");
   const [maxSizeMb, setMaxSizeMb] = useState(20);
   const [autoApproveCron, setAutoApproveCron] = useState("0 * * * * *");
+  const [geminiApiKeys, setGeminiApiKeys] = useState("");
+  const [cerebrasApiKey, setCerebrasApiKey] = useState("");
+  const [activeLlmProvider, setActiveLlmProvider] = useState("CEREBRAS");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -20,6 +24,9 @@ export default function AdminSystemSettingsPage(): React.JSX.Element {
         setAllowedTypes(config.allowedTypes);
         setMaxSizeMb(config.maxSizeMb);
         setAutoApproveCron(config.autoApproveCron || "0 * * * * *");
+        setGeminiApiKeys(config.geminiApiKeys || "");
+        setCerebrasApiKey(config.cerebrasApiKey || "");
+        setActiveLlmProvider(config.activeLlmProvider || "CEREBRAS");
       })
       .catch(() => {
         toast.error("Không thể tải cấu hình hệ thống");
@@ -30,14 +37,28 @@ export default function AdminSystemSettingsPage(): React.JSX.Element {
   const handleSave = useCallback(async () => {
     setSaving(true);
     try {
-      await updateAdminConfig({ allowedTypes, maxSizeMb, autoApproveCron });
+      await updateAdminConfig({
+        allowedTypes,
+        maxSizeMb,
+        autoApproveCron,
+        geminiApiKeys,
+        cerebrasApiKey,
+        activeLlmProvider,
+      });
       toast.success("Đã cập nhật cấu hình hệ thống");
     } catch {
       toast.error("Không thể cập nhật cấu hình");
     } finally {
       setSaving(false);
     }
-  }, [allowedTypes, maxSizeMb, autoApproveCron]);
+  }, [
+    allowedTypes,
+    maxSizeMb,
+    autoApproveCron,
+    geminiApiKeys,
+    cerebrasApiKey,
+    activeLlmProvider,
+  ]);
 
   if (loading) {
     return (
@@ -120,6 +141,56 @@ export default function AdminSystemSettingsPage(): React.JSX.Element {
               "Mặc định: 0 * * * * * (mỗi phút).",
               "Ví dụ: 0 */5 * * * * (mỗi 5 phút), 0 0 * * * * (mỗi giờ).",
             ].join(" ")}
+          />
+        </div>
+
+        <div className="mt-8 flex justify-end">
+          <Button
+            variant="primary"
+            size="md"
+            onClick={handleSave}
+            disabled={saving}
+          >
+            {saving ? "Đang lưu..." : "Lưu cấu hình"}
+          </Button>
+        </div>
+      </AdminCard>
+
+      <AdminCard className="mt-6 p-6">
+        <h2 className="mb-1 text-xl font-semibold text-on-surface">
+          Cấu hình AI
+        </h2>
+        <p className="mb-6 text-sm text-on-surface-variant">
+          Quản lý API keys và model AI đang sử dụng.
+        </p>
+
+        <div className="flex flex-col gap-6">
+          <InputField
+            label="Gemini API Keys"
+            value={geminiApiKeys}
+            onChange={(e) => setGeminiApiKeys(e.target.value)}
+            placeholder="AIzaSy..., AIzaSy..."
+            helperText="Phân cách bằng dấu phẩy để tự động xoay vòng khi hết quota."
+          />
+
+          <InputField
+            label="Cerebras API Key"
+            value={cerebrasApiKey}
+            onChange={(e) => setCerebrasApiKey(e.target.value)}
+            placeholder="csk-..."
+            helperText="API Key cho Cerebras (model siêu tốc độ)."
+            type="password"
+          />
+
+          <SelectField
+            label="Model AI Mặc định"
+            value={activeLlmProvider}
+            onChange={setActiveLlmProvider}
+            options={[
+              { label: "Cerebras (Nhanh nhất)", value: "CEREBRAS" },
+              { label: "Groq (Nhanh nhì)", value: "GROQ" },
+              { label: "OpenRouter (Fallback)", value: "OPENROUTER" },
+            ]}
           />
         </div>
 

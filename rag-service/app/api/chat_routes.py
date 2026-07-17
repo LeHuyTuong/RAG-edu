@@ -17,10 +17,11 @@ Graph (Neo4j) chưa implement — useGraph luôn False trong MVP.
 import json
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
 from app.schemas.chat import RagChatRequest, RagChatResponse
+from app.schemas.config import AiConfig, get_ai_config
 
 router = APIRouter()
 logger = logging.getLogger("rag.chat")
@@ -35,15 +36,15 @@ async def health():
 
 
 @router.post("/chat", response_model=RagChatResponse)
-async def chat(req: RagChatRequest):
-    return await _chat(req)
+async def chat(req: RagChatRequest, ai_config: AiConfig = Depends(get_ai_config)):
+    return await _chat(req, ai_config)
 
 
 @router.post("/chat/stream")
-async def chat_stream(req: RagChatRequest):
+async def chat_stream(req: RagChatRequest, ai_config: AiConfig = Depends(get_ai_config)):
     async def event_stream():
         yield _sse("chat.created", {"message": "stream started"})
-        async for event in _stream_chat_events(req):
+        async for event in _stream_chat_events(req, ai_config):
             yield event
 
     return StreamingResponse(
@@ -56,7 +57,7 @@ async def chat_stream(req: RagChatRequest):
     )
 
 
-async def _chat(req: RagChatRequest) -> RagChatResponse:
+async def _chat(req: RagChatRequest, ai_config: AiConfig) -> RagChatResponse:
     from app.config import settings
     from app.services.retrieval_service import retrieve
     from app.services.prompt_service import load_system_prompt, build_user_message
@@ -89,7 +90,7 @@ async def _chat(req: RagChatRequest) -> RagChatResponse:
     try:
         system_prompt = load_system_prompt()
         user_message = build_user_message(req.question, hits)
-        answer = generate(system_prompt, user_message, req.temperature)
+        answer = generate(system_prompt, user_message, req.temperature, ai_config)
     except Exception:
         logger.exception("LLM generate failed for question=%r", req.question)
         citations = to_citations(hits)
@@ -108,7 +109,7 @@ async def _chat(req: RagChatRequest) -> RagChatResponse:
     )
 
 
-async def _stream_chat_events(req: RagChatRequest):
+async def _stream_chat_events(req: RagChatRequest, ai_config: AiConfig):
     from app.config import settings
     from app.services.retrieval_service import retrieve
     from app.services.prompt_service import load_system_prompt, build_user_message
@@ -139,7 +140,7 @@ async def _stream_chat_events(req: RagChatRequest):
     try:
         system_prompt = load_system_prompt()
         user_message = build_user_message(req.question, hits)
-        for chunk in generate_stream(system_prompt, user_message, req.temperature):
+        for chunk in generate_stream(system_prompt, user_message, req.temperature, ai_config):
             answer_chunks.append(chunk)
             yield _sse("chat.delta", {"text": chunk})
     except Exception:

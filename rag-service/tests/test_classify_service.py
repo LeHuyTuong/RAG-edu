@@ -1,7 +1,7 @@
 import pytest
 
 from app.schemas.classify import RagClassifyRequest
-from app.services import classify_service
+from app.services import llm_service
 from app.services.classify_service import classify
 
 
@@ -11,9 +11,9 @@ def _req(raw_content=None, file_path=None, title=None):
 
 def test_classify_history_document(monkeypatch):
     monkeypatch.setattr(
-        classify_service,
+        llm_service,
         "generate",
-        lambda sys, user, temperature=0.0: '{"isHistory": true, "confidence": 0.95, "reason": "Đây là tài liệu lịch sử Việt Nam."}',
+        lambda sys, user, temperature=0.0, **kwargs: '{"isHistory": true, "confidence": 0.95, "reason": "Đây là tài liệu lịch sử Việt Nam."}',
     )
     result = classify(_req(raw_content="Năm 1945, Cách mạng Tháng Tám thành công."))
     assert result.isHistory is True
@@ -24,9 +24,9 @@ def test_classify_history_document(monkeypatch):
 
 def test_classify_non_history_document(monkeypatch):
     monkeypatch.setattr(
-        classify_service,
+        llm_service,
         "generate",
-        lambda sys, user, temperature=0.0: '{"isHistory": false, "confidence": 0.98, "reason": "Đây là công thức nấu ăn, không liên quan lịch sử."}',
+        lambda sys, user, temperature=0.0, **kwargs: '{"isHistory": false, "confidence": 0.98, "reason": "Đây là công thức nấu ăn, không liên quan lịch sử."}',
     )
     result = classify(_req(raw_content="Nguyên liệu: 500g thịt bò, 2 củ cà rốt..."))
     assert result.isHistory is False
@@ -36,10 +36,10 @@ def test_classify_non_history_document(monkeypatch):
 
 def test_classify_llm_error_fails_open(monkeypatch):
     """When LLM fails completely, keyword fallback returns fail-open (UNKNOWN, confidence=0.5)."""
-    def raise_error(sys, user, temperature=0.0):
+    def raise_error(sys, user, ai_config=None, temperature=0.0, **kwargs):
         raise RuntimeError("LLM timeout")
 
-    monkeypatch.setattr(classify_service, "generate", raise_error)
+    monkeypatch.setattr(llm_service, "generate", raise_error)
     result = classify(_req(raw_content="Some content"))
     assert result.isHistory is True
     assert result.label == "UNKNOWN"
@@ -56,9 +56,9 @@ def test_classify_empty_content_returns_not_history(monkeypatch):
 
 def test_classify_llm_json_with_fences(monkeypatch):
     monkeypatch.setattr(
-        classify_service,
+        llm_service,
         "generate",
-        lambda sys, user, temperature=0.0: '```json\n{"isHistory": true, "confidence": 0.9, "reason": "Sự kiện lịch sử."}\n```',
+        lambda sys, user, temperature=0.0, **kwargs: '```json\n{"isHistory": true, "confidence": 0.9, "reason": "Sự kiện lịch sử."}\n```',
     )
     result = classify(_req(raw_content="Chiến tranh thế giới thứ hai bắt đầu năm 1939."))
     assert result.isHistory is True
@@ -67,10 +67,10 @@ def test_classify_llm_json_with_fences(monkeypatch):
 
 def test_classify_llm_error_keyword_fallback_history(monkeypatch):
     """When LLM fails and content has VN history keywords, keyword fallback detects history."""
-    def raise_error(sys, user, temperature=0.0):
+    def raise_error(sys, user, ai_config=None, temperature=0.0, **kwargs):
         raise RuntimeError("Cerebras quota exceeded")
 
-    monkeypatch.setattr(classify_service, "generate", raise_error)
+    monkeypatch.setattr(llm_service, "generate", raise_error)
     result = classify(_req(
         raw_content="Chiến tranh Đông Dương là cuộc chiến giữa Việt Minh và quân Pháp. Điện Biên Phủ năm 1954.",
         title="Lịch sử Việt Nam",
@@ -83,10 +83,10 @@ def test_classify_llm_error_keyword_fallback_history(monkeypatch):
 
 def test_classify_llm_error_keyword_fallback_non_history(monkeypatch):
     """When LLM fails and content has non-history keywords, keyword fallback detects non-history."""
-    def raise_error(sys, user, temperature=0.0):
+    def raise_error(sys, user, ai_config=None, temperature=0.0, **kwargs):
         raise RuntimeError("Cerebras quota exceeded")
 
-    monkeypatch.setattr(classify_service, "generate", raise_error)
+    monkeypatch.setattr(llm_service, "generate", raise_error)
     result = classify(_req(
         raw_content="Công thức nấu ăn bò kho: nguyên liệu 500g thịt bò, cà rốt, quế, hồi. Discount 50% cho đơn hàng.",
     ))

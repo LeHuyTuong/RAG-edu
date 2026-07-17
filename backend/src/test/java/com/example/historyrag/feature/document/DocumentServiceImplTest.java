@@ -143,7 +143,7 @@ class DocumentServiceImplTest {
     }
 
     @Test
-    @DisplayName("approve — should publish FAILED document without blocking on ingest")
+    @DisplayName("approve — should publish FAILED document without blocking on ingest (sets INDEXING)")
     void approve_failedDocument_marksReadyWithoutBlockingOnIngest() {
         Document document = document(7L, DocumentStatus.FAILED, "failed.pdf");
         when(documentRepository.findById(7L)).thenReturn(Optional.of(document));
@@ -152,7 +152,7 @@ class DocumentServiceImplTest {
 
         verify(ragClientService, never()).ingest(any(), any());
         verify(eventPublisher).publishEvent(new DocumentIngestRequested(7L));
-        assertEquals(DocumentStatus.READY, document.getStatus());
+        assertEquals(DocumentStatus.INDEXING, document.getStatus());
         assertTrue(document.getIsPublic());
         assertEquals(1L, document.getReviewedById());
     }

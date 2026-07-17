@@ -20,8 +20,17 @@ import re
 import httpx
 
 from app.config import settings
+from app.schemas.config import AiConfig
 
 logger = logging.getLogger("rag.llm")
+
+def _get_providers(ai_config: AiConfig = None) -> list[str]:
+    preferred = ai_config.active_llm_provider.lower() if ai_config and ai_config.active_llm_provider else settings.llm_provider.lower()
+    providers = [preferred]
+    for p in ["cerebras", "openrouter", "groq"]:
+        if p != preferred:
+            providers.append(p)
+    return providers
 
 
 def _clean_text(text: str) -> str:
@@ -36,43 +45,48 @@ def _clean_text(text: str) -> str:
     return text.strip()
 
 
-def generate(system_prompt: str, user_message: str, temperature: float = 0.2) -> str:
-    # Thử Cerebras trước
-    try:
-        return _clean_text(_generate_cerebras(system_prompt, user_message, temperature))
-    except Exception as e:
-        logger.warning("Cerebras failed, falling back to OpenRouter: %s", e)
+def generate(system_prompt: str, user_message: str, temperature: float = 0.2, ai_config: AiConfig = None) -> str:
+    last_err = None
+    for p in _get_providers(ai_config):
+        try:
+            if p == "cerebras":
+                return _clean_text(_generate_cerebras(system_prompt, user_message, temperature, ai_config))
+            elif p == "openrouter":
+                return _clean_text(_generate_openrouter(system_prompt, user_message, temperature))
+            elif p == "groq":
+                return _clean_text(_generate_groq(system_prompt, user_message, temperature))
+        except Exception as e:
+            logger.warning("%s failed, falling back: %s", p, e)
+            last_err = e
+    raise ValueError(f"All LLM providers failed. Last error: {last_err}")
 
-    # Fallback sang OpenRouter (Gemini 2.5 Flash)
-    try:
-        return _clean_text(_generate_openrouter(system_prompt, user_message, temperature))
-    except Exception as e:
-        logger.warning("OpenRouter failed, falling back to Groq: %s", e)
 
-    # Fallback cuối sang Groq
-    return _clean_text(_generate_groq(system_prompt, user_message, temperature))
+def generate_with_wikipedia(system_prompt: str, user_message: str, temperature: float = 0.2, ai_config: AiConfig = None) -> str:
+    # MVP: Fallback to standard generate
+    # In future, this can be enhanced to perform an iterative tool-call loop with wikipedia_service
+    return generate(system_prompt, user_message, temperature, ai_config)
 
 
-def generate_stream(system_prompt: str, user_message: str, temperature: float = 0.2):
-    # Thử Cerebras trước
-    try:
-        for text in _stream_cerebras(system_prompt, user_message, temperature):
-            yield text
-        return
-    except Exception as e:
-        logger.warning("Cerebras stream failed, falling back to OpenRouter: %s", e)
-
-    # Fallback sang OpenRouter (Gemini 2.5 Flash)
-    try:
-        for text in _stream_openrouter(system_prompt, user_message, temperature):
-            yield text
-        return
-    except Exception as e:
-        logger.warning("OpenRouter stream failed, falling back to Groq: %s", e)
-
-    # Fallback cuối sang Groq
-    for text in _stream_groq(system_prompt, user_message, temperature):
-        yield text
+def generate_stream(system_prompt: str, user_message: str, temperature: float = 0.2, ai_config: AiConfig = None):
+    last_err = None
+    for p in _get_providers(ai_config):
+        try:
+            if p == "cerebras":
+                for text in _stream_cerebras(system_prompt, user_message, temperature, ai_config):
+                    yield text
+                return
+            elif p == "openrouter":
+                for text in _stream_openrouter(system_prompt, user_message, temperature):
+                    yield text
+                return
+            elif p == "groq":
+                for text in _stream_groq(system_prompt, user_message, temperature):
+                    yield text
+                return
+        except Exception as e:
+            logger.warning("%s stream failed, falling back: %s", p, e)
+            last_err = e
+    raise ValueError(f"All LLM stream providers failed. Last error: {last_err}")
 
 
 # ─── OpenAI-compatible helpers ──────────────────────────────────────────────
@@ -126,12 +140,13 @@ def _stream_openai_lines(resp: httpx.Response):
 # ─── Cerebras (OpenAI-compatible) ───────────────────────────────────────────
 
 
-def _generate_cerebras(system_prompt: str, user_message: str, temperature: float) -> str:
+def _generate_cerebras(system_prompt: str, user_message: str, temperature: float, ai_config: AiConfig = None) -> str:
     payload = _openai_payload(settings.cerebras_model, system_prompt, user_message, temperature, stream=False)
+    api_key = ai_config.cerebras_api_key if ai_config and ai_config.cerebras_api_key else settings.cerebras_api_key
     with httpx.Client(timeout=120) as client:
         resp = client.post(
             f"{settings.cerebras_base_url}/chat/completions",
-            headers=_openai_headers(settings.cerebras_api_key),
+            headers=_openai_headers(api_key),
             json=payload,
         )
         resp.raise_for_status()
@@ -141,13 +156,14 @@ def _generate_cerebras(system_prompt: str, user_message: str, temperature: float
     return text
 
 
-def _stream_cerebras(system_prompt: str, user_message: str, temperature: float):
+def _stream_cerebras(system_prompt: str, user_message: str, temperature: float, ai_config: AiConfig = None):
     payload = _openai_payload(settings.cerebras_model, system_prompt, user_message, temperature, stream=True)
+    api_key = ai_config.cerebras_api_key if ai_config and ai_config.cerebras_api_key else settings.cerebras_api_key
     with httpx.Client(timeout=120) as client:
         with client.stream(
             "POST",
             f"{settings.cerebras_base_url}/chat/completions",
-            headers=_openai_headers(settings.cerebras_api_key),
+            headers=_openai_headers(api_key),
             json=payload,
         ) as resp:
             resp.raise_for_status()

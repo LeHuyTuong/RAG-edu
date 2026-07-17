@@ -247,6 +247,9 @@ export interface AdminConfig {
   allowedTypes: string;
   maxSizeMb: number;
   autoApproveCron: string;
+  geminiApiKeys: string;
+  cerebrasApiKey: string;
+  activeLlmProvider: string;
 }
 
 export async function fetchAdminConfig(): Promise<AdminConfig> {
@@ -255,6 +258,9 @@ export async function fetchAdminConfig(): Promise<AdminConfig> {
     allowedTypes: string;
     maxSizeMb: string | number;
     autoApproveCron: string;
+    geminiApiKeys: string;
+    cerebrasApiKey: string;
+    activeLlmProvider: string;
   };
   return {
     allowedTypes: raw.allowedTypes,
@@ -263,6 +269,9 @@ export async function fetchAdminConfig(): Promise<AdminConfig> {
         ? parseInt(raw.maxSizeMb, 10)
         : raw.maxSizeMb,
     autoApproveCron: raw.autoApproveCron || "0 * * * * *",
+    geminiApiKeys: raw.geminiApiKeys || "",
+    cerebrasApiKey: raw.cerebrasApiKey || "",
+    activeLlmProvider: raw.activeLlmProvider || "",
   };
 }
 

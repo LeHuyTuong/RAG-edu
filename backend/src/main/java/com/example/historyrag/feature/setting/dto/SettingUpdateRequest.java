@@ -17,5 +17,9 @@ public record SettingUpdateRequest(
         Integer maxSizeMb,
 
         @Size(max = 100, message = "Cron expression must not exceed 100 characters")
-        String autoApproveCron
+        String autoApproveCron,
+
+        String geminiApiKeys,
+        String cerebrasApiKey,
+        String activeLlmProvider
 ) {}

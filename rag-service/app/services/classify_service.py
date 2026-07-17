@@ -93,7 +93,7 @@ def classify(req: RagClassifyRequest) -> RagClassifyResponse:
             title_hint = f'Tiêu đề tài liệu: "{req.title}"\n\n' if req.title else ""
             user_message = f"{title_hint}Văn bản mẫu cần phân loại:\n{sample}"
 
-            raw = generate_with_wikipedia(system_prompt, user_message, temperature=0.0)
+            raw = generate_with_wikipedia(system_prompt, user_message, temperature=0.0, ai_config=ai_config)
             return _parse_response(req.sourceId, raw)
         except Exception as exc:
             last_error = exc
