@@ -129,8 +129,8 @@ export interface ListDocumentsQuery {
   folderId?: number;
   authorId?: string;
   subjectId?: string;
-  /** "PENDING_REVIEW" is a backend-only filter value for documents awaiting admin review */
-  status?: DocumentStatus | "PENDING_REVIEW";
+  /** Backend accepts legacy aliases (DocumentStatus) or the raw 9-state UML enum (DocumentRagStatus) */
+  status?: DocumentStatus | DocumentRagStatus;
   onlyMine?: boolean;
 }
 

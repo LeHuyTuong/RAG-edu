@@ -307,11 +307,8 @@ export function DocumentUploadForm({
           `}
         >
           <span
-            className={`
-              pointer-events-none inline-block h-5 w-5 rounded-full
-              bg-surface shadow-sm transition-transform duration-200 ease-out
-              ${isPublic ? "translate-x-5" : "translate-x-0.5"}
-            `}
+            style={{ left: isPublic ? "22px" : "2px" }}
+            className="pointer-events-none absolute h-5 w-5 rounded-full bg-surface shadow-sm transition-all duration-200 ease-out"
           />
         </button>
       </div>

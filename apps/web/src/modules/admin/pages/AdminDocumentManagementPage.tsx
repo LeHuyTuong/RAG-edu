@@ -14,7 +14,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { SelectField } from "@/components/ui/SelectField";
 import { Table, type TableRow } from "@/components/ui/Table";
 import { getRagStatusDisplay } from "@/shared/documentStatus";
-import type { LibraryDocument } from "@/types/document.type";
+import type { DocumentRagStatus, LibraryDocument } from "@/types/document.type";
 import { getErrorMessage } from "@/utils/error";
 
 import { AdminDocumentAiAssistant } from "../components/AdminDocumentAiAssistant";
@@ -32,7 +32,7 @@ const columns = [
 
 const pageSize = 10;
 
-const STATUS_OPTIONS = [
+const STATUS_OPTIONS: { label: string; value: "ALL" | DocumentRagStatus }[] = [
   { label: "Tất cả trạng thái", value: "ALL" },
   { label: "Đang tải lên", value: "UPLOADING" },
   { label: "Đang kiểm duyệt", value: "REVIEWING" },
@@ -81,32 +81,37 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
   const [bulkApproveLoading, setBulkApproveLoading] = useState(false);
   const [reclassifyingId, setReclassifyingId] = useState<string | null>(null);
 
-  const [filterStatus, setFilterStatus] = useState("ALL");
+  const [filterStatus, setFilterStatus] = useState<"ALL" | DocumentRagStatus>(
+    "ALL",
+  );
 
-  const load = useCallback(async (page: number, statusFilter: string) => {
-    setLoading(true);
-    try {
-      const res = await fetchDocuments({
-        page,
-        limit: pageSize,
-        status: statusFilter !== "ALL" ? statusFilter : undefined,
-      });
-      setDocuments(res.documents);
-      setTotalPages(res.pagination.totalPages);
-      setSelectedDocumentIds((current) => {
-        const availableIds = new Set(
-          res.documents
-            .filter(canSelectForReview)
-            .map((document) => String(document.id)),
-        );
-        return new Set([...current].filter((id) => availableIds.has(id)));
-      });
-    } catch {
-      toast.error("Không thể tải danh sách tài liệu");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const load = useCallback(
+    async (page: number, statusFilter: "ALL" | DocumentRagStatus) => {
+      setLoading(true);
+      try {
+        const res = await fetchDocuments({
+          page,
+          limit: pageSize,
+          status: statusFilter !== "ALL" ? statusFilter : undefined,
+        });
+        setDocuments(res.documents);
+        setTotalPages(res.pagination.totalPages);
+        setSelectedDocumentIds((current) => {
+          const availableIds = new Set(
+            res.documents
+              .filter(canSelectForReview)
+              .map((document) => String(document.id)),
+          );
+          return new Set([...current].filter((id) => availableIds.has(id)));
+        });
+      } catch {
+        toast.error("Không thể tải danh sách tài liệu");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     void load(currentPage, filterStatus);
@@ -318,7 +323,9 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
               <SelectField
                 options={STATUS_OPTIONS}
                 value={filterStatus}
-                onChange={setFilterStatus}
+                onChange={(value) =>
+                  setFilterStatus(value as "ALL" | DocumentRagStatus)
+                }
               />
             </div>
 

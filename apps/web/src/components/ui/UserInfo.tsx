@@ -18,8 +18,14 @@ export const UserInfo: FC = () => {
     return (first + last).toUpperCase();
   })();
 
-  const href = ROUTE_PATHS.PROTECTED_ROUTES.PROFILE;
-  const isPrivileged = user?.role === "ADMIN" || user?.role === "MODERATOR";
+  const isAdmin = user?.role === "admin";
+  const isModerator = user?.role === "moderator";
+
+  const href = isAdmin
+    ? ROUTE_PATHS.ADMIN_ROUTES.SETTINGS
+    : isModerator
+      ? ROUTE_PATHS.MODERATOR_ROUTES.SETTINGS
+      : ROUTE_PATHS.PROTECTED_ROUTES.PROFILE;
 
   const content = (
     <>
@@ -44,21 +50,11 @@ export const UserInfo: FC = () => {
         </p>
       </div>
 
-      {isPrivileged ? null : (
-        <span className="material-symbols-outlined shrink-0 text-[18px] text-on-surface-variant transition-colors group-hover:text-primary">
-          chevron_right
-        </span>
-      )}
+      <span className="material-symbols-outlined shrink-0 text-[18px] text-on-surface-variant transition-colors group-hover:text-primary">
+        chevron_right
+      </span>
     </>
   );
-
-  if (isPrivileged) {
-    return (
-      <div className="flex items-center gap-3 rounded-2xl border border-outline-variant bg-surface-container-low p-3">
-        {content}
-      </div>
-    );
-  }
 
   return (
     <Link
