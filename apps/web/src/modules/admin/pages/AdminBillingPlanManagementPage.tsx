@@ -514,8 +514,8 @@ function SummaryTile({
             {value}
           </p>
         </div>
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded bg-primary-container text-primary">
-          <MaterialIcon name={icon} />
+        <span className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+          <MaterialIcon className="text-[24px]" name={icon} />
         </span>
       </div>
     </div>

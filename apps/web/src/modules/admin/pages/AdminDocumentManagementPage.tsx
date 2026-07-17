@@ -11,6 +11,7 @@ import {
 } from "@/apis/document.api";
 import { Badge } from "@/components/ui/Badge";
 import { Pagination } from "@/components/ui/Pagination";
+import { SelectField } from "@/components/ui/SelectField";
 import { Table, type TableRow } from "@/components/ui/Table";
 import { getRagStatusDisplay } from "@/shared/documentStatus";
 import type { LibraryDocument } from "@/types/document.type";
@@ -30,6 +31,21 @@ const columns = [
 ] as const;
 
 const pageSize = 10;
+
+const STATUS_OPTIONS = [
+  { label: "Tất cả trạng thái", value: "ALL" },
+  { label: "Đang tải lên", value: "UPLOADING" },
+  { label: "Đang kiểm duyệt", value: "REVIEWING" },
+  { label: "Chờ duyệt", value: "PENDING_REVIEW" },
+  { label: "Đang index", value: "INDEXING" },
+  { label: "Đang index lại", value: "REINDEXING" },
+  { label: "Hoàn tất (READY)", value: "READY" },
+  { label: "Index lỗi", value: "FAILED" },
+  { label: "Bị từ chối", value: "REJECTED" },
+  { label: "Đã xóa", value: "SOFT_DELETED" },
+];
+
+// Removed local sort options as the backend handles newest-first sorting
 
 const suggestedQuestions = [
   "Các tài liệu đã chọn có phù hợp để duyệt không?",
@@ -65,10 +81,16 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
   const [bulkApproveLoading, setBulkApproveLoading] = useState(false);
   const [reclassifyingId, setReclassifyingId] = useState<string | null>(null);
 
-  const load = useCallback(async (page: number) => {
+  const [filterStatus, setFilterStatus] = useState("ALL");
+
+  const load = useCallback(async (page: number, statusFilter: string) => {
     setLoading(true);
     try {
-      const res = await fetchDocuments({ page, limit: pageSize });
+      const res = await fetchDocuments({
+        page,
+        limit: pageSize,
+        status: statusFilter !== "ALL" ? statusFilter : undefined,
+      });
       setDocuments(res.documents);
       setTotalPages(res.pagination.totalPages);
       setSelectedDocumentIds((current) => {
@@ -87,8 +109,8 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
   }, []);
 
   useEffect(() => {
-    void load(currentPage);
-  }, [currentPage, load]);
+    void load(currentPage, filterStatus);
+  }, [currentPage, filterStatus, load]);
 
   const selectedDocuments = useMemo(
     () =>
@@ -110,9 +132,13 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
     [selectedDocuments],
   );
 
+  // local sortOption removed
+
+  const visibleDocuments = documents; // Filter and sort are handled by the backend
+
   const selectableDocuments = useMemo(
-    () => documents.filter(canSelectForReview),
-    [documents],
+    () => visibleDocuments.filter(canSelectForReview),
+    [visibleDocuments],
   );
 
   const allVisibleSelected =
@@ -164,7 +190,7 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
       }
       toast.success(`Đã duyệt ${selectedDocuments.length} tài liệu`);
       setSelectedDocumentIds(new Set());
-      await load(currentPage);
+      await load(currentPage, filterStatus);
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
@@ -181,7 +207,7 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
         "Đã gửi yêu cầu phân loại lại. AI sẽ xử lý trong vài giây.",
       );
       // Auto-refresh sau 5s để AI có thời gian xử lý
-      setTimeout(() => void load(currentPage), 5000);
+      setTimeout(() => void load(currentPage, filterStatus), 5000);
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
@@ -189,7 +215,7 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
     }
   };
 
-  const rows: TableRow[] = documents.map((doc) => ({
+  const rows: TableRow[] = visibleDocuments.map((doc) => ({
     id: doc.id,
     highlighted:
       canSelectForReview(doc) && selectedDocumentIds.has(String(doc.id)),
@@ -278,25 +304,35 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
       </div>
 
       <AdminCard>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-outline-variant p-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-outline-variant p-4">
           <div>
             <h2 className="font-semibold text-on-surface">
               Danh sách tài liệu
             </h2>
             <p className="text-sm text-on-surface-variant">
-              {documents.length} kết quả
+              {visibleDocuments.length} kết quả
             </p>
           </div>
-          <label className="flex items-center gap-2 text-sm text-on-surface-variant">
-            <input
-              checked={allVisibleSelected}
-              className="h-4 w-4 accent-primary"
-              disabled={selectableDocuments.length === 0}
-              onChange={(event) => toggleAllVisible(event.target.checked)}
-              type="checkbox"
-            />
-            Chọn tất cả trang này
-          </label>
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="w-44">
+              <SelectField
+                options={STATUS_OPTIONS}
+                value={filterStatus}
+                onChange={setFilterStatus}
+              />
+            </div>
+
+            <label className="ml-2 flex items-center gap-2 text-sm text-on-surface-variant">
+              <input
+                checked={allVisibleSelected}
+                className="h-4 w-4 accent-primary"
+                disabled={selectableDocuments.length === 0}
+                onChange={(event) => toggleAllVisible(event.target.checked)}
+                type="checkbox"
+              />
+              Chọn tất cả
+            </label>
+          </div>
         </div>
 
         {loading ? (

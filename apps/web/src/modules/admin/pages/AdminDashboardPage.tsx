@@ -53,24 +53,6 @@ const buildStats = (stats: AdminDashboardStats): AdminStat[] => [
   },
 ];
 
-const deferredSections = [
-  {
-    title: "Hoạt động hệ thống trong 7 ngày",
-    icon: "monitoring",
-    message: "Chưa có API audit log để hiển thị hoạt động theo ngày.",
-  },
-  {
-    title: "Trạng thái dịch vụ",
-    icon: "dns",
-    message: "Chưa có API telemetry để hiển thị uptime và độ trễ dịch vụ.",
-  },
-  {
-    title: "Hoạt động gần đây",
-    icon: "history",
-    message: "Chưa có nguồn dữ liệu backend cho lịch sử thao tác admin.",
-  },
-] as const;
-
 export default function AdminDashboardPage(): React.JSX.Element {
   const [dashboardStats, setDashboardStats] =
     useState<AdminDashboardStats | null>(null);
@@ -178,23 +160,6 @@ export default function AdminDashboardPage(): React.JSX.Element {
             ))
           : null}
 
-        {deferredSections.map((section) => (
-          <AdminCard className="p-6 lg:col-span-4" key={section.title}>
-            <div className="mb-4 flex items-center justify-between gap-4">
-              <h2 className="text-xl font-semibold tracking-normal text-on-surface">
-                {section.title}
-              </h2>
-              <MaterialIcon
-                className="text-on-surface-variant"
-                name={section.icon}
-              />
-            </div>
-            <p className="font-label-sm text-label-sm text-on-surface-variant tracking-normal">
-              {section.message}
-            </p>
-          </AdminCard>
-        ))}
-
         <AdminCard className="p-6 lg:col-span-5">
           <div className="mb-6">
             <h2 className="text-xl font-semibold tracking-normal text-on-surface">
@@ -207,7 +172,7 @@ export default function AdminDashboardPage(): React.JSX.Element {
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Link
               className="flex min-h-28 flex-col justify-between rounded border border-outline-variant bg-surface p-4 transition-colors hover:border-primary hover:bg-primary/10 hover:text-primary"
-              href="/admin/users"
+              href="/admin/users?action=add"
             >
               <MaterialIcon className="text-primary" name="person_add" />
               <span className="font-label-md text-label-md tracking-normal">

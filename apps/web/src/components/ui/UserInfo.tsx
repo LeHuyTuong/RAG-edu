@@ -18,11 +18,11 @@ export const UserInfo: FC = () => {
     return (first + last).toUpperCase();
   })();
 
-  return (
-    <Link
-      href={ROUTE_PATHS.PROTECTED_ROUTES.PROFILE}
-      className="group flex items-center gap-3 rounded-2xl border border-outline-variant bg-surface-container-low p-3 transition-colors hover:bg-surface-container-high"
-    >
+  const href = ROUTE_PATHS.PROTECTED_ROUTES.PROFILE;
+  const isPrivileged = user?.role === "ADMIN" || user?.role === "MODERATOR";
+
+  const content = (
+    <>
       <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 ring-2 ring-primary/20">
         {user?.avatar && !isDefaultAvatar(user.avatar) ? (
           <img
@@ -44,9 +44,28 @@ export const UserInfo: FC = () => {
         </p>
       </div>
 
-      <span className="material-symbols-outlined shrink-0 text-[18px] text-on-surface-variant transition-colors group-hover:text-primary">
-        chevron_right
-      </span>
+      {isPrivileged ? null : (
+        <span className="material-symbols-outlined shrink-0 text-[18px] text-on-surface-variant transition-colors group-hover:text-primary">
+          chevron_right
+        </span>
+      )}
+    </>
+  );
+
+  if (isPrivileged) {
+    return (
+      <div className="flex items-center gap-3 rounded-2xl border border-outline-variant bg-surface-container-low p-3">
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <Link
+      href={href}
+      className="group flex items-center gap-3 rounded-2xl border border-outline-variant bg-surface-container-low p-3 transition-colors hover:bg-surface-container-high"
+    >
+      {content}
     </Link>
   );
 };
