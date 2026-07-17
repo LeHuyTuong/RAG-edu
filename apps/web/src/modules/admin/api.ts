@@ -45,6 +45,14 @@ export interface AdminDashboardStats {
     readonly pending: number;
     readonly rejected: number;
   };
+  readonly billing: {
+    readonly totalRevenue: number;
+    readonly activeSubscriptions: number;
+    readonly revenueChart: {
+      readonly name: string;
+      readonly revenue: number;
+    }[];
+  };
 }
 
 export const fetchAdminDashboardStats =

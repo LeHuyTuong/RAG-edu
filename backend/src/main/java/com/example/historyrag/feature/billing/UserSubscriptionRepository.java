@@ -13,4 +13,9 @@ public interface UserSubscriptionRepository extends JpaRepository<UserSubscripti
             Instant now);
 
     List<UserSubscription> findByUserIdAndStatus(Long userId, String status);
+
+    long countByStatus(String status);
+
+    @org.springframework.data.jpa.repository.Query("SELECT SUM(bp.priceVnd) FROM UserSubscription us JOIN us.plan bp WHERE us.status = 'ACTIVE'")
+    Long calculateTotalRevenue();
 }
