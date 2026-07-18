@@ -10,7 +10,9 @@ public record FolderResponse(
         Long ownerId,
         long documentCount,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        String shareToken,
+        Boolean shareEnabled
 ) {
     public static FolderResponse fromEntity(Folder folder) {
         return new FolderResponse(
@@ -19,7 +21,9 @@ public record FolderResponse(
                 folder.getOwnerId(),
                 0L,
                 folder.getCreatedAt(),
-                folder.getUpdatedAt()
+                folder.getUpdatedAt(),
+                folder.getShareToken(),
+                folder.getShareEnabled()
         );
     }
 
@@ -30,7 +34,9 @@ public record FolderResponse(
                 folder.getOwnerId(),
                 documentCount,
                 folder.getCreatedAt(),
-                folder.getUpdatedAt()
+                folder.getUpdatedAt(),
+                folder.getShareToken(),
+                folder.getShareEnabled()
         );
     }
 }

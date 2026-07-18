@@ -1,5 +1,29 @@
-import { describe, expect, it } from "vitest";
-import { buildPreviewSkeleton } from "./document-preview";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { DocumentDetail } from "@/types/document.type";
+import { buildPreviewSkeleton, loadDocumentPreview } from "./document-preview";
+
+const pdfDocument = {
+  id: "101",
+  title: "Reject PDF",
+  description: null,
+  fileUrl: "https://res.cloudinary.com/demo/reject.pdf",
+  publicId: "reject.pdf",
+  format: "pdf",
+  sizeInBytes: 1024,
+  createdAt: "2026-07-02T00:00:00.000Z",
+  author: {
+    id: "1",
+    name: "Test Student",
+    email: "student@example.com",
+    avatarUrl: null,
+  },
+  subject: null,
+} satisfies DocumentDetail;
+
+beforeEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 describe("buildPreviewSkeleton", () => {
   it("maps pdf to the pdf preview branch", () => {
@@ -33,5 +57,33 @@ describe("buildPreviewSkeleton", () => {
     expect(
       buildPreviewSkeleton("pptx", "https://example.com/file.pptx"),
     ).toEqual({ type: "unsupported" });
+  });
+
+  it("loads PDF preview through the protected file endpoint", async () => {
+    const blob = new Blob(["pdf"], { type: "application/pdf" });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      blob: () => Promise.resolve(blob),
+    });
+    const createObjectURL = vi.fn().mockReturnValue("blob:preview");
+    vi.stubGlobal("fetch", fetchMock);
+    vi.stubGlobal("URL", {
+      ...URL,
+      createObjectURL,
+      revokeObjectURL: vi.fn(),
+    });
+
+    await expect(
+      loadDocumentPreview(pdfDocument, "access-token"),
+    ).resolves.toEqual({
+      type: "pdf",
+      fileUrl: "blob:preview",
+      objectUrl: "blob:preview",
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/v1/documents/101/file"),
+      { headers: { Authorization: "Bearer access-token" } },
+    );
+    expect(createObjectURL).toHaveBeenCalledWith(blob);
   });
 });

@@ -37,7 +37,7 @@ export const FilterBar: FC = () => {
       {/* ── Search ── */}
       <div className="mb-5">
         <InputField
-          placeholder="Tìm kiếm tài liệu..."
+          placeholder="Tìm tư liệu lịch sử..."
           value={filters.search}
           onChange={(e) => setSearch(e.target.value)}
           leftIcon={
@@ -51,7 +51,7 @@ export const FilterBar: FC = () => {
       {/* ── Subject filter ── */}
       <div className="mb-5">
         <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-on-surface-variant">
-          Môn học
+          Giai đoạn
         </p>
 
         {isLoadingSubjects ? (
@@ -99,7 +99,7 @@ export const FilterBar: FC = () => {
 
             {subjects.length === 0 && !isLoadingSubjects ? (
               <p className="text-xs text-on-surface-variant">
-                Chưa có môn học nào.
+                Chưa có giai đoạn lịch sử nào.
               </p>
             ) : null}
           </div>

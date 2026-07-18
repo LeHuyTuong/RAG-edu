@@ -8,12 +8,15 @@ và score retrieval có đủ cao chưa.
 from fastapi import APIRouter, HTTPException
 
 from app.schemas.retrieve import RagRetrieveRequest, RagRetrieveResponse, RetrievalHit
+from app.schemas.config import AiConfig, get_ai_config
+from fastapi import Depends
+from typing import Optional
 
 router = APIRouter()
 
 
 @router.post("/retrieve", response_model=RagRetrieveResponse)
-async def retrieve_chunks(req: RagRetrieveRequest):
+async def retrieve_chunks(req: RagRetrieveRequest, ai_config: AiConfig = Depends(get_ai_config)):
     from app.config import settings
     from app.services.retrieval_service import retrieve
 
@@ -21,6 +24,7 @@ async def retrieve_chunks(req: RagRetrieveRequest):
     try:
         hits = retrieve(
             question=req.question,
+            ai_config=ai_config,
             top_k=top_k,
             source_ids=req.sourceIds or None,
             tag_ids=req.tagIds or None,
@@ -53,7 +57,7 @@ def _to_hit(hit) -> RetrievalHit:
     )
 
 
-def _to_int(value) -> int | None:
+def _to_int(value) -> Optional[int]:
     if value is None:
         return None
     return int(value)

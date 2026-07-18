@@ -11,18 +11,19 @@ gọi ingest_service, và trả về response. Không chứa logic xử lý.
 Import ingest_service lazy (bên trong hàm) để tránh khởi tạo heavy resources
 (Qdrant client, Gemini client) khi app start — chỉ khởi tạo khi có request.
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 
 from app.schemas.ingest import RagIngestRequest, RagIngestResponse
+from app.schemas.config import AiConfig, get_ai_config
 
 router = APIRouter()
 
 
 @router.post("/ingest", response_model=RagIngestResponse)
-async def ingest_source(req: RagIngestRequest):
+async def ingest_source(req: RagIngestRequest, ai_config: AiConfig = Depends(get_ai_config)):
     from app.services.ingest_service import ingest
     try:
-        return ingest(req)
+        return ingest(req, ai_config)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:

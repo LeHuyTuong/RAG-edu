@@ -1,13 +1,14 @@
 """Pydantic schemas cho classify flow: request từ Spring Boot và response trả về."""
 from pydantic import BaseModel
+from typing import Optional
 
 
 class RagClassifyRequest(BaseModel):
     sourceId: int
-    title: str | None = None
-    filePath: str | None = None
-    sourceUrl: str | None = None
-    rawContent: str | None = None
+    title: Optional[str] = None
+    filePath: Optional[str] = None
+    sourceUrl: Optional[str] = None
+    rawContent: Optional[str] = None
 
 
 class RagClassifyResponse(BaseModel):

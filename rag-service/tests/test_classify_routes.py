@@ -8,7 +8,7 @@ client = TestClient(app)
 
 
 def test_classify_endpoint_history(monkeypatch):
-    def fake_classify(req):
+    def fake_classify(req, ai_config=None, **kwargs):
         return RagClassifyResponse(
             sourceId=req.sourceId,
             isHistory=True,
@@ -32,7 +32,7 @@ def test_classify_endpoint_history(monkeypatch):
 
 
 def test_classify_endpoint_not_history(monkeypatch):
-    def fake_classify(req):
+    def fake_classify(req, ai_config=None, **kwargs):
         return RagClassifyResponse(
             sourceId=req.sourceId,
             isHistory=False,
@@ -55,7 +55,7 @@ def test_classify_endpoint_not_history(monkeypatch):
 
 
 def test_classify_endpoint_value_error_returns_400(monkeypatch):
-    def fake_classify(req):
+    def fake_classify(req, ai_config=None, **kwargs):
         raise ValueError("invalid input")
 
     monkeypatch.setattr(classify_service, "classify", fake_classify)
@@ -70,7 +70,7 @@ def test_classify_endpoint_value_error_returns_400(monkeypatch):
 
 
 def test_classify_endpoint_unexpected_error_returns_500(monkeypatch):
-    def fake_classify(req):
+    def fake_classify(req, ai_config=None, **kwargs):
         raise RuntimeError("qdrant down")
 
     monkeypatch.setattr(classify_service, "classify", fake_classify)

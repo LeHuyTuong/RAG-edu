@@ -12,7 +12,7 @@ public class DocumentSpecification {
     private DocumentSpecification() {}
 
     public static PredicateSpecification<Document> build(
-            String search, Long folderId, DocumentStatus status, Long ownerId) {
+            String search, Long folderId, Long subjectId, DocumentStatus status, Long ownerId) {
         return (root, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
@@ -23,6 +23,10 @@ public class DocumentSpecification {
 
             if (folderId != null) {
                 predicates.add(cb.equal(root.get("folderId"), folderId));
+            }
+
+            if (subjectId != null) {
+                predicates.add(cb.equal(root.get("subjectId"), subjectId));
             }
 
             if (status != null) {

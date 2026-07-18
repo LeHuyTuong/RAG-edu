@@ -119,7 +119,7 @@ export const getRoleRedirect = (userRole: UserRole): string => {
       return ROUTE_PATHS.MODERATOR_ROUTES.DASHBOARD;
     case "student":
     case "teacher":
-      return ROUTE_PATHS.PROTECTED_ROUTES.DASHBOARD;
+      return ROUTE_PATHS.PROTECTED_ROUTES.HOME;
     case "guest":
     default:
       return ROUTE_PATHS.HOME;

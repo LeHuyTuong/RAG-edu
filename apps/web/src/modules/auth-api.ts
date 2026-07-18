@@ -93,34 +93,10 @@ export const verifyEmail = async (payload: {
 }) => {
   try {
     return unwrap<{ accessToken?: string } | null>(
-      await client.post("/api/v1/auth/verify-email", payload),
+      await client.post(API_ENDPOINTS.AUTH.VERIFY_EMAIL, payload),
     );
   } catch (error) {
     throw new Error(getErrorMessage(error, "Email verification failed"));
-  }
-};
-
-export const resendVerificationEmail = async () => {
-  try {
-    return unwrap<null>(
-      await apiClient.post(API_ENDPOINTS.AUTH.RESEND_VERIFICATION_EMAIL),
-    );
-  } catch (error) {
-    throw new Error(
-      getErrorMessage(error, "Could not resend verification email"),
-    );
-  }
-};
-
-export const forgotPassword = async (payload: { email: string }) => {
-  try {
-    return unwrap<null>(
-      await client.post("/api/v1/auth/forgot-password", payload),
-    );
-  } catch (error) {
-    throw new Error(
-      getErrorMessage(error, "Could not send password reset link"),
-    );
   }
 };
 
@@ -130,7 +106,7 @@ export const resetPassword = async (payload: {
 }) => {
   try {
     return unwrap<null>(
-      await client.post("/api/v1/auth/reset-password", payload),
+      await client.post(API_ENDPOINTS.AUTH.RESET_PASSWORD, payload),
     );
   } catch (error) {
     throw new Error(getErrorMessage(error, "Could not reset password"));

@@ -2,6 +2,7 @@ package com.example.historyrag.feature.rag;
 
 import com.example.historyrag.exception.InvalidRequestException;
 import com.example.historyrag.exception.ResourceNotFoundException;
+import com.example.historyrag.feature.billing.BillingService;
 import com.example.historyrag.shared.JwtUtils;
 import com.example.historyrag.feature.document.DocumentService;
 import com.example.historyrag.feature.folder.FolderService;
@@ -38,14 +39,17 @@ public class RagController {
     private final RagService ragService;
     private final DocumentService documentService;
     private final FolderService folderService;
+    private final BillingService billingService;
 
     public RagController(
             RagService ragService,
             DocumentService documentService,
-            FolderService folderService) {
+            FolderService folderService,
+            BillingService billingService) {
         this.ragService = ragService;
         this.documentService = documentService;
         this.folderService = folderService;
+        this.billingService = billingService;
     }
 
     @GetMapping("/health")
@@ -60,7 +64,8 @@ public class RagController {
             @AuthenticationPrincipal Jwt jwt,
             @RequestHeader(value = "traceparent", required = false) String traceparent) {
         Long userId = currentUserId(jwt);
-        RagChatRequest securedRequest = secureChatRequest(request, userId);
+        RagChatRequest securedRequest = secureChatRequest(request, userId, isAdmin(jwt));
+        billingService.consumeChatCredit(userId, "RAG chat");
         return ResponseEntity.ok(ApiResponse.success(ragService.chat(securedRequest, traceparent)));
     }
 
@@ -70,7 +75,9 @@ public class RagController {
             @AuthenticationPrincipal Jwt jwt,
             @RequestHeader(value = "traceparent", required = false) String traceparent) {
         Long userId = currentUserId(jwt);
-        return ragService.streamChat(secureChatRequest(request, userId), traceparent);
+        RagChatRequest securedRequest = secureChatRequest(request, userId, isAdmin(jwt));
+        billingService.consumeChatCredit(userId, "RAG stream chat");
+        return ragService.streamChat(securedRequest, traceparent);
     }
 
     @PostMapping("/retrieve")
@@ -79,7 +86,7 @@ public class RagController {
             @AuthenticationPrincipal Jwt jwt,
             @RequestHeader(value = "traceparent", required = false) String traceparent) {
         Long userId = currentUserId(jwt);
-        RagRetrieveRequest securedRequest = secureRetrieveRequest(request, userId);
+        RagRetrieveRequest securedRequest = secureRetrieveRequest(request, userId, isAdmin(jwt));
         return ResponseEntity.ok(ApiResponse.success(ragService.retrieve(securedRequest, traceparent)));
     }
 
@@ -101,9 +108,9 @@ public class RagController {
         return ResponseEntity.ok(ApiResponse.success(ragService.deleteSource(sourceId, traceparent)));
     }
 
-    private RagChatRequest secureChatRequest(RagChatRequest request, Long userId) {
+    private RagChatRequest secureChatRequest(RagChatRequest request, Long userId, boolean canViewAnyDocument) {
         validateFolderId(request.folderId(), userId);
-        validateSourceIds(request.sourceIds(), userId);
+        validateSourceIds(request.sourceIds(), userId, canViewAnyDocument);
         return new RagChatRequest(
                 request.question(),
                 request.topK(),
@@ -112,19 +119,19 @@ public class RagController {
                 request.tagIds(),
                 request.temperature(),
                 request.folderId(),
-                userId);
+                securedRagUserId(userId, request.sourceIds(), canViewAnyDocument));
     }
 
-    private RagRetrieveRequest secureRetrieveRequest(RagRetrieveRequest request, Long userId) {
+    private RagRetrieveRequest secureRetrieveRequest(RagRetrieveRequest request, Long userId, boolean canViewAnyDocument) {
         validateFolderId(request.folderId(), userId);
-        validateSourceIds(request.sourceIds(), userId);
+        validateSourceIds(request.sourceIds(), userId, canViewAnyDocument);
         return new RagRetrieveRequest(
                 request.question(),
                 request.topK(),
                 request.sourceIds(),
                 request.tagIds(),
                 request.folderId(),
-                userId);
+                securedRagUserId(userId, request.sourceIds(), canViewAnyDocument));
     }
 
     private RagIngestRequest secureIngestRequest(RagIngestRequest request, Long userId) {
@@ -133,7 +140,9 @@ public class RagController {
             throw new InvalidRequestException("documentId must match sourceId");
         }
 
-        RagIngestMetadata metadata = request.metadata();
+        RagIngestMetadata metadata = request.metadata() != null
+                ? request.metadata()
+                : RagIngestMetadata.empty();
         validateFolderId(metadata.folderId(), userId);
         RagIngestMetadata securedMetadata = new RagIngestMetadata(
                 metadata.categoryId(),
@@ -170,13 +179,31 @@ public class RagController {
         }
     }
 
-    private void validateSourceIds(List<Long> sourceIds, Long userId) {
+    private void validateSourceIds(List<Long> sourceIds, Long userId, boolean canViewAnyDocument) {
         if (sourceIds == null || sourceIds.isEmpty()) {
             return;
         }
-        if (!documentService.allExistByIdsAndOwner(sourceIds, userId)) {
+        boolean documentsExist = canViewAnyDocument
+                ? documentService.allReadyForAiByIds(sourceIds)
+                : documentService.allReadyForAiByIdsAndOwner(sourceIds, userId);
+        if (!documentsExist) {
             throw new ResourceNotFoundException("Document", "id", sourceIds);
         }
+    }
+
+    private Long securedRagUserId(Long userId, List<Long> sourceIds, boolean canViewAnyDocument) {
+        if (canViewAnyDocument && sourceIds != null && !sourceIds.isEmpty()) {
+            return null;
+        }
+        return userId;
+    }
+
+    private boolean isAdmin(Jwt jwt) {
+        if ("ADMIN".equalsIgnoreCase(jwt.getClaimAsString("accountType"))) {
+            return true;
+        }
+        List<String> roles = jwt.getClaimAsStringList("roles");
+        return roles != null && roles.contains("ROLE_ADMIN");
     }
 
     private Long currentUserId(Jwt jwt) {

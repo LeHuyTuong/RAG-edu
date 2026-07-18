@@ -1,17 +1,22 @@
 package com.example.historyrag.feature.document;
 
+import com.example.historyrag.feature.audit.DownloadAuditService;
 import com.example.historyrag.shared.ApiResponse;
 import com.example.historyrag.shared.JwtUtils;
 import com.example.historyrag.shared.ResultPaginationDTO;
 import com.example.historyrag.feature.document.dto.CreateDocumentRequest;
 import com.example.historyrag.feature.document.dto.DocumentPageResponse;
+import com.example.historyrag.feature.document.dto.DocumentDownload;
 import com.example.historyrag.feature.document.dto.DocumentResponse;
 import com.example.historyrag.feature.document.dto.ShareLinkResponse;
 import com.example.historyrag.feature.document.dto.UpdateDocumentRequest;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
-import org.springdoc.core.annotations.ParameterObject;
-import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
@@ -19,6 +24,8 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @RestController
@@ -26,9 +33,12 @@ import java.util.List;
 public class DocumentController {
 
     private final DocumentService documentService;
+    private final DownloadAuditService downloadAuditService;
 
-    public DocumentController(DocumentService documentService) {
+    public DocumentController(DocumentService documentService,
+                              DownloadAuditService downloadAuditService) {
         this.documentService = documentService;
+        this.downloadAuditService = downloadAuditService;
     }
 
     @PostMapping
@@ -46,6 +56,7 @@ public class DocumentController {
     public ResponseEntity<ApiResponse<DocumentPageResponse>> filter(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) Long folderId,
+            @RequestParam(required = false) Long subjectId,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "false") boolean onlyMine,
             @RequestParam(defaultValue = "1") int page,
@@ -54,8 +65,8 @@ public class DocumentController {
         Long ownerId = JwtUtils.getUserId(jwt);
         DocumentStatus mappedStatus = mapStatusFilter(status);
         ResultPaginationDTO result = documentService.filter(
-                search, folderId, mappedStatus, ownerId, onlyMine,
-                org.springframework.data.domain.PageRequest.of(page - 1, limit));
+                search, folderId, subjectId, mappedStatus, ownerId, onlyMine,
+                newestFirstPageRequest(page, limit));
         @SuppressWarnings("unchecked")
         java.util.List<DocumentResponse> docs = (java.util.List<DocumentResponse>) result.result();
         DocumentPageResponse response = new DocumentPageResponse(
@@ -74,13 +85,14 @@ public class DocumentController {
     public ResponseEntity<ApiResponse<DocumentPageResponse>> getMyDocuments(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(name = "limit", defaultValue = "10") int limit,
+            @RequestParam(required = false) Long subjectId,
             @RequestParam(required = false) String status,
             @AuthenticationPrincipal Jwt jwt) {
         Long ownerId = JwtUtils.getUserId(jwt);
         DocumentStatus mappedStatus = mapStatusFilter(status);
         ResultPaginationDTO result = documentService.filter(
-                null, null, mappedStatus, ownerId, true,
-                org.springframework.data.domain.PageRequest.of(page - 1, limit));
+                null, null, subjectId, mappedStatus, ownerId, true,
+                newestFirstPageRequest(page, limit));
         @SuppressWarnings("unchecked")
         java.util.List<DocumentResponse> docs = (java.util.List<DocumentResponse>) result.result();
         DocumentPageResponse response = new DocumentPageResponse(
@@ -124,12 +136,30 @@ public class DocumentController {
 
     private DocumentStatus mapStatusFilter(String status) {
         if (status == null || status.isBlank()) return null;
-        return switch (status.toUpperCase()) {
-            case "ACTIVE" -> DocumentStatus.READY;
-            case "REJECTED" -> DocumentStatus.REJECTED;
-            case "DELETED" -> DocumentStatus.SOFT_DELETED;
-            default -> null; // PENDING covers all processing states
-        };
+        String value = status.trim().toUpperCase();
+        // Alias tương thích ngược với chuỗi collapsed cũ của frontend.
+        switch (value) {
+            case "ACTIVE" -> { return DocumentStatus.READY; }
+            case "PENDING" -> { return DocumentStatus.PENDING_REVIEW; }
+            case "DELETED" -> { return DocumentStatus.SOFT_DELETED; }
+            default -> { /* rơi xuống parse trực tiếp theo tên enum */ }
+        }
+        // Cho phép lọc theo đúng từng state của UML state machine:
+        // UPLOADING, REVIEWING, PENDING_REVIEW, INDEXING, REINDEXING, READY, FAILED, REJECTED, SOFT_DELETED.
+        try {
+            return DocumentStatus.valueOf(value);
+        } catch (IllegalArgumentException ex) {
+            return null; // giá trị không hợp lệ -> không áp filter thay vì trả sai
+        }
+    }
+
+    private PageRequest newestFirstPageRequest(int page, int limit) {
+        Sort newestFirst = Sort.by(
+                Sort.Order.desc("uploadedAt"),
+                Sort.Order.desc("createdAt"),
+                Sort.Order.desc("id")
+        );
+        return PageRequest.of(page - 1, limit, newestFirst);
     }
 
     @GetMapping("/{id}")
@@ -137,7 +167,65 @@ public class DocumentController {
             @PathVariable Long id,
             @AuthenticationPrincipal Jwt jwt) {
         Long currentUserId = JwtUtils.getUserId(jwt);
-        return ResponseEntity.ok(ApiResponse.success(documentService.getById(id, currentUserId)));
+        return ResponseEntity.ok(ApiResponse.success(documentService.getById(id, currentUserId, isAdmin(jwt))));
+    }
+
+    @GetMapping("/{id}/download")
+    public ResponseEntity<byte[]> download(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Jwt jwt,
+            HttpServletRequest request) {
+        DocumentDownload download = documentService.prepareDownload(
+                id,
+                JwtUtils.getUserId(jwt),
+                jwt.getSubject(),
+                isAdmin(jwt));
+        downloadAuditService.record(
+                id,
+                JwtUtils.getUserId(jwt),
+                jwt.getSubject(),
+                download.watermarked(),
+                request.getRemoteAddr());
+        String encodedFilename = URLEncoder.encode(download.filename(), StandardCharsets.UTF_8)
+                .replace("+", "%20");
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(download.contentType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename*=UTF-8''" + encodedFilename)
+                .header("X-RAG-Edu-Watermarked", Boolean.toString(download.watermarked()))
+                .body(download.content());
+    }
+
+    @GetMapping("/{id}/file")
+    public ResponseEntity<byte[]> file(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Jwt jwt,
+            HttpServletRequest request) {
+        DocumentDownload download = documentService.prepareDownload(
+                id,
+                JwtUtils.getUserId(jwt),
+                jwt.getSubject(),
+                isAdmin(jwt));
+        downloadAuditService.record(
+                id,
+                JwtUtils.getUserId(jwt),
+                jwt.getSubject(),
+                download.watermarked(),
+                request.getRemoteAddr());
+        String encodedFilename = URLEncoder.encode(download.filename(), StandardCharsets.UTF_8)
+                .replace("+", "%20");
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(download.contentType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename*=UTF-8''" + encodedFilename)
+                .header("X-RAG-Edu-Watermarked", Boolean.toString(download.watermarked()))
+                .body(download.content());
+    }
+
+    private boolean isAdmin(Jwt jwt) {
+        if ("ADMIN".equalsIgnoreCase(jwt.getClaimAsString("accountType"))) {
+            return true;
+        }
+        List<String> roles = jwt.getClaimAsStringList("roles");
+        return roles != null && roles.contains("ROLE_ADMIN");
     }
 
     @PatchMapping("/{id}")
@@ -186,24 +274,41 @@ public class DocumentController {
         return ResponseEntity.ok(ApiResponse.success("Yêu cầu reindex đã được gửi", null));
     }
 
-    @PostMapping("/{id}/approve")
+    @PostMapping("/{id}/reclassify")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> approve(
+    public ResponseEntity<ApiResponse<Void>> reclassify(
             @PathVariable Long id,
             @AuthenticationPrincipal Jwt jwt) {
         Long userId = JwtUtils.getUserId(jwt);
-        documentService.approve(id, userId);
-        return ResponseEntity.ok(ApiResponse.success("Duyệt tài liệu thành công", null));
+        documentService.reclassify(id, userId);
+        return ResponseEntity.ok(ApiResponse.success("Đã gửi yêu cầu phân loại lại", null));
+    }
+
+    @PostMapping("/{id}/approve")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<DocumentResponse>> approve(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Jwt jwt) {
+        Long userId = JwtUtils.getUserId(jwt);
+        DocumentResponse response = documentService.approve(id, userId);
+        return ResponseEntity.ok(ApiResponse.success("Duyệt tài liệu thành công", response));
+    }
+
+    @GetMapping("/pending")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<DocumentResponse>>> getPendingReviews() {
+        List<DocumentResponse> result = documentService.getPendingReviews();
+        return ResponseEntity.ok(ApiResponse.success(result));
     }
 
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<Void>> reject(
+    public ResponseEntity<ApiResponse<DocumentResponse>> reject(
             @PathVariable Long id,
             @Valid @RequestBody com.example.historyrag.feature.document.dto.RejectDocumentRequest request,
             @AuthenticationPrincipal Jwt jwt) {
         Long userId = JwtUtils.getUserId(jwt);
-        documentService.reject(id, request.rejectionReason(), userId);
-        return ResponseEntity.ok(ApiResponse.success("Từ chối tài liệu thành công", null));
+        DocumentResponse response = documentService.reject(id, request.rejectionReason(), userId);
+        return ResponseEntity.ok(ApiResponse.success("Từ chối tài liệu thành công", response));
     }
 }

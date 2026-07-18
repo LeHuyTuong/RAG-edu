@@ -5,9 +5,9 @@
 
 export const API_ENDPOINTS = {
   AUTH: {
-    LOGIN: "/api/v1/auth/login",
+    LOGIN: "/api/v1/auth/signin",
     GOOGLE: "/api/v1/auth/google",
-    REGISTER: "/api/v1/auth/register",
+    REGISTER: "/api/v1/auth/signup",
     RESEND_VERIFICATION_EMAIL: "/api/v1/auth/resend-verification-email",
     VERIFY_EMAIL: "/api/v1/auth/verify-email",
     LOGOUT: "/api/v1/auth/logout",
@@ -25,12 +25,16 @@ export const API_ENDPOINTS = {
   ADMIN: {
     DASHBOARD: "/api/v1/admin/dashboard",
     CONFIG: "/api/v1/admin/config",
+    BILLING_PLANS: "/api/v1/admin/billing/plans",
+    BILLING_PLAN_DETAIL: (id: number | string) =>
+      `/api/v1/admin/billing/plans/${id}`,
   },
   DOCUMENTS: {
     BASE: "/api/v1/documents",
     DETAIL: (id: string) => `/api/v1/documents/${id}`,
     APPROVE: (id: string) => `/api/v1/documents/${id}/approve`,
     REJECT: (id: string) => `/api/v1/documents/${id}/reject`,
+    RECLASSIFY: (id: string) => `/api/v1/documents/${id}/reclassify`,
     SHARE: (id: string) => `/api/v1/documents/${id}/share`,
     SHARED: (token: string) => `/api/v1/documents/share/${token}`,
   },
@@ -51,6 +55,11 @@ export const API_ENDPOINTS = {
     RETRIEVE: "/api/v1/rag/retrieve",
     INGEST: "/api/v1/rag/ingest",
     SOURCE: (id: string) => `/api/v1/rag/sources/${id}`,
+  },
+  BILLING: {
+    SUMMARY: "/api/v1/billing/summary",
+    DEMO_PURCHASE: "/api/v1/billing/demo-purchase",
+    FLOW: "/api/v1/billing/flow",
   },
 } as const;
 

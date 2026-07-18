@@ -2,16 +2,11 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, type FormEvent, type ReactElement } from "react";
+import { useState, type FormEvent, type ReactElement } from "react";
 
 import { BackButton } from "@/components/ui/BackButton";
 import { buildUserFromAccessToken, extractAccessToken } from "@/lib/auth";
 import { apiClient } from "@/lib/axios";
-import {
-  buildGoogleLoginUrl,
-  completeGoogleLoginFromLocation,
-  markGoogleOauthPending,
-} from "@/modules/google-auth";
 import { ROUTE_PATHS } from "@/routes/router.const";
 import { API_ENDPOINTS } from "@/shared/constants";
 import { useAuthStore } from "@/stores/auth/store";
@@ -47,30 +42,6 @@ export default function LoginPageClient(): ReactElement {
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (!completeGoogleLoginFromLocation()) {
-      return;
-    }
-
-    const user = useAuthStore.getState().user;
-
-    router.replace(
-      getSafeRedirect(searchParams.get("redirect"), user?.role ?? "student"),
-    );
-  }, [router, searchParams]);
-
-  const handleGoogleSignin = () => {
-    const deviceId = getOrCreateDeviceId();
-    const redirectPath = searchParams.get("redirect");
-    const oauthState = markGoogleOauthPending();
-
-    window.location.href = buildGoogleLoginUrl({
-      deviceId,
-      redirectPath,
-      oauthState,
-    });
-  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -185,30 +156,6 @@ export default function LoginPageClient(): ReactElement {
               {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập"}
             </button>
           </form>
-
-          <div className="my-6 flex items-center gap-3">
-            <div className="h-px flex-1 bg-outline-variant" />
-            <span className="font-label-sm text-label-sm text-on-surface-variant">
-              hoặc
-            </span>
-            <div className="h-px flex-1 bg-outline-variant" />
-          </div>
-
-          <button
-            type="button"
-            onClick={handleGoogleSignin}
-            className="inline-flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-outline-variant bg-surface px-5 font-label-lg text-label-lg font-semibold text-on-surface transition-colors hover:bg-surface-container"
-          >
-            <span className="font-bold text-[#EA4335]">G</span>
-            Tiếp tục với Google
-          </button>
-
-          <Link
-            href={ROUTE_PATHS.AUTH_ROUTES.FORGOT_PASSWORD}
-            className="mt-5 inline-flex font-label-sm text-label-sm font-medium text-primary hover:underline"
-          >
-            Quên mật khẩu?
-          </Link>
 
           <p className="mt-5 font-label-sm text-label-sm text-on-surface-variant">
             Chưa có tài khoản?{" "}

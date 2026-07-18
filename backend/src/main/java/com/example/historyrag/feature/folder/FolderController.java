@@ -3,6 +3,7 @@ package com.example.historyrag.feature.folder;
 import com.example.historyrag.shared.ApiResponse;
 import com.example.historyrag.shared.JwtUtils;
 import com.example.historyrag.exception.ResourceNotFoundException;
+import com.example.historyrag.feature.billing.BillingService;
 import com.example.historyrag.feature.folder.dto.FolderChatRequest;
 import com.example.historyrag.feature.folder.dto.FolderRequest;
 import com.example.historyrag.feature.folder.dto.FolderResponse;
@@ -23,10 +24,12 @@ public class FolderController {
 
     private final FolderService folderService;
     private final RagService ragService;
+    private final BillingService billingService;
 
-    public FolderController(FolderService folderService, RagService ragService) {
+    public FolderController(FolderService folderService, RagService ragService, BillingService billingService) {
         this.folderService = folderService;
         this.ragService = ragService;
+        this.billingService = billingService;
     }
 
     @PostMapping
@@ -74,6 +77,7 @@ public class FolderController {
         if (!folderService.existsByIdAndOwner(id, userId)) {
             throw new ResourceNotFoundException("Folder", "id", id);
         }
+        billingService.consumeChatCredit(userId, "Folder chat");
         RagChatRequest ragRequest = new RagChatRequest(
                 request.question(),
                 request.topK(),
@@ -83,6 +87,57 @@ public class FolderController {
                 request.temperature(),
                 id,
                 userId
+        );
+        RagChatResponse response = ragService.chat(ragRequest, null);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PostMapping("/{id}/share")
+    public ResponseEntity<ApiResponse<String>> enableShare(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Jwt jwt) {
+        Long ownerId = JwtUtils.getUserId(jwt);
+        String token = folderService.enableShare(id, ownerId);
+        String shareUrl = "/share/notebook/" + token;
+        return ResponseEntity.ok(ApiResponse.success("Đã tạo link chia sẻ", shareUrl));
+    }
+
+    @DeleteMapping("/{id}/share")
+    public ResponseEntity<ApiResponse<Void>> disableShare(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Jwt jwt) {
+        Long ownerId = JwtUtils.getUserId(jwt);
+        folderService.disableShare(id, ownerId);
+        return ResponseEntity.ok(ApiResponse.success("Đã tắt chia sẻ", null));
+    }
+
+    // --- Public shared folder endpoints (no JWT required, whitelisted in SecurityConfig) ---
+
+    @GetMapping("/shared/{token}")
+    public ResponseEntity<ApiResponse<FolderResponse>> getSharedFolder(
+            @PathVariable String token) {
+        FolderResponse response = folderService.getByShareToken(token);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PostMapping("/shared/{token}/chat")
+    public ResponseEntity<ApiResponse<RagChatResponse>> sharedChat(
+            @PathVariable String token,
+            @Valid @RequestBody FolderChatRequest request) {
+        // Look up folder by share token (no JWT)
+        FolderResponse folder = folderService.getByShareToken(token);
+        // Chat công khai không yêu cầu đăng nhập, nhưng vẫn phải tốn chi phí LLM thật —
+        // trừ vào quota của chủ sở hữu folder để tránh bị lạm dụng vô hạn miễn phí.
+        billingService.consumeChatCredit(folder.ownerId(), "Chat công khai qua folder share");
+        RagChatRequest ragRequest = new RagChatRequest(
+                request.question(),
+                request.topK(),
+                false,
+                java.util.List.of(),
+                java.util.List.of(),
+                request.temperature(),
+                folder.id(),
+                null  // No userId for shared/public chat
         );
         RagChatResponse response = ragService.chat(ragRequest, null);
         return ResponseEntity.ok(ApiResponse.success(response));

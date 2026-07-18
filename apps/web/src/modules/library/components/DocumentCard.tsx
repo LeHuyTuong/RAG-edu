@@ -6,6 +6,7 @@ import type { FC } from "react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { formatDate } from "@/utils";
+import { getRagStatusDisplay } from "@/shared/documentStatus";
 import type { LibraryDocument } from "@/types/document.type";
 
 interface DocumentCardProps {
@@ -37,13 +38,13 @@ const getFileIcon = (publicId: string): string => {
   return "draft";
 };
 
-const subjectGradients = [
-  "from-[#667eea]/20 to-[#764ba2]/20",
-  "from-[#f093fb]/20 to-[#f5576c]/20",
-  "from-[#4facfe]/20 to-[#00f2fe]/20",
-  "from-[#43e97b]/20 to-[#38f9d7]/20",
-  "from-[#fa709a]/20 to-[#fee140]/20",
-  "from-[#a18cd1]/20 to-[#fbc2eb]/20",
+const historyGradients = [
+  "from-primary-container/40 to-secondary-container/40",
+  "from-secondary-container/40 to-tertiary-container/40",
+  "from-tertiary-container/40 to-primary-container/40",
+  "from-primary-container/30 to-tertiary-container/30",
+  "from-secondary-container/30 to-primary-container/30",
+  "from-tertiary-container/30 to-secondary-container/30",
 ];
 
 const getGradient = (seed: string): string => {
@@ -51,7 +52,7 @@ const getGradient = (seed: string): string => {
   for (let i = 0; i < seed.length; i++) {
     hash = (hash * 31 + seed.charCodeAt(i)) & 0xffff;
   }
-  return subjectGradients[hash % subjectGradients.length] as string;
+  return historyGradients[hash % historyGradients.length] as string;
 };
 
 const buildCloudinaryThumbnailUrl = (publicId: string): string => {
@@ -86,17 +87,17 @@ export const DocumentCard: FC<DocumentCardProps> = ({ document }) => {
         className="
           relative flex flex-col overflow-hidden
           rounded-2xl
-          border border-outline-variant/60
-          bg-surface/80 backdrop-blur-md
+          border border-outline-variant
+          bg-surface
           shadow-sm shadow-black/5
           transition-all duration-200
           hover:-translate-y-0.5 hover:shadow-md hover:shadow-black/10
-          hover:border-primary/30
+          hover:border-outline
           focus-within:ring-2 focus-within:ring-primary/40
         "
       >
         <div
-          className={`relative flex h-28 items-center justify-center overflow-hidden bg-linear-to-br ${gradient} border-b border-outline-variant/40`}
+          className={`relative flex h-28 items-center justify-center overflow-hidden bg-linear-to-br ${gradient} border-b border-outline-variant`}
         >
           {thumbnailUrl ? (
             <Image
@@ -108,28 +109,34 @@ export const DocumentCard: FC<DocumentCardProps> = ({ document }) => {
               src={thumbnailUrl}
             />
           ) : (
-            <span className="material-symbols-outlined text-5xl text-on-surface/30">
+            <span className="material-symbols-outlined text-5xl text-on-surface/25">
               {fileIcon}
             </span>
           )}
 
-          <div className="absolute inset-0 bg-black/5" />
+          <div className="absolute inset-0 bg-on-surface/[0.03]" />
 
-          {document.subject ? (
+          {document.format ? (
             <span className="absolute left-3 top-3">
               <Badge tone="neutral" className="text-[11px]">
-                {document.subject.code}
+                {document.format.toUpperCase()}
               </Badge>
             </span>
           ) : null}
 
-          {document.status !== "ACTIVE" ? (
+          {document.ragStatus && document.ragStatus !== "READY" ? (
             <span className="absolute right-3 top-3">
               <Badge
-                tone={document.status === "PENDING" ? "warning" : "error"}
+                tone={
+                  getRagStatusDisplay(document.ragStatus, document.isPublic)
+                    .tone
+                }
                 className="text-[11px]"
               >
-                {document.status === "PENDING" ? "Chờ duyệt" : document.status}
+                {
+                  getRagStatusDisplay(document.ragStatus, document.isPublic)
+                    .label
+                }
               </Badge>
             </span>
           ) : null}
@@ -149,11 +156,11 @@ export const DocumentCard: FC<DocumentCardProps> = ({ document }) => {
 
           {document.subject ? (
             <p className="truncate text-xs text-on-surface-variant">
-              {document.subject.name}
+              Giai đoạn: {document.subject.name}
             </p>
           ) : null}
 
-          <div className="mt-auto flex items-center justify-between border-t border-outline-variant/40 pt-2">
+          <div className="mt-auto flex items-center justify-between border-t border-outline-variant pt-2">
             <span className="text-[11px] text-on-surface-variant">
               {formatDate(document.createdAt)}
             </span>

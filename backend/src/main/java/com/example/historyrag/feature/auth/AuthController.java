@@ -43,7 +43,7 @@ public class AuthController {
         this.refreshCookieSecure = refreshCookieSecure;
     }
 
-    @PostMapping("/login")
+    @PostMapping({"/login", "/signin"})
     public ResponseEntity<ApiResponse<LoginResponse>> login(
             @Valid @RequestBody LoginRequest request,
             HttpServletRequest httpRequest,
@@ -58,7 +58,7 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success("Đăng nhập thành công", loginResponse));
     }
 
-    @PostMapping("/register")
+    @PostMapping({"/register", "/signup"})
     public ResponseEntity<ApiResponse<RegisterResponse>> register(
             @Valid @RequestBody RegisterRequest request) {
 

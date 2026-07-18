@@ -6,5 +6,7 @@ public interface FileStorageService {
 
     StoredFile store(MultipartFile file);
 
+    String resolveInternalPath(String storedName);
+
     void delete(String storedName);
 }

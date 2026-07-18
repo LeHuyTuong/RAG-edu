@@ -7,7 +7,6 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FC, type ReactNode } from "react";
-import { completeGoogleLoginFromLocation } from "@/modules/google-auth";
 import { getAuthSession } from "./guards/auth.guard";
 import {
   hasRoleAccess,
@@ -38,7 +37,6 @@ export const ProtectedRoute: FC<ProtectedRouteProps> = ({
 
   useEffect(() => {
     setMounted(true);
-    completeGoogleLoginFromLocation();
     const { isAuthenticated: isAuth, user } = getAuthSession();
     const role = (user?.role || "guest") as UserRole;
 

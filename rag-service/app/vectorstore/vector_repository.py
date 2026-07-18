@@ -24,10 +24,12 @@ from qdrant_client.models import (
     MatchAny,
     MatchValue,
     PointStruct,
+    Range,
     ScoredPoint,
 )
 
 from app.vectorstore.qdrant_client import get_client
+from typing import Optional
 
 
 def point_id(source_id: int, chunk_index: int) -> str:
@@ -58,16 +60,18 @@ def search(
     collection: str,
     query_vector: list[float],
     top_k: int,
-    score_threshold: float | None = None,
+    score_threshold: Optional[float] = None,
     source_ids: list[int] | None = None,
     tag_ids: list[int] | None = None,
-    folder_id: int | None = None,
-    user_id: int | None = None,
+    folder_id: Optional[int] = None,
+    user_id: Optional[int] = None,
+    question_year: Optional[int] = None,
 ) -> list[ScoredPoint]:
     """
     Search topK chunk gần nhất, kèm filter metadata nếu backend yêu cầu.
     MatchAny = điều kiện OR trong từng field; giữa các field là AND.
     MatchValue = exact match cho folderId/userId.
+    Range = lọc chunk theo năm (yearStart <= question_year <= yearEnd + 2, hoặc không có năm thì skip filter).
     """
     must: list[FieldCondition] = []
     if source_ids:
@@ -78,6 +82,8 @@ def search(
         must.append(FieldCondition(key="folderId", match=MatchValue(value=folder_id)))
     if user_id is not None:
         must.append(FieldCondition(key="userId", match=MatchValue(value=user_id)))
+
+    should: list[FieldCondition] = []
 
     result = get_client().query_points(
         collection_name=collection,

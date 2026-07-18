@@ -15,4 +15,10 @@ public interface FolderService {
     void delete(Long id, Long ownerId);
 
     boolean existsByIdAndOwner(Long id, Long ownerId);
+
+    String enableShare(Long id, Long ownerId);
+
+    void disableShare(Long id, Long ownerId);
+
+    FolderResponse getByShareToken(String token);
 }

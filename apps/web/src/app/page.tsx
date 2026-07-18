@@ -33,7 +33,7 @@ export default function Home(): ReactElement {
             />
             <path d="M4 14V18H10V14" stroke="currentColor" strokeWidth="2" />
           </svg>
-          <span className="text-xl font-bold text-primary">AcademiShare</span>
+          <span className="text-xl font-bold text-primary">HisWise</span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-8">
@@ -47,19 +47,19 @@ export default function Home(): ReactElement {
             href="/library"
             className="text-on-surface-variant font-semibold text-sm hover:text-primary transition-all duration-200 py-1 border-b-2 border-transparent hover:border-primary"
           >
-            Thư viện
+            Kho tư liệu
           </Link>
           <Link
             href="/community"
             className="text-on-surface-variant font-semibold text-sm hover:text-primary transition-all duration-200 py-1 border-b-2 border-transparent hover:border-primary"
           >
-            Cộng đồng
+            Thảo luận
           </Link>
           <Link
             href="/uploads"
             className="text-on-surface-variant font-semibold text-sm hover:text-primary transition-all duration-200 py-1 border-b-2 border-transparent hover:border-primary"
           >
-            Tải lên
+            Đăng tải
           </Link>
         </nav>
 
@@ -125,14 +125,13 @@ export default function Home(): ReactElement {
         <section className="grid grid-cols-2 gap-10 items-center">
           <div className="flex flex-col gap-6 max-w-xl">
             <h1 className="text-5xl font-bold leading-tight tracking-tight text-on-surface">
-              Kho lưu trữ tài liệu{" "}
-              <span className="text-primary">học thuật hàng đầu</span> cho sinh
-              viên
+              Kho lưu trữ <span className="text-primary">tư liệu lịch sử</span>{" "}
+              hàng đầu cho nghiên cứu và giảng dạy
             </h1>
             <p className="text-lg leading-relaxed text-on-surface-variant">
-              Nền tảng chia sẻ kiến thức toàn diện, nơi bạn có thể tìm kiếm hàng
-              triệu giáo trình, đề thi và bài giảng chất lượng từ cộng đồng sinh
-              viên ưu tú.
+              Nền tảng chia sẻ tri thức lịch sử, nơi bạn có thể tìm kiếm hàng
+              nghìn tư liệu, văn bản gốc và bài nghiên cứu chất lượng từ cộng
+              đồng học giả.
             </p>
             <div className="flex items-center bg-surface-container border border-outline-variant rounded-xl p-1 shadow-sm mt-4 transition-colors duration-200">
               <svg
@@ -149,14 +148,14 @@ export default function Home(): ReactElement {
               </svg>
               <input
                 type="text"
-                placeholder="Tìm kiếm tài liệu, khóa học..."
+                placeholder="Tìm tư liệu lịch sử, sự kiện, nhân vật..."
                 className="flex-1 border-none outline-none px-2 py-2 bg-transparent text-on-surface placeholder-on-surface-variant"
               />
               <button
                 type="button"
                 className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-semibold hover:bg-primary/90 transition-colors"
               >
-                Khám phá
+                Tìm kiếm
               </button>
             </div>
           </div>
@@ -169,8 +168,8 @@ export default function Home(): ReactElement {
               Tính năng cốt lõi
             </h2>
             <p className="text-lg text-on-surface-variant">
-              Trải nghiệm học tập không giới hạn với hệ sinh thái cùng công cụ
-              hiện đại
+              Khám phá tri thức lịch sử với hệ sinh thái tư liệu và công cụ tra
+              cứu hiện đại
             </p>
           </div>
           <div className="grid grid-cols-2 gap-6 w-full">
@@ -189,11 +188,11 @@ export default function Home(): ReactElement {
                 </svg>
               </div>
               <h3 className="text-2xl font-bold text-on-surface">
-                Thư viện tài liệu đa dạng
+                Kho tư liệu lịch sử
               </h3>
               <p className="text-on-surface-variant">
-                Hơn 1,000,000+ tài liệu được phân loại theo từng chuyên ngành và
-                trường đại học.
+                Hàng nghìn tư liệu lịch sử được phân loại theo giai đoạn, sự
+                kiện và nhân vật lịch sử.
               </p>
             </div>
             <div className="bg-primary rounded-3xl p-8 shadow-lg flex flex-col gap-4 relative overflow-hidden min-h-80 transition-colors duration-200">
@@ -215,8 +214,8 @@ export default function Home(): ReactElement {
                 Đóng góp và chia sẻ
               </h3>
               <p className="text-primary-foreground/90">
-                Tạo ra tài liệu của bạn chỉ với một vài bước đơn giản và nhận
-                điểm thưởng từ cộng đồng.
+                Đóng góp tư liệu lịch sử của bạn và cùng xây dựng kho tri thức
+                chung cho cộng đồng.
               </p>
             </div>
           </div>

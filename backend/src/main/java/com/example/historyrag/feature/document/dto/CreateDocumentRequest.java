@@ -15,6 +15,9 @@ public record CreateDocumentRequest(
         @Size(max = 5000)
         String description,
 
+        @Size(max = 255)
+        String originalAuthor,
+
         @NotBlank(message = "fileUrl is required")
         String fileUrl,
 

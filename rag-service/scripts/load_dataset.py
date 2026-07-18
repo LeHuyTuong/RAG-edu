@@ -35,6 +35,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 
 # --- đường dẫn ---
 SCRIPTS_DIR = Path(__file__).resolve().parent
@@ -75,7 +76,7 @@ def resolve_env_file(explicit: str | None) -> Path | None:
     return None
 
 
-def parse_doc_ids(spec: str | None, available: list[int]) -> list[int]:
+def parse_doc_ids(spec: Optional[str], available: list[int]) -> list[int]:
     """Hỗ trợ 'D001', '1', '1-5', 'D001,D003'. None/empty -> tất cả."""
     if not spec:
         return available
@@ -97,7 +98,7 @@ def doc_num(doc_id: str) -> int:
     return int(doc_id.strip().upper().lstrip("D"))
 
 
-def to_int(value: str | None) -> int | None:
+def to_int(value: str | None) -> Optional[int]:
     if value is None:
         return None
     value = value.strip()
@@ -141,8 +142,8 @@ def iter_doc_chunks(chunks_csv: Path, source_id: int, min_chars: int, limit: int
                 return
 
 
-def build_payload(source_id: int, title: str, file_path: str | None,
-                  chunk_index: int, page_number: int | None, text: str, created_at: str) -> dict:
+def build_payload(source_id: int, title: str, file_path: Optional[str],
+                  chunk_index: int, page_number: Optional[int], text: str, created_at: str) -> dict:
     """Bám sát ingest_service._build_payload để /rag/chat retrieve + cite đồng nhất."""
     return {
         "sourceId": source_id,
@@ -165,7 +166,7 @@ def build_payload(source_id: int, title: str, file_path: str | None,
     }
 
 
-def _parse_retry_delay(exc: Exception) -> float | None:
+def _parse_retry_delay(exc: Exception) -> Optional[float]:
     """Đọc số giây từ 'Please retry in Xs' trong error message của Gemini 429."""
     import re
     match = re.search(r'retry in (\d+(?:\.\d+)?)s', str(exc))

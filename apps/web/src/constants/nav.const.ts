@@ -33,6 +33,12 @@ export const USER_NAV_ITEMS: SideNavItem[] = [
     section: "main",
   },
   {
+    label: "Gói AI",
+    icon: "workspace_premium",
+    href: ROUTE_PATHS.PROTECTED_ROUTES.BILLING,
+    section: "main",
+  },
+  {
     label: "Cài đặt",
     icon: "settings",
     href: ROUTE_PATHS.PROTECTED_ROUTES.SETTINGS,
@@ -101,9 +107,15 @@ export const ADMIN_NAV_ITEMS: SideNavItem[] = [
     section: "main",
   },
   {
-    label: "Quản lý môn học",
-    icon: "menu_book",
+    label: "Quản lý giai đoạn",
+    icon: "history_edu",
     href: ROUTE_PATHS.ADMIN_ROUTES.SUBJECTS,
+    section: "main",
+  },
+  {
+    label: "Quản lý gói",
+    icon: "workspace_premium",
+    href: ROUTE_PATHS.ADMIN_ROUTES.BILLING,
     section: "main",
   },
 

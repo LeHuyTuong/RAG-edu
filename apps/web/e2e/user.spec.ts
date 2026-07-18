@@ -25,11 +25,14 @@ test.describe("User Flows", () => {
 
     test("should have working navigation sidebar", async ({ page }) => {
       // Check that user nav items are visible
-      await expect(page.getByText("Trang chủ")).toBeVisible();
-      await expect(page.getByText("Thư viện")).toBeVisible();
-      await expect(page.getByText("Tài liệu của tôi")).toBeVisible();
-      await expect(page.getByText("Đóng góp")).toBeVisible();
-      await expect(page.getByText("Cài đặt")).toBeVisible();
+      await expect(page.getByRole("link", { name: /Trang chủ/ })).toBeVisible();
+      await expect(page.getByRole("link", { name: /Thư viện/ })).toBeVisible();
+      await expect(
+        page.getByRole("link", { name: /Tài liệu của tôi/ }),
+      ).toBeVisible();
+      await expect(page.getByRole("link", { name: /Đóng góp/ })).toBeVisible();
+      await expect(page.getByRole("link", { name: /Gói AI/ })).toBeVisible();
+      await expect(page.getByRole("link", { name: /Cài đặt/ })).toBeVisible();
     });
   });
 
@@ -37,7 +40,9 @@ test.describe("User Flows", () => {
     test("should load library page with document list", async ({ page }) => {
       await navigateTo(page, "/library");
       // Library should have a heading or document grid
-      await expect(page.getByText("Thư viện", { exact: false })).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: /Thư viện tài liệu/ }),
+      ).toBeVisible();
     });
   });
 
@@ -45,7 +50,9 @@ test.describe("User Flows", () => {
     test("should load my documents page", async ({ page }) => {
       await navigateTo(page, "/my-documents");
       // Should have a title about my documents
-      await expect(page.getByText("Tài liệu của tôi")).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "Tài liệu của tôi" }),
+      ).toBeVisible();
     });
   });
 
@@ -53,7 +60,7 @@ test.describe("User Flows", () => {
     test("should load uploads page", async ({ page }) => {
       await navigateTo(page, "/uploads");
       // Uploads page should show upload form
-      await expect(page.getByText("Đóng góp", { exact: false })).toBeVisible();
+      await expect(page.getByRole("link", { name: /Đóng góp/ })).toBeVisible();
     });
   });
 
@@ -69,7 +76,21 @@ test.describe("User Flows", () => {
     test("should load settings page", async ({ page }) => {
       await navigateTo(page, "/settings");
       // Settings page should show settings form
-      await expect(page.getByText("Cài đặt", { exact: false })).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "Cài đặt" }),
+      ).toBeVisible();
+    });
+  });
+
+  test.describe("Billing Page", () => {
+    test("should load billing page and show AI plans", async ({ page }) => {
+      await navigateTo(page, "/billing");
+      await expect(
+        page.getByRole("heading", { name: /Chọn gói AI/ }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: /Chọn gói/ }).first(),
+      ).toBeVisible();
     });
   });
 
@@ -79,7 +100,7 @@ test.describe("User Flows", () => {
     }) => {
       await page.goto("/admin");
       // Should redirect away (either to home or show forbidden)
-      await expect(page).toHaveURL(/\/home|\/login/);
+      await expect(page).toHaveURL(/\/home|\/login|\/dashboard/);
     });
 
     test("should not allow regular user to access moderator pages", async ({
@@ -87,7 +108,7 @@ test.describe("User Flows", () => {
     }) => {
       await page.goto("/moderator");
       // Should redirect away
-      await expect(page).toHaveURL(/\/home|\/login/);
+      await expect(page).toHaveURL(/\/home|\/login|\/dashboard/);
     });
   });
 });

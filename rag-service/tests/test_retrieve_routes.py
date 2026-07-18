@@ -28,7 +28,7 @@ def _hit(score=0.81):
 def test_retrieve_endpoint_returns_hits_without_calling_llm(monkeypatch):
     captured = {}
 
-    def fake_retrieve(question, top_k, source_ids, tag_ids, folder_id=None, user_id=None):
+    def fake_retrieve(question, top_k, source_ids, tag_ids, folder_id=None, user_id=None, ai_config=None, **kwargs):
         captured.update({
             "question": question,
             "top_k": top_k,
@@ -79,7 +79,7 @@ def test_retrieve_endpoint_returns_hits_without_calling_llm(monkeypatch):
 def test_retrieve_endpoint_uses_default_top_k(monkeypatch):
     captured = {}
 
-    def fake_retrieve(question, top_k, source_ids, tag_ids, folder_id=None, user_id=None):
+    def fake_retrieve(question, top_k, source_ids, tag_ids, folder_id=None, user_id=None, ai_config=None, **kwargs):
         captured["top_k"] = top_k
         return []
 
@@ -93,7 +93,7 @@ def test_retrieve_endpoint_uses_default_top_k(monkeypatch):
 
 
 def test_retrieve_endpoint_maps_errors_to_500(monkeypatch):
-    def fake_retrieve(question, top_k, source_ids, tag_ids, folder_id=None, user_id=None):
+    def fake_retrieve(question, top_k, source_ids, tag_ids, folder_id=None, user_id=None, ai_config=None, **kwargs):
         raise RuntimeError("qdrant down")
 
     monkeypatch.setattr(retrieval_service, "retrieve", fake_retrieve)

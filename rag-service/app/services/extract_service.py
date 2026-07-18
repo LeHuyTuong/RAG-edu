@@ -17,19 +17,20 @@ Giữ page_number riêng cho PDF vì citation cần số trang (docs/14).
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 
 @dataclass
 class PageText:
     """Đơn vị text sau extract. page_number=None với nguồn không có khái niệm trang."""
-    page_number: int | None
+    page_number: Optional[int]
     text: str
 
 
 def extract(
-    raw_content: str | None = None,
-    file_path: str | None = None,
-    source_url: str | None = None,
+    raw_content: Optional[str] = None,
+    file_path: Optional[str] = None,
+    source_url: Optional[str] = None,
 ) -> list[PageText]:
     """
     Ưu tiên: rawContent > filePath > sourceUrl.

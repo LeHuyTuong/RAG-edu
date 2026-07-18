@@ -55,6 +55,7 @@ function NotFoundState({ message }: { message: string }): React.JSX.Element {
 export default function DocumentDetailPage(): React.JSX.Element {
   const { id } = useParams<{ id: string }>();
   const currentUser = useAuthStore((s) => s.user);
+  const accessToken = useAuthStore((s) => s.accessToken);
 
   const [document, setDocument] = useState<DocumentDetail | null>(null);
   const [preview, setPreview] = useState<DocumentPreviewData | null>(null);
@@ -65,7 +66,9 @@ export default function DocumentDetailPage(): React.JSX.Element {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || !accessToken) return;
+
+    let activePreviewObjectUrl: string | undefined;
 
     const loadData = async () => {
       setIsLoading(true);
@@ -94,10 +97,12 @@ export default function DocumentDetailPage(): React.JSX.Element {
         }
 
         try {
-          setPreview(await loadDocumentPreview(doc));
+          const nextPreview = await loadDocumentPreview(doc, accessToken);
+          activePreviewObjectUrl = nextPreview.objectUrl;
+          setPreview(nextPreview);
         } catch (previewError) {
           console.error("Could not load document preview", previewError);
-          setPreview(null);
+          setPreview({ type: "error" });
         }
       } catch {
         setError("Không thể tải tài liệu. Vui lòng thử lại.");
@@ -107,7 +112,13 @@ export default function DocumentDetailPage(): React.JSX.Element {
     };
 
     loadData();
-  }, [id]);
+
+    return () => {
+      if (activePreviewObjectUrl) {
+        URL.revokeObjectURL(activePreviewObjectUrl);
+      }
+    };
+  }, [id, accessToken]);
 
   if (isLoading) return <DetailPageSkeleton />;
 
@@ -121,7 +132,7 @@ export default function DocumentDetailPage(): React.JSX.Element {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
         <div className="space-y-6">
-          <DocumentPreview preview={preview ?? { type: "unsupported" }} />
+          <DocumentPreview preview={preview ?? { type: "error" }} />
 
           {document.description ? (
             <Card className="space-y-5 p-6">
@@ -173,6 +184,7 @@ export default function DocumentDetailPage(): React.JSX.Element {
           <FileInfoCard
             format={document.format}
             sizeInBytes={document.sizeInBytes}
+            originalAuthor={document.originalAuthor}
           />
 
           {currentUser?.id === String(document.ownerId) && (

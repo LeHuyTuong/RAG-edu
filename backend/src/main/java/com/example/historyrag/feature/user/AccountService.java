@@ -15,7 +15,7 @@ public interface AccountService {
 
     AccountResponse update(Long id, String name, String avatarUrl);
 
-    void toggleBan(Long id);
+    AccountResponse toggleBan(Long id);
 
     void delete(Long id);
 }

@@ -27,22 +27,7 @@ export function DocumentStats({
         iconBg="bg-primary/10"
         iconColor="text-primary"
       />
-      {/* Placeholder — API does not yet return per-user view count */}
-      <StatCard
-        icon="visibility"
-        label="Lượt xem"
-        value="—"
-        iconBg="bg-secondary/10"
-        iconColor="text-secondary"
-      />
-      {/* Placeholder — API does not yet return per-user download count */}
-      <StatCard
-        icon="download"
-        label="Lượt tải"
-        value="—"
-        iconBg="bg-tertiary/10"
-        iconColor="text-tertiary"
-      />
+
       {/* Placeholder — contribution level is a future gamification feature */}
       <StatCard
         icon="workspace_premium"

@@ -10,7 +10,7 @@ client = TestClient(app)
 
 
 def test_ingest_endpoint_returns_service_response(monkeypatch):
-    def fake_ingest(req):
+    def fake_ingest(req, ai_config=None, **kwargs):
         assert req.sourceId == 7
         assert req.rawContent == "Noi dung"
         return RagIngestResponse(
@@ -34,7 +34,7 @@ def test_ingest_endpoint_returns_service_response(monkeypatch):
 
 
 def test_ingest_endpoint_maps_value_error_to_400(monkeypatch):
-    def fake_ingest(req):
+    def fake_ingest(req, ai_config=None, **kwargs):
         raise ValueError("bad input")
 
     monkeypatch.setattr(ingest_service, "ingest", fake_ingest)
@@ -49,7 +49,7 @@ def test_ingest_endpoint_maps_value_error_to_400(monkeypatch):
 
 
 def test_ingest_endpoint_maps_unexpected_error_to_500(monkeypatch):
-    def fake_ingest(req):
+    def fake_ingest(req, ai_config=None, **kwargs):
         raise RuntimeError("qdrant down")
 
     monkeypatch.setattr(ingest_service, "ingest", fake_ingest)

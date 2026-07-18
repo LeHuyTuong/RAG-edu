@@ -45,6 +45,14 @@ export function DocumentPreview({ preview }: Props): React.JSX.Element {
       case "unsupported":
         return <UnsupportedPreview />;
 
+      case "error":
+        return (
+          <UnsupportedPreview
+            title="Không thể tải tài liệu"
+            message="Đã có lỗi khi tải tài liệu. Vui lòng thử lại sau."
+          />
+        );
+
       default:
         return <UnsupportedPreview />;
     }

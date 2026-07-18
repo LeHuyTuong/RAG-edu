@@ -24,7 +24,7 @@ export interface ShareLinkResponse {
 
 /**
  * Fetch a paginated list of public documents.
- * Supports optional subjectId / authorId / page / limit filters.
+ * Supports optional subjectId / page / limit filters.
  * The axios interceptor unwraps the response so the return value is
  * { documents, pagination } directly.
  */
@@ -37,9 +37,12 @@ export const fetchDocuments = async (
     params: {
       page: params.page ?? 1,
       limit: params.limit ?? 12,
+      ...(params.search ? { search: params.search } : {}),
+      ...(params.folderId ? { folderId: params.folderId } : {}),
       ...(params.subjectId ? { subjectId: params.subjectId } : {}),
       ...(params.authorId ? { authorId: params.authorId } : {}),
       ...(params.status ? { status: params.status } : {}),
+      ...(params.onlyMine !== undefined ? { onlyMine: params.onlyMine } : {}),
     },
   });
   // Double-cast required: the interceptor unwraps response.data.data at runtime,
@@ -118,6 +121,10 @@ export const updateDocument = async (
 export const approveDocument = async (id: string): Promise<DocumentDetail> => {
   const result = await apiClient.post(API_ENDPOINTS.DOCUMENTS.APPROVE(id));
   return result as unknown as DocumentDetail;
+};
+
+export const reclassifyDocument = async (id: string): Promise<void> => {
+  await apiClient.post(API_ENDPOINTS.DOCUMENTS.RECLASSIFY(id));
 };
 
 export const rejectDocument = async (

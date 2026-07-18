@@ -3,6 +3,7 @@ package com.example.historyrag.feature.document;
 import com.example.historyrag.shared.ResultPaginationDTO;
 import com.example.historyrag.feature.document.dto.CreateDocumentRequest;
 import com.example.historyrag.feature.document.dto.DocumentResponse;
+import com.example.historyrag.feature.document.dto.DocumentDownload;
 import com.example.historyrag.feature.document.dto.UpdateDocumentRequest;
 import org.springframework.data.domain.Pageable;
 
@@ -15,11 +16,15 @@ public interface DocumentService {
 
     DocumentResponse update(Long id, UpdateDocumentRequest request, Long ownerId);
 
-    DocumentResponse getById(Long id, Long currentUserId);
+    DocumentResponse getById(Long id, Long currentUserId, boolean canViewAnyDocument);
+
+    DocumentDownload prepareDownload(Long id, Long currentUserId, String currentUserEmail, boolean canViewAnyDocument);
 
     List<DocumentResponse> getMyDocuments(Long ownerId);
 
-    ResultPaginationDTO filter(String search, Long folderId, DocumentStatus status,
+    List<DocumentResponse> getPendingReviews();
+
+    ResultPaginationDTO filter(String search, Long folderId, Long subjectId, DocumentStatus status,
                                Long ownerId, Boolean onlyMine, Pageable pageable);
 
     void delete(Long id, Long ownerId);
@@ -30,9 +35,15 @@ public interface DocumentService {
 
     void reindex(Long id, Long ownerId);
 
-    void approve(Long id, Long userId);
+    DocumentResponse approve(Long id, Long userId);
 
-    void reject(Long id, String reason, Long userId);
+    void triggerIngest(Long id, Long userId);
+
+    void processAutoApprovedDocuments();
+
+    void reclassify(Long id, Long userId);
+
+    DocumentResponse reject(Long id, String reason, Long userId);
 
     long countAll();
 
@@ -44,7 +55,15 @@ public interface DocumentService {
 
     boolean existsByIdAndOwner(Long id, Long ownerId);
 
+    boolean allExistByIds(List<Long> ids);
+
     boolean allExistByIdsAndOwner(List<Long> ids, Long ownerId);
+
+    boolean allValidByIdsAndOwner(List<Long> ids, Long ownerId);
+
+    boolean allReadyForAiByIds(List<Long> ids);
+
+    boolean allReadyForAiByIdsAndOwner(List<Long> ids, Long ownerId);
 
     String enableShare(Long id, Long ownerId);
 

@@ -4,16 +4,23 @@ import com.example.historyrag.shared.ResultPaginationDTO;
 import com.example.historyrag.exception.InvalidRequestException;
 import com.example.historyrag.exception.ResourceNotFoundException;
 import com.example.historyrag.feature.document.dto.CreateDocumentRequest;
+import com.example.historyrag.feature.document.dto.DocumentDownload;
 import com.example.historyrag.feature.document.dto.DocumentResponse;
 import com.example.historyrag.feature.document.dto.SubjectDto;
 import com.example.historyrag.feature.document.dto.UpdateDocumentRequest;
 import com.example.historyrag.feature.document.event.DocumentIngestRequested;
+import com.example.historyrag.feature.document.chunk.DocumentChunk;
+import com.example.historyrag.feature.document.chunk.DocumentChunkRepository;
 import com.example.historyrag.feature.folder.FolderService;
 import com.example.historyrag.feature.subject.SubjectService;
 import com.example.historyrag.feature.user.UserService;
 import com.example.historyrag.feature.user.dto.AccountResponse;
 import com.example.historyrag.infrastructure.file.FileStorageService;
+import com.example.historyrag.infrastructure.file.PdfWatermarkService;
 import com.example.historyrag.infrastructure.webclient.RagClientService;
+import com.example.historyrag.infrastructure.webclient.dto.RagIngestMetadata;
+import com.example.historyrag.infrastructure.webclient.dto.RagIngestRequest;
+import com.example.historyrag.infrastructure.webclient.dto.RagIngestResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -24,6 +31,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -42,6 +51,10 @@ public class DocumentServiceImpl implements DocumentService {
     private final RagClientService ragClientService;
     private final FileStorageService fileStorageService;
     private final ApplicationEventPublisher eventPublisher;
+    private final DocumentChunkRepository documentChunkRepository;
+    private final PdfWatermarkService pdfWatermarkService;
+    private final com.example.historyrag.feature.billing.BillingService billingService;
+    private final ContentHashLockRegistry contentHashLockRegistry;
 
     @Override
     @Transactional
@@ -52,9 +65,12 @@ public class DocumentServiceImpl implements DocumentService {
             }
         }
 
+        billingService.consumeDocumentQuota(ownerId, "Tải lên tài liệu: " + request.title(), request.sizeInBytes());
+
         Document document = new Document();
         document.setTitle(request.title());
         document.setDescription(request.description());
+        document.setOriginalAuthor(request.originalAuthor());
         document.setFileUrl(request.fileUrl());
         document.setPublicId(request.publicId());
         document.setSizeInBytes(request.sizeInBytes());
@@ -93,6 +109,9 @@ public class DocumentServiceImpl implements DocumentService {
         if (request.description() != null) {
             doc.setDescription(request.description());
         }
+        if (request.originalAuthor() != null) {
+            doc.setOriginalAuthor(request.originalAuthor());
+        }
         if (request.folderId() != null) {
             if (!folderService.existsByIdAndOwner(request.folderId(), ownerId)) {
                 throw new ResourceNotFoundException("Folder", "id", request.folderId());
@@ -113,12 +132,16 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     @Transactional(readOnly = true)
-    public DocumentResponse getById(Long id, Long currentUserId) {
+    public DocumentResponse getById(Long id, Long currentUserId, boolean canViewAnyDocument) {
         Document doc = documentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
 
-        // Only owner or public READY documents are visible
-        if (!doc.getOwnerId().equals(currentUserId)) {
+        if (canViewAnyDocument) {
+            if (doc.getStatus() == DocumentStatus.SOFT_DELETED) {
+                throw new ResourceNotFoundException("Document", "id", id);
+            }
+        } else if (!doc.getOwnerId().equals(currentUserId)) {
+            // Only owner or public READY documents are visible to normal users.
             if (!Boolean.TRUE.equals(doc.getIsPublic()) || doc.getStatus() != DocumentStatus.READY) {
                 throw new ResourceNotFoundException("Document", "id", id);
             }
@@ -127,6 +150,43 @@ public class DocumentServiceImpl implements DocumentService {
         AccountResponse author = userService.findById(doc.getOwnerId()).orElse(null);
         SubjectDto subject = buildSubjectDto(doc.getSubjectId());
         return DocumentResponse.fromEntity(doc, toUserEntity(author), subject);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public DocumentDownload prepareDownload(Long id, Long currentUserId, String currentUserEmail, boolean canViewAnyDocument) {
+        Document doc = documentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
+
+        boolean isOwner = doc.getOwnerId().equals(currentUserId);
+        if (!canViewAnyDocument && !isOwner) {
+            if (!Boolean.TRUE.equals(doc.getIsPublic()) || doc.getStatus() != DocumentStatus.READY) {
+                throw new ResourceNotFoundException("Document", "id", id);
+            }
+        }
+
+        byte[] content;
+        try {
+            content = Files.readAllBytes(Path.of(resolveInternalFilePath(doc)));
+        } catch (Exception e) {
+            throw new InvalidRequestException("Không thể đọc file tài liệu: " + e.getMessage());
+        }
+
+        String format = normalizeFormat(doc.getFormat(), doc.getPublicId());
+        boolean shouldWatermark = !isOwner && !canViewAnyDocument && Boolean.TRUE.equals(doc.getIsPublic()) && "pdf".equals(format);
+        if (shouldWatermark) {
+            String ownerName = userService.findById(doc.getOwnerId())
+                    .map(AccountResponse::name)
+                    .orElse("unknown");
+            content = pdfWatermarkService.addPublicDownloadWatermark(
+                    content, currentUserEmail, ownerName, doc.getOriginalAuthor(), Instant.now());
+        }
+
+        return new DocumentDownload(
+                content,
+                buildDownloadFilename(doc, shouldWatermark, format),
+                contentType(format),
+                shouldWatermark);
     }
 
     @Override
@@ -145,10 +205,22 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     @Transactional(readOnly = true)
-    public ResultPaginationDTO filter(String search, Long folderId, DocumentStatus status,
+    public List<DocumentResponse> getPendingReviews() {
+        return documentRepository.findByStatus(DocumentStatus.PENDING_REVIEW).stream()
+                .map(doc -> {
+                    AccountResponse author = userService.findById(doc.getOwnerId()).orElse(null);
+                    SubjectDto subject = buildSubjectDto(doc.getSubjectId());
+                    return DocumentResponse.fromEntity(doc, toUserEntity(author), subject);
+                })
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ResultPaginationDTO filter(String search, Long folderId, Long subjectId, DocumentStatus status,
                                        Long ownerId, Boolean onlyMine, Pageable pageable) {
         PredicateSpecification<Document> spec = DocumentSpecification.build(
-                search, folderId, status, Boolean.TRUE.equals(onlyMine) ? ownerId : null);
+                search, folderId, subjectId, status, Boolean.TRUE.equals(onlyMine) ? ownerId : null);
 
         Page<DocumentResponse> pageResult = documentRepository.findBy(spec, q -> q.page(pageable))
                 .map(doc -> {
@@ -191,9 +263,8 @@ public class DocumentServiceImpl implements DocumentService {
         }
 
         if (doc.getStatus() != DocumentStatus.FAILED
-                && doc.getStatus() != DocumentStatus.READY
-                && doc.getStatus() != DocumentStatus.REJECTED) {
-            throw new InvalidRequestException("Chỉ có thể reindex tài liệu ở trạng thái READY, FAILED hoặc REJECTED");
+                && doc.getStatus() != DocumentStatus.READY) {
+            throw new InvalidRequestException("Chỉ có thể reindex tài liệu ở trạng thái READY hoặc FAILED");
         }
 
         doc.setStatus(DocumentStatus.REINDEXING);
@@ -254,28 +325,199 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     @Transactional
-    public void approve(Long id, Long userId) {
+    public DocumentResponse approve(Long id, Long userId) {
         Document doc = documentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
-        doc.setStatus(DocumentStatus.READY);
-        doc.setIsPublic(true);
-        doc.setReviewedById(userId);
-        doc.setReviewedAt(Instant.now());
-        documentRepository.save(doc);
-        log.info("Document {} approved by userId={}", id, userId);
+
+        if (doc.getStatus() == DocumentStatus.REJECTED) {
+            throw new InvalidRequestException("Tài liệu đã bị từ chối, không thể tự duyệt lại");
+        }
+
+        // Manual approval = quyết định kiểm duyệt của admin. Theo UML state machine,
+        // duyệt tài liệu chưa index đưa nó vào INDEXING (không set READY lạc quan);
+        // DocumentIngestListener sẽ ingest rồi chuyển INDEXING -> READY (thành công)
+        // hoặc INDEXING -> FAILED (index lỗi). reviewedAt/reviewedById ghi lại việc
+        // đã qua kiểm duyệt, nên ca "đã duyệt nhưng index lỗi" = FAILED + reviewedAt.
+        if (doc.getStatus() == DocumentStatus.PENDING_REVIEW || doc.getStatus() == DocumentStatus.FAILED) {
+            doc.setStatus(DocumentStatus.INDEXING);
+            doc.setIsPublic(true);
+            doc.setReviewedById(userId);
+            doc.setReviewedAt(Instant.now());
+            documentRepository.save(doc);
+            eventPublisher.publishEvent(new DocumentIngestRequested(doc.getId()));
+            log.info("Document {} manually approved by userId={}, status -> INDEXING", id, userId);
+        } else if (doc.getStatus() == DocumentStatus.READY) {
+            // Đã index sẵn — chỉ cập nhật quyết định publish, không ingest lại.
+            doc.setIsPublic(true);
+            doc.setReviewedById(userId);
+            doc.setReviewedAt(Instant.now());
+            documentRepository.save(doc);
+            log.info("Document {} re-approved by userId={} (already READY)", id, userId);
+        } else {
+            throw new InvalidRequestException("Chỉ có thể duyệt tài liệu ở trạng thái PENDING_REVIEW, FAILED hoặc READY");
+        }
+
+        Document updated = documentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
+        AccountResponse author = userService.findById(updated.getOwnerId()).orElse(null);
+        SubjectDto subject = buildSubjectDto(updated.getSubjectId());
+        return DocumentResponse.fromEntity(updated, toUserEntity(author), subject);
     }
 
     @Override
     @Transactional
-    public void reject(Long id, String reason, Long userId) {
+    public void reclassify(Long id, Long userId) {
+        Document doc = documentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
+
+        if (doc.getStatus() != DocumentStatus.FAILED) {
+            throw new InvalidRequestException("Chỉ có thể reclassify tài liệu ở trạng thái FAILED");
+        }
+
+        // Reset AI review fields — listener sẽ tự set status REVIEWING/INDEXING
+        doc.setAiConfidence(null);
+        doc.setAiWarningLevel(null);
+        doc.setAiReviewStatus(null);
+        doc.setReviewReason(null);
+        documentRepository.save(doc);
+        log.info("Document {} reclassify triggered by userId={}", id, userId);
+
+        // Publish event để DocumentIngestListener chạy lại toàn bộ flow: classify → ingest
+        eventPublisher.publishEvent(new DocumentIngestRequested(doc.getId()));
+    }
+
+    @Override
+    @Transactional
+    public void triggerIngest(Long id, Long userId) {
+        Document doc = documentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
+
+        doc.setReviewedById(userId);
+        doc.setReviewedAt(Instant.now());
+        doc.setIsPublic(true);
+        log.info("Document {} triggerIngest by admin userId={}", id, userId);
+
+        runIngestPipeline(doc);
+    }
+
+    @Override
+    @Transactional
+    public void processAutoApprovedDocuments() {
+        List<Document> docs = documentRepository.findByStatusAndAiReviewStatus(
+                DocumentStatus.REVIEWING, "AUTO_APPROVED");
+
+        if (docs.isEmpty()) {
+            return;
+        }
+
+        log.info("AutoApprovalScheduler: processing {} AI auto-approved document(s)", docs.size());
+        for (Document doc : docs) {
+            try {
+                runIngestPipeline(doc);
+            } catch (Exception e) {
+                log.error("Document {} failed during AI auto-approve ingest: {}", doc.getId(), e.getMessage(), e);
+                doc.setStatus(DocumentStatus.FAILED);
+                documentRepository.save(doc);
+            }
+        }
+    }
+
+    /**
+     * Gọi rag-service để ingest document, cập nhật status INDEXING → READY/FAILED.
+     * Dùng chung cho admin duyệt thủ công (triggerIngest) và AI auto-approve (processAutoApprovedDocuments).
+     */
+    private void runIngestPipeline(Document doc) {
+        Long id = doc.getId();
+        doc.setStatus(DocumentStatus.INDEXING);
+        documentRepository.save(doc);
+        log.info("Document {} status set to INDEXING", id);
+
+        RagIngestMetadata metadata = new RagIngestMetadata(
+                null, null, null, java.util.List.of(),
+                java.util.List.of(), java.util.List.of(),
+                doc.getFolderId(), doc.getOwnerId()
+        );
+
+        RagIngestRequest ingestRequest = new RagIngestRequest(
+                id,
+                "DOCUMENT",
+                doc.getTitle(),
+                null,
+                id,
+                resolveInternalFilePath(doc),
+                null,
+                null,
+                metadata,
+                null
+        );
+
+        try {
+            RagIngestResponse response = ragClientService.ingest(ingestRequest, null);
+
+            if ("COMPLETED".equals(response.status())) {
+                saveIngestedChunks(doc, response);
+                doc.setChunkCount(response.chunks() != null ? response.chunks().size() : 0);
+                doc.setContentHash(response.documentContentHash());
+
+                String contentHash = response.documentContentHash();
+                if (contentHash != null && !contentHash.isBlank()) {
+                    // Khóa theo contentHash để 2 ingest đồng thời cùng nội dung không thể cùng
+                    // lúc SELECT "không thấy nhau" rồi cùng lọt qua bước gắn cờ DANGER.
+                    Object lock = contentHashLockRegistry.acquire(contentHash);
+                    synchronized (lock) {
+                        Document duplicate = documentRepository
+                                .findFirstByContentHashAndOwnerIdNotAndStatusNot(
+                                        contentHash, doc.getOwnerId(), DocumentStatus.SOFT_DELETED)
+                                .orElse(null);
+                        if (duplicate != null) {
+                            doc.setStatus(DocumentStatus.PENDING_REVIEW);
+                            doc.setAiWarningLevel("DANGER");
+                            doc.setReviewReason("Trùng nội dung với tài liệu #" + duplicate.getId()
+                                    + " của người dùng khác — nghi ngờ tải lại tài liệu công khai");
+                            doc.setAiReviewStatus("PENDING_ADMIN");
+                            documentRepository.save(doc);
+                            log.warn("Document {} content-hash collides with doc #{} (owner {}), set PENDING_REVIEW",
+                                    id, duplicate.getId(), duplicate.getOwnerId());
+                            return;
+                        }
+                        // Lưu ngay trong lúc giữ lock để thread khác (đang chờ) sẽ thấy bản ghi
+                        // này khi tới lượt SELECT của nó.
+                        documentRepository.save(doc);
+                    }
+                    contentHashLockRegistry.release(contentHash, lock);
+                }
+
+                doc.setStatus(DocumentStatus.READY);
+                documentRepository.save(doc);
+                log.info("Document {} ingestion COMPLETED, chunks={}", id, doc.getChunkCount());
+            } else {
+                doc.setStatus(DocumentStatus.FAILED);
+                documentRepository.save(doc);
+                log.warn("Document {} ingestion FAILED: {}", id, response.status());
+            }
+        } catch (Exception e) {
+            log.error("Document {} ingestion error: {}", id, e.getMessage(), e);
+            doc.setStatus(DocumentStatus.FAILED);
+            documentRepository.save(doc);
+        }
+    }
+
+    @Override
+    @Transactional
+    public DocumentResponse reject(Long id, String reason, Long userId) {
         Document doc = documentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
         doc.setStatus(DocumentStatus.REJECTED);
+        doc.setIsPublic(false);
         doc.setReviewReason(reason);
         doc.setReviewedById(userId);
         doc.setReviewedAt(Instant.now());
-        documentRepository.save(doc);
+        Document saved = documentRepository.save(doc);
         log.info("Document {} rejected by userId={}, reason={}", id, userId, reason);
+
+        AccountResponse author = userService.findById(saved.getOwnerId()).orElse(null);
+        SubjectDto subject = buildSubjectDto(saved.getSubjectId());
+        return DocumentResponse.fromEntity(saved, toUserEntity(author), subject);
     }
 
     @Override
@@ -362,6 +604,18 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     @Transactional(readOnly = true)
+    public boolean allExistByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return true;
+        }
+        List<Long> distinctIds = ids.stream().distinct().toList();
+        long existingCount = documentRepository.countByIdInAndStatusNot(
+                distinctIds, DocumentStatus.SOFT_DELETED);
+        return existingCount == distinctIds.size();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public boolean allExistByIdsAndOwner(List<Long> ids, Long ownerId) {
         if (ids == null || ids.isEmpty()) {
             return true;
@@ -370,6 +624,39 @@ public class DocumentServiceImpl implements DocumentService {
         long ownedCount = documentRepository.countByIdInAndOwnerIdAndStatusNot(
                 distinctIds, ownerId, DocumentStatus.SOFT_DELETED);
         return ownedCount == distinctIds.size();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean allValidByIdsAndOwner(List<Long> ids, Long ownerId) {
+        if (ids == null || ids.isEmpty()) {
+            return true;
+        }
+        List<Long> distinctIds = ids.stream().distinct().toList();
+        long validCount = documentRepository.countValidByIdInAndOwnerId(distinctIds, ownerId);
+        return validCount == distinctIds.size();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean allReadyForAiByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return true;
+        }
+        List<Long> distinctIds = ids.stream().distinct().toList();
+        long readyCount = documentRepository.countReadyForAiByIdIn(distinctIds);
+        return readyCount == distinctIds.size();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean allReadyForAiByIdsAndOwner(List<Long> ids, Long ownerId) {
+        if (ids == null || ids.isEmpty()) {
+            return true;
+        }
+        List<Long> distinctIds = ids.stream().distinct().toList();
+        long readyCount = documentRepository.countReadyForAiByIdInAndOwnerId(distinctIds, ownerId);
+        return readyCount == distinctIds.size();
     }
 
     // --- helpers ---
@@ -388,5 +675,69 @@ public class DocumentServiceImpl implements DocumentService {
         user.setFullName(dto.name());
         user.setAvatarUrl(dto.avatarUrl());
         return user;
+    }
+
+    private String resolveInternalFilePath(Document doc) {
+        return fileStorageService.resolveInternalPath(doc.getPublicId());
+    }
+
+    private String normalizeFormat(String format, String publicId) {
+        if (format != null && !format.isBlank()) {
+            return format.trim().toLowerCase().replace(".", "");
+        }
+        if (publicId != null && publicId.contains(".")) {
+            return publicId.substring(publicId.lastIndexOf('.') + 1).toLowerCase();
+        }
+        return "bin";
+    }
+
+    private String contentType(String format) {
+        return switch (format) {
+            case "pdf" -> "application/pdf";
+            case "txt", "md" -> "text/plain";
+            case "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            default -> "application/octet-stream";
+        };
+    }
+
+    private String buildDownloadFilename(Document doc, boolean watermarked, String format) {
+        String title = doc.getTitle() == null || doc.getTitle().isBlank() ? "document" : doc.getTitle();
+        String slug = title
+                .trim()
+                .replaceAll("\\p{M}", "")
+                .replaceAll("[^a-zA-Z0-9._-]+", "-")
+                .replaceAll("^-+|-+$", "");
+        if (slug.isBlank()) {
+            slug = "document";
+        }
+        String suffix = watermarked ? "-public-watermarked" : "";
+        if (format == null || format.isBlank() || "bin".equals(format)) {
+            return slug + suffix;
+        }
+        if (slug.toLowerCase().endsWith("." + format)) {
+            slug = slug.substring(0, slug.length() - format.length() - 1);
+        }
+        return slug + suffix + "." + format;
+    }
+
+    private void saveIngestedChunks(Document doc, RagIngestResponse response) {
+        documentChunkRepository.deleteByDocumentId(doc.getId());
+        if (response.chunks() == null || response.chunks().isEmpty()) {
+            return;
+        }
+
+        List<DocumentChunk> chunks = response.chunks().stream()
+                .map(chunkResponse -> {
+                    DocumentChunk chunk = new DocumentChunk();
+                    chunk.setDocument(doc);
+                    chunk.setSourceId(response.sourceId());
+                    chunk.setSourceType("DOCUMENT");
+                    chunk.setChunkIndex(chunkResponse.chunkIndex());
+                    chunk.setQdrantPointId(chunkResponse.qdrantPointId());
+                    chunk.setContentHash(chunkResponse.contentHash());
+                    return chunk;
+                })
+                .toList();
+        documentChunkRepository.saveAll(chunks);
     }
 }

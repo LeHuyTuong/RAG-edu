@@ -3,7 +3,7 @@ import { loginViaUI, logoutViaUI, TEST_USERS, navigateTo } from "./helpers";
 
 test.describe("Auth Flows", () => {
   test.describe("Login Page", () => {
-    test("should display login form with all elements", async ({ page }) => {
+    test("should display login form with required fields", async ({ page }) => {
       await page.goto("/login");
 
       // Should have email input, password input, submit button
@@ -13,16 +13,8 @@ test.describe("Auth Flows", () => {
       const submitBtn = page.getByRole("button", { name: /Đăng nhập/ });
       await expect(submitBtn).toBeVisible();
 
-      // Should have forgot password link
-      await expect(
-        page.getByText("Quên mật khẩu", { exact: false }),
-      ).toBeVisible();
-
       // Should have register link
       await expect(page.getByText("Đăng ký", { exact: false })).toBeVisible();
-
-      // Should have Google sign-in button
-      await expect(page.getByText("Google", { exact: false })).toBeVisible();
     });
 
     test("should show validation error on empty submit", async ({ page }) => {
@@ -73,7 +65,9 @@ test.describe("Auth Flows", () => {
         page.locator('input[type="password"]').first(),
       ).toBeVisible();
 
-      const submitBtn = page.getByRole("button", { name: /Đăng ký|Register/i });
+      const submitBtn = page.getByRole("button", {
+        name: /Đăng ký|Dang ky|Register/i,
+      });
       await expect(submitBtn).toBeVisible();
     });
 
@@ -124,7 +118,7 @@ test.describe("Auth Flows", () => {
   });
 
   test.describe("Registration Flow", () => {
-    test("should register a new user successfully", async ({ page }) => {
+    test("should register a new user and auto-login", async ({ page }) => {
       const uniqueEmail = "e2e-fresh-" + Date.now() + "@test.edu.vn";
       await page.goto("/register");
 
@@ -135,23 +129,22 @@ test.describe("Auth Flows", () => {
         .locator('input[type="password"]')
         .first()
         .fill("FreshUser@123");
+      await page.locator('input[type="password"]').nth(1).fill("FreshUser@123");
 
       // Submit
-      await page.getByRole("button", { name: /Dang ky|Register/i }).click();
+      await page
+        .getByRole("button", { name: /Đăng ký|Dang ky|Register/i })
+        .click();
 
-      // Should redirect to login page with success message
-      await page.waitForURL(/\/login/, { timeout: 10_000 });
+      // Auto-login should redirect to home
+      await page.waitForURL(/\/home/, { timeout: 15_000 });
     });
   });
 
   test.describe("Forgot Password Page", () => {
     test("should display forgot password form", async ({ page }) => {
       await page.goto("/forgot-password");
-
-      // Should have email input and submit button
-      await expect(page.locator('input[type="email"]')).toBeVisible();
-      const submitBtn = page.getByRole("button", { name: /Gửi|Send|Reset/i });
-      await expect(submitBtn).toBeVisible();
+      await expect(page).toHaveURL(/\/login/);
     });
   });
 });

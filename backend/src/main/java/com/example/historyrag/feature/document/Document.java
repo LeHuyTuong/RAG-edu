@@ -30,6 +30,10 @@ public class Document extends BaseEntity {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    @Size(max = 255)
+    @Column(name = "original_author", length = 255)
+    private String originalAuthor;
+
     @Column(name = "file_url", length = 2000)
     private String fileUrl;
 
@@ -65,6 +69,9 @@ public class Document extends BaseEntity {
     @Column(name = "chunk_count")
     private Integer chunkCount;
 
+    @Column(name = "content_hash", length = 64)
+    private String contentHash;
+
     @Column(name = "uploaded_at", updatable = false)
     private Instant uploadedAt;
 
@@ -79,6 +86,15 @@ public class Document extends BaseEntity {
 
     @Column(name = "reviewed_at")
     private Instant reviewedAt;
+
+    @Column(name = "ai_confidence")
+    private Double aiConfidence;
+
+    @Column(name = "ai_warning_level", length = 10)
+    private String aiWarningLevel;  // "NONE" | "WARNING" | "DANGER"
+
+    @Column(name = "ai_review_status", length = 20)
+    private String aiReviewStatus;  // "AUTO_APPROVED" | "PENDING_ADMIN" | "REJECTED_BY_AI"
 
     @Column(name = "share_token", unique = true, length = 36)
     private String shareToken;

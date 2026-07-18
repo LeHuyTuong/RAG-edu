@@ -9,6 +9,7 @@ import com.example.historyrag.infrastructure.webclient.dto.RagIngestMetadata;
 import com.example.historyrag.infrastructure.webclient.dto.RagIngestResponse;
 import com.example.historyrag.infrastructure.webclient.dto.RagRetrieveRequest;
 import com.example.historyrag.infrastructure.webclient.dto.RagRetrieveResponse;
+import com.example.historyrag.feature.billing.BillingService;
 import com.example.historyrag.feature.document.DocumentService;
 import com.example.historyrag.feature.folder.FolderService;
 import com.example.historyrag.exception.GlobalExceptionHandler;
@@ -52,6 +53,8 @@ class RagControllerTest {
     private DocumentService documentService;
     @Mock
     private FolderService folderService;
+    @Mock
+    private BillingService billingService;
 
     private MockMvc mockMvc;
 
@@ -60,7 +63,7 @@ class RagControllerTest {
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
         mockMvc = MockMvcBuilders
-                .standaloneSetup(new RagController(ragService, documentService, folderService))
+                .standaloneSetup(new RagController(ragService, documentService, folderService, billingService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setValidator(validator)
                 .setCustomArgumentResolvers(new JwtArgumentResolver())
@@ -91,6 +94,56 @@ class RagControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.answer").value("Answer"))
                 .andExpect(jsonPath("$.data.usedVector").value(true));
+    }
+
+    @Test
+    void chatAllowsAdminToUseSelectedDocumentOwnedByAnotherUser() throws Exception {
+        RagChatRequest request = new RagChatRequest(
+                "Tai lieu nay co phu hop de duyet khong?",
+                6,
+                false,
+                List.of(150004L),
+                List.of(),
+                0.2,
+                null,
+                null);
+        RagChatRequest securedRequest = new RagChatRequest(
+                "Tai lieu nay co phu hop de duyet khong?",
+                6,
+                false,
+                List.of(150004L),
+                List.of(),
+                0.2,
+                null,
+                null);
+        when(documentService.allReadyForAiByIds(List.of(150004L))).thenReturn(true);
+        when(ragService.chat(eq(securedRequest), eq(null)))
+                .thenReturn(new RagChatResponse("Co the duyet", List.of(), true, false));
+
+        mockMvc.perform(post("/api/v1/rag/chat")
+                        .header("x-test-account-type", "ADMIN")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.answer").value("Co the duyet"));
+    }
+
+    @Test
+    void chatRejectsSelectedDocumentOwnedByAnotherUserForNormalUser() throws Exception {
+        RagChatRequest request = new RagChatRequest(
+                "Tai lieu nay co phu hop de duyet khong?",
+                6,
+                false,
+                List.of(150004L),
+                List.of(),
+                0.2,
+                null,
+                null);
+        mockMvc.perform(post("/api/v1/rag/chat")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Document not found with id: [150004]"));
     }
 
     @Test
@@ -137,7 +190,7 @@ class RagControllerTest {
         when(documentService.existsByIdAndOwner(7L, 10L))
                 .thenReturn(true);
         when(ragService.ingest(eq(securedRequest), eq(null)))
-                .thenReturn(new RagIngestResponse(7L, "COMPLETED", "history", "embed", List.of()));
+                .thenReturn(new RagIngestResponse(7L, "COMPLETED", "history", "embed", "hash", List.of()));
 
         mockMvc.perform(post("/api/v1/rag/ingest")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -207,7 +260,12 @@ class RagControllerTest {
                     Instant.now(),
                     Instant.now().plusSeconds(60),
                     Map.of("alg", "HS384"),
-                    Map.of("sub", "member@example.com", "userId", 10L));
+                    Map.of(
+                            "sub", "member@example.com",
+                            "userId", 10L,
+                            "accountType", webRequest.getHeader("x-test-account-type") != null
+                                    ? webRequest.getHeader("x-test-account-type")
+                                    : "STUDENT"));
         }
     }
 }

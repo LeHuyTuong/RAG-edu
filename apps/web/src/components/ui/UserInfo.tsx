@@ -18,11 +18,17 @@ export const UserInfo: FC = () => {
     return (first + last).toUpperCase();
   })();
 
-  return (
-    <Link
-      href={ROUTE_PATHS.PROTECTED_ROUTES.PROFILE}
-      className="group flex items-center gap-3 rounded-2xl border border-outline-variant bg-surface-container-high/80 p-3 backdrop-blur-[15px] transition-colors hover:bg-surface-container-high"
-    >
+  const isAdmin = user?.role === "admin";
+  const isModerator = user?.role === "moderator";
+
+  const href = isAdmin
+    ? ROUTE_PATHS.ADMIN_ROUTES.SETTINGS
+    : isModerator
+      ? ROUTE_PATHS.MODERATOR_ROUTES.SETTINGS
+      : ROUTE_PATHS.PROTECTED_ROUTES.PROFILE;
+
+  const content = (
+    <>
       <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 ring-2 ring-primary/20">
         {user?.avatar && !isDefaultAvatar(user.avatar) ? (
           <img
@@ -47,6 +53,15 @@ export const UserInfo: FC = () => {
       <span className="material-symbols-outlined shrink-0 text-[18px] text-on-surface-variant transition-colors group-hover:text-primary">
         chevron_right
       </span>
+    </>
+  );
+
+  return (
+    <Link
+      href={href}
+      className="group flex items-center gap-3 rounded-2xl border border-outline-variant bg-surface-container-low p-3 transition-colors hover:bg-surface-container-high"
+    >
+      {content}
     </Link>
   );
 };

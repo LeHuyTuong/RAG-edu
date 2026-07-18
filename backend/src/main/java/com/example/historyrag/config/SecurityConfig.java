@@ -39,13 +39,15 @@ public class SecurityConfig {
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/api/v1/auth/login",
+            "/api/v1/auth/signin",
             "/api/v1/auth/register",
+            "/api/v1/auth/signup",
             "/api/v1/auth/refresh",
             "/api/v1/auth/logout",
-            "/uploads/**",
             "/actuator/health",
             "/api/v1/rag/health",
-            "/api/v1/documents/share/**"
+            "/api/v1/documents/share/**",
+            "/api/v1/folders/shared/**"
     };
 
     @Bean
@@ -63,7 +65,11 @@ public class SecurityConfig {
 
         configuration.setAllowedHeaders(
                 Arrays.asList("Authorization", "Content-Type", "Cache-Control", "traceparent", "tracestate"));
-        configuration.setExposedHeaders(Arrays.asList("traceparent", "tracestate"));
+        configuration.setExposedHeaders(Arrays.asList(
+                "traceparent",
+                "tracestate",
+                "Content-Disposition",
+                "X-RAG-Edu-Watermarked"));
 
         configuration.setAllowCredentials(true);
 
@@ -81,6 +87,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(WHITELIST).permitAll()
+                        .requestMatchers("/uploads/**").denyAll()
                         .anyRequest().authenticated())
 
                 .oauth2ResourceServer(oauth2 -> oauth2

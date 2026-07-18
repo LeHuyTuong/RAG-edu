@@ -10,6 +10,7 @@ public record DocumentResponse(
         Long id,
         String title,
         String description,
+        String originalAuthor,
         String fileUrl,
         String publicId,
         Long sizeInBytes,
@@ -25,6 +26,9 @@ public record DocumentResponse(
         String rejectionReason,
         Long reviewedById,
         Instant reviewedAt,
+        Double aiConfidence,
+        String aiWarningLevel,
+        String aiReviewStatus,
         AuthorDto author,
         SubjectDto subject,
         Instant uploadedAt,
@@ -39,7 +43,7 @@ public record DocumentResponse(
             case READY -> "ACTIVE";
             case REJECTED -> "REJECTED";
             case SOFT_DELETED -> "DELETED";
-            default -> "PENDING"; // UPLOADING, REVIEWING, INDEXING, REINDEXING, FAILED
+            default -> "PENDING"; // UPLOADING, REVIEWING, PENDING_REVIEW, INDEXING, REINDEXING, FAILED
         };
     }
 
@@ -48,6 +52,7 @@ public record DocumentResponse(
                 doc.getId(),
                 doc.getTitle(),
                 doc.getDescription(),
+                doc.getOriginalAuthor(),
                 doc.getFileUrl(),
                 doc.getPublicId(),
                 doc.getSizeInBytes(),
@@ -63,6 +68,9 @@ public record DocumentResponse(
                 doc.getReviewReason(),
                 doc.getReviewedById(),
                 doc.getReviewedAt(),
+                doc.getAiConfidence(),
+                doc.getAiWarningLevel(),
+                doc.getAiReviewStatus(),
                 AuthorDto.fromUser(author),
                 subject,
                 doc.getUploadedAt(),

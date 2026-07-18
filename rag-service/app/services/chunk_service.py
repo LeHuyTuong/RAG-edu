@@ -16,18 +16,34 @@ import hashlib
 from dataclasses import dataclass
 
 from app.services.extract_service import PageText
+from typing import Optional
 
 
 @dataclass
 class ChunkData:
     chunk_index: int
     text: str
-    page_number: int | None
+    page_number: Optional[int]
     content_hash: str
 
 
 def chunk(pages: list[PageText], chunk_size: int, chunk_overlap: int) -> list[ChunkData]:
     chunks: list[ChunkData] = []
+    # Nếu chunk_size=0 → mỗi trang là 1 chunk
+    if chunk_size <= 0:
+        for i, page in enumerate(pages):
+            text = page.text.strip()
+            if text:
+                content_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+                chunks.append(ChunkData(
+                    chunk_index=i,
+                    text=text,
+                    page_number=page.page_number,
+                    content_hash=content_hash,
+                ))
+        return chunks
+
+    # Chia nhỏ từng trang theo chunk_size
     global_index = 0
     for page in pages:
         page_chunks = _chunk_text(
@@ -44,7 +60,7 @@ def chunk(pages: list[PageText], chunk_size: int, chunk_overlap: int) -> list[Ch
 
 def _chunk_text(
     text: str,
-    page_number: int | None,
+    page_number: Optional[int],
     chunk_size: int,
     chunk_overlap: int,
     start_index: int,

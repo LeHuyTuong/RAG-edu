@@ -34,9 +34,33 @@ class Settings(BaseSettings):
 
     # Google AI Studio — dùng cho embedding (Gemini)
     google_api_key: str = Field(validation_alias=AliasChoices("GOOGLE_API_KEY", "LLM_API_KEY"))
+    # Nhiều key xoay vòng để né quota 429 (cùng model Gemini → cùng không gian
+    # vector). Định dạng .env: GOOGLE_API_KEYS=key1,key2,... — nếu trống thì
+    # dùng lại google_api_key đơn.
+    google_api_keys_raw: str = Field(default="", validation_alias=AliasChoices("GOOGLE_API_KEYS"))
     embedding_model: str = "gemini-embedding-001"
     # embedding_dim phải khớp với collection đã tạo trong Qdrant — đổi model thì phải tạo lại collection
     embedding_dim: int = 768
+
+    @property
+    def google_api_keys(self) -> list[str]:
+        """Danh sách key Gemini để xoay vòng. Ưu tiên GOOGLE_API_KEYS, luôn gồm
+        cả google_api_key; dedupe giữ thứ tự."""
+        keys = [k.strip() for k in self.google_api_keys_raw.split(",") if k.strip()]
+        if self.google_api_key and self.google_api_key not in keys:
+            keys.insert(0, self.google_api_key)
+        # dedupe giữ thứ tự
+        seen: set[str] = set()
+        result: list[str] = []
+        for k in keys:
+            if k not in seen:
+                seen.add(k)
+                result.append(k)
+        return result
+
+    # Local embedding fallback — dùng khi Gemini API hết quota hoặc lỗi
+    embedding_provider: str = "gemini"  # "gemini" | "local"
+    local_embedding_model: str = "keepitreal/vietnamese-sbert"
 
     # LLM provider — "google" (Gemma) or "cerebras" (OpenAI-compatible)
     llm_provider: str = "cerebras"
@@ -46,6 +70,16 @@ class Settings(BaseSettings):
     cerebras_api_key: str = ""
     cerebras_model: str = "gpt-oss-120b"
     cerebras_base_url: str = "https://api.cerebras.ai/v1"
+
+    # OpenRouter — fallback khi Cerebras lỗi
+    openrouter_api_key: str = ""
+    openrouter_model: str = "google/gemini-2.5-flash"
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+
+    # Groq — fallback cuối khi cả Cerebras và OpenRouter đều lỗi/hết quota
+    groq_api_key: str = ""
+    groq_model: str = "llama-3.3-70b-versatile"
+    groq_base_url: str = "https://api.groq.com/openai/v1"
 
     # Giá trị mặc định cho pipeline — request có thể override
     default_chunk_size: int = 800
