@@ -60,3 +60,5 @@ stich/
 /AGENTS.md
 
 uploads/
+**/__pycache__/
+*.pyc
