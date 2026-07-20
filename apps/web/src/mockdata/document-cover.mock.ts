@@ -69,8 +69,8 @@ export const HISTORY_PERIOD_THEME_MAP: Record<
   "địa lý": {
     icon: "public",
     gradient:
-      "from-tertiary-container/40 via-surface-container-high/50 to-primary-container/40",
-    iconBg: "bg-tertiary-container text-on-tertiary-container",
+      "from-primary-container/40 via-surface-container-high/50 to-tertiary-container/40",
+    iconBg: "bg-primary-container text-on-primary-container",
   },
 };
 
