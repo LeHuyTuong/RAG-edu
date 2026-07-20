@@ -34,5 +34,12 @@ export function DocxPreview({ file }: Props): React.JSX.Element {
     };
   }, [file]);
 
-  return <div ref={containerRef} />;
+  return (
+    <div className="w-full max-w-full overflow-x-auto">
+      <div
+        ref={containerRef}
+        className="w-full max-w-full min-h-[600px] [&_.docx-wrapper]:!bg-transparent [&_.docx-wrapper]:!p-2 [&_.docx-wrapper]:!min-w-0 [&_.docx-wrapper]:!max-w-full [&_.docx-wrapper>section]:!max-w-full [&_.docx-wrapper>section]:!w-full [&_.docx-wrapper>section]:!min-w-0 [&_.docx-wrapper>section]:!box-border [&_.docx-wrapper>section]:!shadow-none"
+      />
+    </div>
+  );
 }

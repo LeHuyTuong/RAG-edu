@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
+import axios from "axios";
 
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -24,7 +26,7 @@ function DetailPageSkeleton(): React.JSX.Element {
     <main className="mx-auto max-w-7xl space-y-6 px-6 py-8 animate-pulse">
       <div className="h-36 rounded-2xl bg-surface-variant" />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           <div className="h-80 rounded-2xl bg-surface-variant" />
           <div className="h-40 rounded-2xl bg-surface-variant" />
         </div>
@@ -34,6 +36,36 @@ function DetailPageSkeleton(): React.JSX.Element {
           <div className="h-32 rounded-2xl bg-surface-variant" />
         </div>
       </div>
+    </main>
+  );
+}
+
+function AccessDeniedState(): React.JSX.Element {
+  return (
+    <main className="mx-auto flex max-w-7xl flex-col items-center justify-center px-6 py-32 text-center">
+      <div className="flex h-24 w-24 items-center justify-center rounded-full bg-error-container/30 mb-6">
+        <svg
+          width="40"
+          height="40"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          className="text-error"
+        >
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+      </div>
+      <h2 className="text-2xl font-bold text-on-surface">
+        Không có quyền truy cập
+      </h2>
+      <p className="mt-3 max-w-md text-sm text-on-surface-variant leading-relaxed">
+        Tài liệu này là riêng tư hoặc không tồn tại trên hệ thống.
+      </p>
+      <Link href="/library" className="mt-8">
+        <Button>Quay lại Thư viện</Button>
+      </Link>
     </main>
   );
 }
@@ -64,6 +96,7 @@ export default function DocumentDetailPage(): React.JSX.Element {
   );
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [accessDenied, setAccessDenied] = useState(false);
 
   useEffect(() => {
     if (!id || !accessToken) return;
@@ -78,6 +111,7 @@ export default function DocumentDetailPage(): React.JSX.Element {
         const doc = await fetchDocumentDetail(id);
         setDocument(doc);
         setRelatedDocuments([]);
+        setAccessDenied(false);
 
         if (doc.subject?.id) {
           try {
@@ -87,7 +121,13 @@ export default function DocumentDetailPage(): React.JSX.Element {
             });
 
             const filtered = relatedResponse.documents
-              .filter((d) => d.id !== id)
+              .filter((d) => {
+                if (d.id === id) return false;
+                const isOwner =
+                  currentUser?.id != null &&
+                  String(d.ownerId) === String(currentUser.id);
+                return d.isPublic || isOwner;
+              })
               .slice(0, 3);
 
             setRelatedDocuments(filtered);
@@ -104,8 +144,15 @@ export default function DocumentDetailPage(): React.JSX.Element {
           console.error("Could not load document preview", previewError);
           setPreview({ type: "error" });
         }
-      } catch {
-        setError("Không thể tải tài liệu. Vui lòng thử lại.");
+      } catch (err: unknown) {
+        if (
+          axios.isAxiosError(err) &&
+          (err.response?.status === 403 || err.response?.status === 404)
+        ) {
+          setAccessDenied(true);
+        } else {
+          setError("Không thể tải tài liệu. Vui lòng thử lại.");
+        }
       } finally {
         setIsLoading(false);
       }
@@ -119,6 +166,8 @@ export default function DocumentDetailPage(): React.JSX.Element {
       }
     };
   }, [id, accessToken]);
+
+  if (accessDenied) return <AccessDeniedState />;
 
   if (isLoading) return <DetailPageSkeleton />;
 
