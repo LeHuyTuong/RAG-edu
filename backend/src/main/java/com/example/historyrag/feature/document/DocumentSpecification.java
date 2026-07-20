@@ -1,6 +1,5 @@
 package com.example.historyrag.feature.document;
 
-import jakarta.persistence.criteria.From;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.PredicateSpecification;
 
@@ -37,8 +36,10 @@ public class DocumentSpecification {
                 predicates.add(cb.equal(root.get("ownerId"), ownerId));
             }
 
-            // Never show SOFT_DELETED
-            predicates.add(cb.notEqual(root.get("status"), DocumentStatus.SOFT_DELETED));
+            // Only exclude SOFT_DELETED when NOT explicitly filtering for them
+            if (status != DocumentStatus.SOFT_DELETED) {
+                predicates.add(cb.notEqual(root.get("status"), DocumentStatus.SOFT_DELETED));
+            }
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };

@@ -27,11 +27,11 @@ public interface DocumentService {
     ResultPaginationDTO filter(String search, Long folderId, Long subjectId, DocumentStatus status,
                                Long ownerId, Boolean onlyMine, Pageable pageable);
 
-    void delete(Long id, Long ownerId);
+    void delete(Long id, Long currentUserId, boolean isAdmin);
 
-    void restore(Long id, Long ownerId);
+    void restore(Long id, Long currentUserId, boolean isAdmin);
 
-    void hardDelete(Long id, Long ownerId);
+    void hardDelete(Long id, Long currentUserId, boolean isAdmin);
 
     void reindex(Long id, Long ownerId);
 

@@ -242,8 +242,8 @@ public class DocumentController {
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable Long id,
             @AuthenticationPrincipal Jwt jwt) {
-        Long ownerId = JwtUtils.getUserId(jwt);
-        documentService.delete(id, ownerId);
+        Long userId = JwtUtils.getUserId(jwt);
+        documentService.delete(id, userId, isAdmin(jwt));
         return ResponseEntity.ok(ApiResponse.success("Xóa tài liệu thành công", null));
     }
 
@@ -251,8 +251,8 @@ public class DocumentController {
     public ResponseEntity<ApiResponse<Void>> restore(
             @PathVariable Long id,
             @AuthenticationPrincipal Jwt jwt) {
-        Long ownerId = JwtUtils.getUserId(jwt);
-        documentService.restore(id, ownerId);
+        Long userId = JwtUtils.getUserId(jwt);
+        documentService.restore(id, userId, isAdmin(jwt));
         return ResponseEntity.ok(ApiResponse.success("Khôi phục tài liệu thành công", null));
     }
 
@@ -260,8 +260,8 @@ public class DocumentController {
     public ResponseEntity<ApiResponse<Void>> hardDelete(
             @PathVariable Long id,
             @AuthenticationPrincipal Jwt jwt) {
-        Long ownerId = JwtUtils.getUserId(jwt);
-        documentService.hardDelete(id, ownerId);
+        Long userId = JwtUtils.getUserId(jwt);
+        documentService.hardDelete(id, userId, isAdmin(jwt));
         return ResponseEntity.ok(ApiResponse.success("Xóa vĩnh viễn tài liệu thành công", null));
     }
 

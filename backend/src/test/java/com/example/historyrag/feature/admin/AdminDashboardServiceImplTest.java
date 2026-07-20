@@ -4,6 +4,7 @@ import com.example.historyrag.feature.admin.dto.DashboardResponse;
 import com.example.historyrag.feature.document.DocumentService;
 import com.example.historyrag.feature.document.DocumentStatus;
 import com.example.historyrag.feature.subject.SubjectService;
+import com.example.historyrag.feature.billing.UserSubscriptionRepository;
 import com.example.historyrag.feature.user.User;
 import com.example.historyrag.feature.user.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,11 +30,14 @@ class AdminDashboardServiceImplTest {
     @Mock
     private SubjectService subjectService;
 
+    @Mock
+    private UserSubscriptionRepository userSubscriptionRepository;
+
     private AdminDashboardServiceImpl adminDashboardService;
 
     @BeforeEach
     void setUp() {
-        adminDashboardService = new AdminDashboardServiceImpl(userService, documentService, subjectService);
+        adminDashboardService = new AdminDashboardServiceImpl(userService, documentService, subjectService, userSubscriptionRepository);
     }
 
     @Test

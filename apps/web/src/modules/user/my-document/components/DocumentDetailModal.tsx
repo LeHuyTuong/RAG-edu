@@ -255,8 +255,8 @@ export function DocumentDetailModal({
         icon="delete_forever"
         onOpenChange={handleOpenChange}
         open={isOpen}
-        title="Xóa tài liệu?"
-        tone="error"
+        title="Chuyển vào thùng rác?"
+        tone="neutral"
         footer={
           <>
             <Button
@@ -271,16 +271,16 @@ export function DocumentDetailModal({
               disabled={isDeleting}
               onClick={() => onDelete(document)}
               type="button"
-              variant="destructive"
+              className="bg-amber-600 text-white hover:bg-amber-700"
             >
-              {isDeleting ? "Đang xóa..." : "Xóa vĩnh viễn"}
+              {isDeleting ? "Đang xóa..." : "Chuyển vào thùng rác"}
             </Button>
           </>
         }
       >
-        <div className="rounded-xl border border-error/15 bg-error/5 px-4 py-3 text-sm text-on-surface-variant">
-          Thao tác này không thể hoàn tác. Tài liệu sẽ bị xóa khỏi danh sách của
-          bạn.
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800">
+          Tài liệu sẽ được chuyển vào thùng rác. Bạn có thể khôi phục lại bất kỳ
+          lúc nào.
         </div>
       </AppDialog>
     );

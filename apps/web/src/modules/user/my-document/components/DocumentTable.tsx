@@ -102,6 +102,10 @@ interface Props {
   readonly onPageChange: (page: number) => void;
   readonly onView: (document: LibraryDocument) => void;
   readonly onEdit: (document: LibraryDocument) => void;
+  readonly onDeleteDirect: (document: LibraryDocument) => void;
+  readonly onRestore?: (document: LibraryDocument) => void;
+  readonly filterStatus?: string;
+  readonly onStatusChange?: (status: string) => void;
   readonly deletingId: string | null;
   readonly savingId: string | null;
 }
@@ -113,8 +117,10 @@ export function DocumentTable({
   error,
   skeletonCount,
   onPageChange,
-  onView,
   onEdit,
+  onDeleteDirect,
+  onRestore,
+  onStatusChange,
   deletingId,
   savingId,
 }: Props): React.JSX.Element {
@@ -198,40 +204,100 @@ export function DocumentTable({
           <Badge tone={status.tone}>{status.label}</Badge>
         </div>,
         <div key="actions" className="flex justify-center gap-1">
-          <Button
-            aria-label={`Chỉnh sửa ${doc.title}`}
-            variant="ghost"
-            size="sm"
-            className="h-9 w-9 p-0 text-on-surface-variant hover:bg-surface-container-high hover:text-primary"
-            onClick={() => onEdit(doc)}
-            disabled={savingId === doc.id || deletingId === doc.id}
-            title={`Chỉnh sửa ${doc.title}`}
-            type="button"
-          >
-            <span
-              aria-hidden="true"
-              className="material-symbols-outlined text-[20px]"
-            >
-              {savingId === doc.id || deletingId === doc.id ? "sync" : "edit"}
-            </span>
-          </Button>
-          <Button
-            aria-label={`Xem trước ${doc.title}`}
-            variant="ghost"
-            size="sm"
-            className="h-9 w-9 p-0 text-on-surface-variant hover:bg-surface-container-high hover:text-primary"
-            onClick={() => router.push(`/documents/${doc.id}`)}
-            disabled={savingId === doc.id || deletingId === doc.id}
-            title={`Xem trước ${doc.title}`}
-            type="button"
-          >
-            <span
-              aria-hidden="true"
-              className="material-symbols-outlined text-[20px]"
-            >
-              visibility
-            </span>
-          </Button>
+          {doc.ragStatus === "SOFT_DELETED" ? (
+            <>
+              <Button
+                aria-label={`Khôi phục ${doc.title}`}
+                variant="ghost"
+                size="sm"
+                className="h-9 w-9 p-0 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                onClick={() => onRestore?.(doc)}
+                disabled={savingId === doc.id || deletingId === doc.id}
+                title={`Khôi phục ${doc.title}`}
+                type="button"
+              >
+                <span
+                  aria-hidden="true"
+                  className="material-symbols-outlined text-[20px]"
+                >
+                  restore_from_trash
+                </span>
+              </Button>
+              <Button
+                aria-label={`Xóa vĩnh viễn ${doc.title}`}
+                variant="ghost"
+                size="sm"
+                className="h-9 w-9 p-0 text-on-surface-variant hover:bg-surface-container-high hover:text-error"
+                onClick={() => onDeleteDirect(doc)}
+                disabled={savingId === doc.id || deletingId === doc.id}
+                title={`Xóa vĩnh viễn ${doc.title}`}
+                type="button"
+              >
+                <span
+                  aria-hidden="true"
+                  className="material-symbols-outlined text-[20px]"
+                >
+                  delete_forever
+                </span>
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                aria-label={`Chỉnh sửa ${doc.title}`}
+                variant="ghost"
+                size="sm"
+                className="h-9 w-9 p-0 text-on-surface-variant hover:bg-surface-container-high hover:text-primary"
+                onClick={() => onEdit(doc)}
+                disabled={savingId === doc.id || deletingId === doc.id}
+                title={`Chỉnh sửa ${doc.title}`}
+                type="button"
+              >
+                <span
+                  aria-hidden="true"
+                  className="material-symbols-outlined text-[20px]"
+                >
+                  {savingId === doc.id || deletingId === doc.id
+                    ? "sync"
+                    : "edit"}
+                </span>
+              </Button>
+              <Button
+                aria-label={`Xem trước ${doc.title}`}
+                variant="ghost"
+                size="sm"
+                className="h-9 w-9 p-0 text-on-surface-variant hover:bg-surface-container-high hover:text-primary"
+                onClick={() => router.push(`/documents/${doc.id}`)}
+                disabled={savingId === doc.id || deletingId === doc.id}
+                title={`Xem trước ${doc.title}`}
+                type="button"
+              >
+                <span
+                  aria-hidden="true"
+                  className="material-symbols-outlined text-[20px]"
+                >
+                  visibility
+                </span>
+              </Button>
+              <Button
+                aria-label={`Xóa ${doc.title}`}
+                variant="ghost"
+                size="sm"
+                className="h-9 w-9 p-0 text-on-surface-variant hover:bg-surface-container-high hover:text-error"
+                onClick={() => onDeleteDirect(doc)}
+                disabled={savingId === doc.id || deletingId === doc.id}
+                title={`Xóa ${doc.title}`}
+                type="button"
+              >
+                <span
+                  aria-hidden="true"
+                  className="material-symbols-outlined text-[20px]"
+                >
+                  delete
+                </span>
+              </Button>
+            </>
+          )}
         </div>,
       ],
     };
@@ -272,7 +338,10 @@ export function DocumentTable({
             <SelectField
               options={STATUS_OPTIONS}
               value={filterStatus}
-              onChange={setFilterStatus}
+              onChange={(v) => {
+                setFilterStatus(v);
+                onStatusChange?.(v);
+              }}
             />
           </div>
           <div className="w-36">

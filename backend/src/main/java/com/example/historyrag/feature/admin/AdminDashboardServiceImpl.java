@@ -29,7 +29,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     public DashboardResponse getDashboard() {
         long totalUsers = userService.countAll();
         long totalStudents = userService.countByRole(User.UserRole.STUDENT);
-        long totalAdmins = userService.countByRole(User.UserRole.ADMIN);
+        userService.countByRole(User.UserRole.ADMIN);
         long activeUsers = userService.countByStatus(User.UserStatus.ACTIVE);
         long lockedUsers = userService.countByStatus(User.UserStatus.LOCKED);
 

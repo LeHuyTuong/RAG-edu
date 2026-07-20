@@ -21,7 +21,7 @@ function formatBadge(ext?: string): { label: string; color: string } {
         "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800",
     };
   return {
-    label: ext.toUpperCase() || "FILE",
+    label: fmt.toUpperCase() || "FILE",
     color:
       "bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-900/40 dark:text-slate-400 dark:border-slate-700",
   };

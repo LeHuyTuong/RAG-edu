@@ -27,7 +27,6 @@ import {
 const periodColumns = [
   { key: "code", label: "Mã giai đoạn", sortable: true },
   { key: "name", label: "Tên giai đoạn", sortable: true },
-  { key: "timespan", label: "Khoảng thời gian" },
   { key: "createdAt", label: "Ngày tạo" },
   { key: "actions", label: "Thao tác", align: "center" as const },
 ] as const;
@@ -35,13 +34,11 @@ const periodColumns = [
 interface PeriodDraft {
   readonly name: string;
   readonly code: string;
-  readonly timespan: string;
 }
 
 const emptyDraft: PeriodDraft = {
   name: "",
   code: "",
-  timespan: "",
 };
 
 const pageSize = 10;
@@ -135,7 +132,6 @@ export default function AdminSubjectManagementPage(): React.JSX.Element {
     setDraft({
       name: subject.name,
       code: subject.code,
-      timespan: "",
     });
     setFormErrorMessage("");
     setFormOpen(true);
@@ -237,10 +233,6 @@ export default function AdminSubjectManagementPage(): React.JSX.Element {
           className="h-5 w-48 animate-pulse rounded bg-surface-variant/40"
         />,
         <div
-          key="timespan"
-          className="h-5 w-36 animate-pulse rounded bg-surface-variant/40"
-        />,
-        <div
           key="createdAt"
           className="h-5 w-32 animate-pulse rounded bg-surface-variant/40"
         />,
@@ -266,12 +258,6 @@ export default function AdminSubjectManagementPage(): React.JSX.Element {
           key="name"
         >
           {subject.name}
-        </span>,
-        <span
-          className="font-body-md text-sm text-on-surface-variant"
-          key="timespan"
-        >
-          —
         </span>,
         <span
           className="font-body-md text-sm text-on-surface-variant"
@@ -518,14 +504,6 @@ function PeriodFormDialog({
             placeholder="Ví dụ: Cổ đại, Trung đại"
             required
             value={draft.name}
-          />
-          <InputField
-            label="Khoảng thời gian"
-            onChange={(event) =>
-              onChange({ ...draft, timespan: event.target.value })
-            }
-            placeholder="Ví dụ: Trước thế kỷ X"
-            value={draft.timespan}
           />
         </div>
       </div>
