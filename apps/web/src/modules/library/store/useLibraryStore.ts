@@ -21,6 +21,8 @@ import type {
 interface LibraryFilters {
   search: string;
   subjectId: string;
+  format: string;
+  sortBy: "newest" | "oldest" | "name";
   page: number;
 }
 
@@ -41,6 +43,10 @@ interface LibraryState {
   setSearch: (search: string) => void;
   /** Switch active subject filter and re-fetch from page 1 */
   setSubjectId: (subjectId: string) => void;
+  /** Filter by file format (applied client-side) */
+  setFormat: (format: string) => void;
+  /** Switch sort order */
+  setSortBy: (sortBy: "newest" | "oldest" | "name") => void;
   /** Jump to a specific page and re-fetch */
   setPage: (page: number) => void;
 }
@@ -55,6 +61,8 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   filters: {
     search: "",
     subjectId: "",
+    format: "",
+    sortBy: "newest" as const,
     page: 1,
   },
 
@@ -66,7 +74,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     try {
       const response = await fetchDocuments({
         page: filters.page,
-        limit: 9, // 3×3 grid fits in a fixed viewport without page scroll
+        limit: 12, // 4×3 grid with full-width layout
         subjectId: filters.subjectId || undefined,
       });
 
@@ -102,6 +110,14 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   setSubjectId: (subjectId) => {
     set((state) => ({ filters: { ...state.filters, subjectId, page: 1 } }));
     get().fetchDocuments();
+  },
+
+  setFormat: (format) => {
+    set((state) => ({ filters: { ...state.filters, format } }));
+  },
+
+  setSortBy: (sortBy) => {
+    set((state) => ({ filters: { ...state.filters, sortBy } }));
   },
 
   setPage: (page) => {

@@ -189,16 +189,11 @@ export default function HomePage(): React.JSX.Element {
                     id={doc.id}
                     key={doc.id}
                     title={doc.title}
-                    subtitle={
-                      doc.description ??
-                      (doc.subject?.name
-                        ? `Giai đoạn: ${doc.subject.name}`
-                        : doc.author?.name
-                          ? `Đóng góp bởi: ${doc.author.name}`
-                          : "Tư liệu lịch sử từ kho lưu trữ")
-                    }
+                    description={doc.description}
                     format={doc.format}
+                    sizeInBytes={doc.sizeInBytes}
                     pageCount={doc.pageCount ?? undefined}
+                    authorName={doc.author?.name}
                     updatedAt={doc.updatedAt}
                     period={doc.subject?.name}
                   />

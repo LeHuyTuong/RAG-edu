@@ -6,10 +6,13 @@ import type { FC } from "react";
 interface DocumentCardProps {
   id: string;
   title: string;
-  subtitle: string;
+  /** Description / snippet — only rendered if non-null & non-empty */
+  description?: string | null;
   format?: string;
+  sizeInBytes?: number;
   pageCount?: number;
   period?: string;
+  authorName?: string;
   updatedAt?: string;
   className?: string;
 }
@@ -31,7 +34,7 @@ function formatLabel(ext?: string): { label: string; color: string } {
       };
     default:
       return {
-        label: ext?.toUpperCase() ?? "Tài liệu",
+        label: ext?.toUpperCase() ?? "FILE",
         color:
           "bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-900/30 dark:text-slate-400 dark:border-slate-700",
       };
@@ -44,33 +47,40 @@ function timeAgo(dateStr: string): string {
   const diffDays = Math.floor((now.getTime() - date.getTime()) / 86400000);
   if (diffDays < 1) return "Hôm nay";
   if (diffDays < 7) return `${diffDays} ngày trước`;
-  return date.toLocaleDateString("vi-VN", {
-    day: "numeric",
-    month: "short",
-  });
+  return date.toLocaleDateString("vi-VN", { day: "numeric", month: "short" });
+}
+
+function formatSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1048576) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export const DocumentCard: FC<DocumentCardProps> = ({
   id,
   title,
-  subtitle,
+  description,
   format,
+  sizeInBytes,
   pageCount,
   period,
+  authorName,
   updatedAt,
   className = "",
 }) => {
   const fmt = formatLabel(format);
   const time = updatedAt ? timeAgo(updatedAt) : null;
+  const size = sizeInBytes ? formatSize(sizeInBytes) : null;
+  const hasDescription = !!description?.trim();
 
   return (
     <Link href={`/documents/${id}`}>
       <div
-        className={`group flex cursor-pointer select-none flex-col gap-4 rounded-2xl border border-outline-variant/60 bg-surface p-5 transition-all duration-300 ease-out
+        className={`group flex cursor-pointer select-none flex-col gap-3.5 rounded-2xl border border-outline-variant/60 bg-surface p-5 transition-all duration-300 ease-out
           hover:-translate-y-1 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/[0.06]
           ${className}`}
       >
-        {/* ── Top row: category badge + format badge ── */}
+        {/* ── Top row: subject badge + format badge ── */}
         <div className="flex items-center justify-between gap-2">
           {period ? (
             <span className="inline-flex items-center gap-1 rounded-lg bg-primary/8 px-2.5 py-1 text-[11px] font-semibold text-primary">
@@ -102,13 +112,21 @@ export const DocumentCard: FC<DocumentCardProps> = ({
           {title}
         </h3>
 
-        {/* ── Subtitle / snippet ── */}
-        <p className="line-clamp-2 text-sm leading-relaxed text-on-surface-variant/70">
-          {subtitle}
-        </p>
+        {/* ── Description snippet (conditional) ── */}
+        {hasDescription ? (
+          <p className="line-clamp-2 text-sm leading-relaxed text-on-surface-variant/70">
+            {description}
+          </p>
+        ) : null}
 
         {/* ── Metadata row ── */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-on-surface-variant/50">
+          {size ? (
+            <>
+              <span>{size}</span>
+              <span className="text-on-surface-variant/25">·</span>
+            </>
+          ) : null}
           {pageCount !== undefined ? (
             <>
               <span className="inline-flex items-center gap-1">
@@ -131,21 +149,34 @@ export const DocumentCard: FC<DocumentCardProps> = ({
           {time ? <span>{time}</span> : null}
         </div>
 
-        {/* ── Action link ── */}
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-primary/80 transition-colors group-hover:text-primary mt-0.5">
-          Xem chi tiết
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            className="transition-transform group-hover:translate-x-0.5"
-          >
-            <line x1="5" y1="12" x2="19" y2="12" />
-            <polyline points="12 5 19 12 12 19" />
-          </svg>
+        {/* ── Footer: author + action ── */}
+        <div className="mt-auto flex items-center justify-between w-full gap-2 pt-2 border-t border-outline-variant/40">
+          {authorName ? (
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary uppercase">
+                {authorName.charAt(0)}
+              </span>
+              <span className="text-xs text-on-surface-variant truncate">
+                {authorName}
+              </span>
+            </div>
+          ) : null}
+
+          <span className="inline-flex items-center gap-1 ml-auto text-xs font-semibold text-primary/80 transition-colors group-hover:text-primary shrink-0">
+            Xem chi tiết
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              className="transition-transform group-hover:translate-x-0.5"
+            >
+              <line x1="5" y1="12" x2="19" y2="12" />
+              <polyline points="12 5 19 12 12 19" />
+            </svg>
+          </span>
         </div>
       </div>
     </Link>
