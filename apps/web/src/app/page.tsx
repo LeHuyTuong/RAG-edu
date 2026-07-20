@@ -1,21 +1,48 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type ReactElement } from "react";
+import { useEffect, useState, type ReactElement, type ReactNode } from "react";
 import { apiClient } from "@/lib/axios";
 import { API_ENDPOINTS } from "@/shared/constants";
 import { useAuthStore } from "@/stores";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { useInView } from "@/hooks/useInView";
+
+/* ── Scroll-reveal wrapper ── */
+
+function AnimatedSection({
+  children,
+  className = "",
+  delay = 0,
+}: {
+  children: ReactNode;
+  className?: string;
+  delay?: number;
+}) {
+  const { ref, inView } = useInView({ threshold: 0.1 });
+
+  return (
+    <div
+      ref={ref}
+      className={`transition-all duration-700 ease-out ${
+        inView ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
+      } ${className}`}
+      style={{ transitionDelay: `${delay}ms` }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/* ── Hero illustration with float ── */
 
 function HeroIllustration() {
   return (
-    <div className="relative w-full h-full min-h-[420px] flex items-center justify-center">
-      {/* Subtle radial glow */}
+    <div className="relative w-full h-full min-h-[420px] flex items-center justify-center animate-float">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_60%_40%,rgba(0,46,143,0.08)_0%,transparent_70%)] dark:bg-[radial-gradient(ellipse_at_60%_40%,rgba(77,163,255,0.07)_0%,transparent_70%)]" />
 
-      {/* Layered document cards with depth */}
       <div className="relative w-72 h-80">
-        {/* Back card - rotated */}
+        {/* Back card */}
         <div className="absolute top-4 left-6 w-64 h-72 rounded-2xl bg-surface-container-high border border-outline-variant shadow-lg rotate-[-4deg] opacity-70">
           <div className="p-5 flex flex-col gap-3">
             <div className="w-3/4 h-2 rounded-full bg-outline-variant/40" />
@@ -29,9 +56,8 @@ function HeroIllustration() {
           </div>
         </div>
 
-        {/* Front card - main document */}
+        {/* Front card */}
         <div className="absolute top-8 right-6 w-64 h-80 rounded-2xl bg-surface border border-outline-variant shadow-xl z-10 overflow-hidden">
-          {/* Document header accent */}
           <div className="h-2 bg-gradient-to-r from-primary to-primary/60" />
           <div className="p-5 flex flex-col gap-3">
             <div className="flex items-center gap-2">
@@ -62,7 +88,6 @@ function HeroIllustration() {
             <div className="w-3/4 h-2 rounded-full bg-outline-variant/20" />
             <div className="w-5/6 h-2 rounded-full bg-outline-variant/20" />
             <div className="w-1/2 h-2 rounded-full bg-outline-variant/20" />
-            {/* AI badge */}
             <div className="mt-auto flex items-center gap-2">
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10">
                 <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
@@ -74,7 +99,7 @@ function HeroIllustration() {
           </div>
         </div>
 
-        {/* Connected nodes floating */}
+        {/* Floating nodes */}
         <div className="absolute top-2 left-12 w-10 h-10 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center z-20 shadow-md">
           <div className="w-2 h-2 rounded-full bg-primary" />
         </div>
@@ -85,7 +110,6 @@ function HeroIllustration() {
           <div className="w-1 h-1 rounded-full bg-primary" />
         </div>
 
-        {/* Connection lines */}
         <svg
           className="absolute inset-0 w-full h-full z-5 pointer-events-none"
           viewBox="0 0 288 320"
@@ -130,6 +154,8 @@ function HeroIllustration() {
   );
 }
 
+/* ── Feature card with hover lift & glow ── */
+
 function FeatureCard({
   icon,
   title,
@@ -143,37 +169,36 @@ function FeatureCard({
 }) {
   return (
     <div
-      className={`group relative rounded-2xl p-8 transition-all duration-300 border ${
-        accent
-          ? "bg-primary border-primary shadow-lg shadow-primary/20"
-          : "bg-surface border-outline-variant shadow-sm hover:shadow-lg hover:border-primary/30"
-      }`}
+      className={`group relative rounded-2xl p-8 transition-all duration-400 ease-out border cursor-default
+        hover:-translate-y-2 hover:shadow-xl hover:shadow-primary/10
+        ${
+          accent
+            ? "bg-primary border-primary shadow-lg shadow-primary/20"
+            : "bg-surface border-outline-variant shadow-sm hover:border-primary/40"
+        }`}
     >
-      {/* Subtle top gradient accent line */}
+      {/* Top glow line on hover */}
       {!accent && (
         <div className="absolute top-0 left-8 right-8 h-0.5 rounded-full bg-gradient-to-r from-transparent via-primary/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       )}
 
+      {/* Icon with gentle rotation on hover */}
       <div
-        className={`w-14 h-14 rounded-xl flex items-center justify-center mb-5 transition-transform duration-300 group-hover:scale-105 ${
-          accent ? "bg-white/15 text-white" : "bg-primary/8 text-primary"
-        }`}
+        className={`w-14 h-14 rounded-xl flex items-center justify-center mb-5
+          transition-all duration-300 group-hover:scale-110 group-hover:rotate-3
+          ${accent ? "bg-white/15 text-white" : "bg-primary/8 text-primary"}`}
       >
         {icon}
       </div>
 
       <h3
-        className={`text-xl font-bold mb-3 ${
-          accent ? "text-white" : "text-on-surface"
-        }`}
+        className={`text-xl font-bold mb-3 ${accent ? "text-white" : "text-on-surface"}`}
       >
         {title}
       </h3>
 
       <p
-        className={`leading-relaxed ${
-          accent ? "text-white/85" : "text-on-surface-variant"
-        }`}
+        className={`leading-relaxed ${accent ? "text-white/85" : "text-on-surface-variant"}`}
       >
         {description}
       </p>
@@ -181,20 +206,85 @@ function FeatureCard({
   );
 }
 
+/* ── FEATURE ICONS ── */
+
+const DocIcon = (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+    <line x1="8" y1="7" x2="16" y2="7" />
+    <line x1="8" y1="11" x2="14" y2="11" />
+    <line x1="8" y1="15" x2="12" y2="15" />
+  </svg>
+);
+
+const AIIcon = (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z" />
+    <path d="M8 9h8" />
+    <path d="M8 13h5" />
+    <path d="M8 17h6" />
+    <circle cx="17" cy="8" r="1" fill="currentColor" />
+    <circle cx="18" cy="12" r="1" fill="currentColor" />
+    <circle cx="16" cy="16" r="1" fill="currentColor" />
+  </svg>
+);
+
+const CommunityIcon = (
+  <svg
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  </svg>
+);
+
+/* ── MAIN PAGE ── */
+
 export default function Home(): ReactElement {
   const [mounted, setMounted] = useState(false);
   const { isAuthenticated, user, logout } = useAuthStore();
+  const [heroLoaded, setHeroLoaded] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    // Trigger hero stagger after mount
+    const t = setTimeout(() => setHeroLoaded(true), 50);
+    return () => clearTimeout(t);
   }, []);
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col overflow-x-hidden">
-      {/* ===== HEADER ===== */}
-      <header className="sticky top-0 z-50 bg-surface/80 backdrop-blur-xl border-b border-outline-variant/60">
+      {/* ══════ HEADER ══════ */}
+      <header className="sticky top-0 z-50 bg-surface/80 backdrop-blur-xl border-b border-outline-variant/60 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-8 h-16 flex items-center justify-between">
-          {/* Logo */}
           <Link href="/" className="flex items-center gap-3 group">
             <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-md shadow-primary/25 transition-transform duration-200 group-hover:scale-105">
               <svg
@@ -218,16 +308,15 @@ export default function Home(): ReactElement {
               </svg>
             </div>
             <div>
-              <span className="text-xl font-bold text-on-surface tracking-tight">
+              <span className="text-xl font-bold text-on-surface tracking-tight transition-colors duration-300">
                 HisWise
               </span>
-              <span className="hidden sm:inline text-xs font-medium text-on-surface-variant ml-2">
+              <span className="hidden sm:inline text-xs font-medium text-on-surface-variant ml-2 transition-colors duration-300">
                 RAG-edu
               </span>
             </div>
           </Link>
 
-          {/* Navigation */}
           <nav className="hidden lg:flex items-center gap-1">
             {[
               { href: "/", label: "Trang chủ" },
@@ -245,7 +334,6 @@ export default function Home(): ReactElement {
             ))}
           </nav>
 
-          {/* Right side */}
           <div className="flex items-center gap-3">
             <ThemeToggle />
 
@@ -319,7 +407,7 @@ export default function Home(): ReactElement {
                 </Link>
                 <Link
                   href="/login"
-                  className="bg-primary hover:bg-primary/90 text-white font-semibold px-5 py-2 rounded-full text-sm shadow-sm shadow-primary/20 transition-all duration-200 cursor-pointer hover:shadow-md hover:shadow-primary/25"
+                  className="bg-primary hover:bg-primary/90 text-white font-semibold px-5 py-2 rounded-full text-sm shadow-sm shadow-primary/20 transition-all duration-200 cursor-pointer hover:shadow-md hover:shadow-primary/25 hover:scale-105 active:scale-95"
                 >
                   Đăng nhập
                 </Link>
@@ -329,9 +417,8 @@ export default function Home(): ReactElement {
         </div>
       </header>
 
-      {/* ===== HERO SECTION ===== */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#F3F6FA] via-[#F8FAFD] to-background dark:from-gray-950 dark:via-slate-900/80 dark:to-background">
-        {/* Subtle background pattern */}
+      {/* ══════ HERO SECTION ══════ */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-[#F3F6FA] via-[#F8FAFD] to-background dark:from-gray-950 dark:via-slate-900/80 dark:to-background transition-colors duration-300">
         <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] pointer-events-none">
           <div
             className="absolute inset-0"
@@ -345,31 +432,54 @@ export default function Home(): ReactElement {
 
         <div className="max-w-7xl mx-auto px-8 py-16 lg:py-24">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-            {/* Left: Text + Search */}
+            {/* ── Left: Text + Search with staggered entrance ── */}
             <div className="flex flex-col gap-8">
               <div className="flex flex-col gap-5">
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/8 border border-primary/15 w-fit">
+                {/* Badge — delay 0 */}
+                <div
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/8 border border-primary/15 w-fit transition-all duration-700 ease-out
+                    ${heroLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
+                  style={{ transitionDelay: "0ms" }}
+                >
                   <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
                   <span className="text-xs font-semibold text-primary tracking-wide uppercase">
                     Hệ thống RAG-edu
                   </span>
                 </div>
 
-                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.08] tracking-tight text-on-surface">
+                {/* Heading — delay 100ms */}
+                <h1
+                  className={`text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.08] tracking-tight text-on-surface transition-all duration-700 ease-out
+                    ${heroLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
+                  style={{ transitionDelay: "100ms" }}
+                >
                   Kho lưu trữ{" "}
-                  <span className="text-primary">tư liệu lịch sử</span> hàng đầu
-                  cho nghiên cứu và giảng dạy
+                  <span className="text-primary transition-colors duration-300">
+                    tư liệu lịch sử
+                  </span>{" "}
+                  hàng đầu cho nghiên cứu và giảng dạy
                 </h1>
 
-                <p className="text-lg leading-relaxed text-on-surface-variant max-w-lg">
+                {/* Subtext — delay 200ms */}
+                <p
+                  className={`text-lg leading-relaxed text-on-surface-variant max-w-lg transition-all duration-700 ease-out
+                    ${heroLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
+                  style={{ transitionDelay: "200ms" }}
+                >
                   Nền tảng chia sẻ tri thức lịch sử, nơi bạn có thể tìm kiếm
                   hàng nghìn tư liệu, văn bản gốc và bài nghiên cứu chất lượng
                   từ cộng đồng học giả.
                 </p>
               </div>
 
-              {/* Search bar */}
-              <div className="flex items-center bg-surface border border-outline-variant/70 rounded-2xl p-1.5 shadow-sm focus-within:shadow-md focus-within:border-primary/40 transition-all duration-300">
+              {/* Search bar — delay 350ms + focus glow */}
+              <div
+                className={`flex items-center bg-surface border border-outline-variant/70 rounded-2xl p-1.5 shadow-sm
+                  transition-all duration-300 ease-out
+                  focus-within:shadow-lg focus-within:border-primary/50 focus-within:ring-4 focus-within:ring-primary/10
+                  ${heroLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
+                style={{ transitionDelay: "350ms" }}
+              >
                 <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/6 shrink-0">
                   <svg
                     width="20"
@@ -391,14 +501,20 @@ export default function Home(): ReactElement {
                 />
                 <button
                   type="button"
-                  className="bg-primary hover:bg-primary/90 text-white font-semibold px-6 py-2.5 rounded-xl text-sm shadow-sm shadow-primary/20 hover:shadow-md hover:shadow-primary/25 transition-all duration-200 cursor-pointer whitespace-nowrap"
+                  className="bg-primary hover:bg-primary/90 text-white font-semibold px-6 py-2.5 rounded-xl text-sm
+                    shadow-sm shadow-primary/20 transition-all duration-200 cursor-pointer whitespace-nowrap
+                    hover:scale-105 active:scale-95 hover:shadow-md hover:shadow-primary/25"
                 >
                   Tìm kiếm
                 </button>
               </div>
 
-              {/* Stats row */}
-              <div className="flex items-center gap-8 pt-2">
+              {/* Stats — delay 500ms */}
+              <div
+                className={`flex items-center gap-8 pt-2 transition-all duration-700 ease-out
+                  ${heroLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
+                style={{ transitionDelay: "500ms" }}
+              >
                 {[
                   { value: "1,200+", label: "Tư liệu" },
                   { value: "850+", label: "Học giả" },
@@ -416,123 +532,79 @@ export default function Home(): ReactElement {
               </div>
             </div>
 
-            {/* Right: Illustration */}
-            <HeroIllustration />
+            {/* ── Right: Illustration with float ── */}
+            <div
+              className={`transition-all duration-800 ease-out
+                ${heroLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
+              style={{ transitionDelay: "300ms" }}
+            >
+              <HeroIllustration />
+            </div>
           </div>
         </div>
 
-        {/* Bottom wave divider */}
         <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-background to-transparent pointer-events-none" />
       </section>
 
-      {/* ===== FEATURES SECTION ===== */}
+      {/* ══════ FEATURES SECTION ══════ */}
       <section className="py-24 px-8">
         <div className="max-w-7xl mx-auto">
-          {/* Section header */}
-          <div className="text-center mb-16">
+          <AnimatedSection className="text-center mb-16">
             <span className="inline-block text-xs font-semibold tracking-widest uppercase text-primary mb-3 bg-primary/8 px-3 py-1 rounded-full">
               Tính năng cốt lõi
             </span>
-            <h2 className="text-3xl sm:text-4xl font-bold text-on-surface mb-4 tracking-tight">
+            <h2 className="text-3xl sm:text-4xl font-bold text-on-surface mb-4 tracking-tight transition-colors duration-300">
               Hệ sinh thái nghiên cứu lịch sử toàn diện
             </h2>
-            <p className="text-lg text-on-surface-variant max-w-2xl mx-auto leading-relaxed">
+            <p className="text-lg text-on-surface-variant max-w-2xl mx-auto leading-relaxed transition-colors duration-300">
               Khám phá tri thức lịch sử với hệ sinh thái tư liệu và công cụ tra
               cứu hiện đại, được hỗ trợ bởi công nghệ AI tiên tiến
             </p>
-          </div>
+          </AnimatedSection>
 
-          {/* Feature cards grid */}
           <div className="grid md:grid-cols-3 gap-6">
-            <FeatureCard
-              icon={
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-                  <line x1="8" y1="7" x2="16" y2="7" />
-                  <line x1="8" y1="11" x2="14" y2="11" />
-                  <line x1="8" y1="15" x2="12" y2="15" />
-                </svg>
-              }
-              title="Kho tư liệu"
-              description="Hàng nghìn tư liệu lịch sử được phân loại theo giai đoạn, sự kiện và nhân vật. Dễ dàng tìm kiếm, xem trước và tải về tài liệu gốc chất lượng cao."
-            />
-
-            <FeatureCard
-              accent
-              icon={
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2z" />
-                  <path d="M8 9h8" />
-                  <path d="M8 13h5" />
-                  <path d="M8 17h6" />
-                  <circle cx="17" cy="8" r="1" fill="currentColor" />
-                  <circle cx="18" cy="12" r="1" fill="currentColor" />
-                  <circle cx="16" cy="16" r="1" fill="currentColor" />
-                </svg>
-              }
-              title="Hỏi đáp AI"
-              description="Trợ lý AI thông minh sử dụng công nghệ RAG, trả lời câu hỏi dựa trên tư liệu gốc có căn cứ. Tra cứu nhanh, chính xác, có trích dẫn nguồn rõ ràng."
-            />
-
-            <FeatureCard
-              icon={
-                <svg
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-              }
-              title="Quản lý & Cộng đồng"
-              description="Hệ thống quản lý tài liệu và người dùng toàn diện. Đóng góp tư liệu, thảo luận học thuật, và cùng xây dựng kho tri thức chung cho cộng đồng nghiên cứu."
-            />
+            <AnimatedSection delay={100}>
+              <FeatureCard
+                icon={DocIcon}
+                title="Kho tư liệu"
+                description="Hàng nghìn tư liệu lịch sử được phân loại theo giai đoạn, sự kiện và nhân vật. Dễ dàng tìm kiếm, xem trước và tải về tài liệu gốc chất lượng cao."
+              />
+            </AnimatedSection>
+            <AnimatedSection delay={250}>
+              <FeatureCard
+                accent
+                icon={AIIcon}
+                title="Hỏi đáp AI"
+                description="Trợ lý AI thông minh sử dụng công nghệ RAG, trả lời câu hỏi dựa trên tư liệu gốc có căn cứ. Tra cứu nhanh, chính xác, có trích dẫn nguồn rõ ràng."
+              />
+            </AnimatedSection>
+            <AnimatedSection delay={400}>
+              <FeatureCard
+                icon={CommunityIcon}
+                title="Quản lý & Cộng đồng"
+                description="Hệ thống quản lý tài liệu và người dùng toàn diện. Đóng góp tư liệu, thảo luận học thuật, và cùng xây dựng kho tri thức chung cho cộng đồng nghiên cứu."
+              />
+            </AnimatedSection>
           </div>
         </div>
       </section>
 
-      {/* ===== ABOUT SECTION ===== */}
-      <section className="bg-[#F3F6FA] dark:bg-slate-900/50 py-24 px-8">
+      {/* ══════ ABOUT SECTION ══════ */}
+      <section className="bg-[#F3F6FA] dark:bg-slate-900/50 py-24 px-8 transition-colors duration-300">
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
-            {/* Left */}
-            <div className="flex flex-col gap-6">
+            <AnimatedSection className="flex flex-col gap-6">
               <span className="inline-block text-xs font-semibold tracking-widest uppercase text-primary mb-1 bg-primary/8 px-3 py-1 rounded-full w-fit">
                 Về dự án
               </span>
-              <h2 className="text-3xl sm:text-4xl font-bold text-on-surface tracking-tight leading-tight">
+              <h2 className="text-3xl sm:text-4xl font-bold text-on-surface tracking-tight leading-tight transition-colors duration-300">
                 Hệ thống RAG-edu:{" "}
-                <span className="text-primary">Trí tuệ nhân tạo</span> phục vụ
-                nghiên cứu lịch sử
+                <span className="text-primary transition-colors duration-300">
+                  Trí tuệ nhân tạo
+                </span>{" "}
+                phục vụ nghiên cứu lịch sử
               </h2>
-              <p className="text-lg leading-relaxed text-on-surface-variant">
+              <p className="text-lg leading-relaxed text-on-surface-variant transition-colors duration-300">
                 RAG-edu là hệ thống quản lý tài liệu lịch sử thông minh, kết hợp
                 AI tiên tiến và công nghệ Retrieval-Augmented Generation để cung
                 cấp tra cứu chính xác, có căn cứ. Dự án giúp bảo tồn và tối ưu
@@ -561,7 +633,7 @@ export default function Home(): ReactElement {
                 ].map((item) => (
                   <div
                     key={item.label}
-                    className="flex items-start gap-3 p-4 rounded-xl bg-surface/70 border border-outline-variant/40"
+                    className="flex items-start gap-3 p-4 rounded-xl bg-surface/70 border border-outline-variant/40 hover:border-primary/30 hover:shadow-sm transition-all duration-200"
                   >
                     <svg
                       width="20"
@@ -586,59 +658,56 @@ export default function Home(): ReactElement {
                   </div>
                 ))}
               </div>
-            </div>
+            </AnimatedSection>
 
-            {/* Right: Visual */}
-            <div className="relative">
-              <div className="aspect-square rounded-3xl bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 border border-outline-variant/50 flex items-center justify-center overflow-hidden">
-                <div className="relative w-64 h-64">
-                  {/* Concentric rings */}
-                  <div className="absolute inset-0 rounded-full border-2 border-primary/10" />
-                  <div className="absolute inset-4 rounded-full border border-primary/15" />
-                  <div className="absolute inset-10 rounded-full border border-primary/20" />
+            <AnimatedSection delay={200}>
+              <div className="relative">
+                <div className="aspect-square rounded-3xl bg-gradient-to-br from-primary/5 via-primary/10 to-primary/5 border border-outline-variant/50 flex items-center justify-center overflow-hidden transition-colors duration-300">
+                  <div className="relative w-64 h-64">
+                    <div className="absolute inset-0 rounded-full border-2 border-primary/10" />
+                    <div className="absolute inset-4 rounded-full border border-primary/15" />
+                    <div className="absolute inset-10 rounded-full border border-primary/20" />
 
-                  {/* Center piece */}
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-24 h-24 rounded-2xl bg-primary shadow-lg shadow-primary/30 flex items-center justify-center">
-                      <svg
-                        width="44"
-                        height="44"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        className="text-white"
-                      >
-                        <path
-                          d="M12 3L1 9L12 15L21 10.09V17H23V9L12 3Z"
-                          fill="currentColor"
-                        />
-                        <path
-                          d="M4 14V18H10V14"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-24 h-24 rounded-2xl bg-primary shadow-lg shadow-primary/30 flex items-center justify-center">
+                        <svg
+                          width="44"
+                          height="44"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          className="text-white"
+                        >
+                          <path
+                            d="M12 3L1 9L12 15L21 10.09V17H23V9L12 3Z"
+                            fill="currentColor"
+                          />
+                          <path
+                            d="M4 14V18H10V14"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Orbiting dots */}
-                  <div className="absolute top-6 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary animate-pulse" />
-                  <div className="absolute bottom-8 right-8 w-2 h-2 rounded-full bg-primary/60" />
-                  <div className="absolute bottom-6 left-6 w-2.5 h-2.5 rounded-full bg-primary/70" />
-                  <div className="absolute top-14 right-4 w-2 h-2 rounded-full bg-primary/50" />
+                    <div className="absolute top-6 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary animate-pulse" />
+                    <div className="absolute bottom-8 right-8 w-2 h-2 rounded-full bg-primary/60" />
+                    <div className="absolute bottom-6 left-6 w-2.5 h-2.5 rounded-full bg-primary/70" />
+                    <div className="absolute top-14 right-4 w-2 h-2 rounded-full bg-primary/50" />
+                  </div>
                 </div>
               </div>
-            </div>
+            </AnimatedSection>
           </div>
         </div>
       </section>
 
-      {/* ===== FOOTER ===== */}
-      <footer className="bg-surface border-t border-outline-variant/60">
+      {/* ══════ FOOTER ══════ */}
+      <footer className="bg-surface border-t border-outline-variant/60 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-8 py-12">
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
-            {/* Brand */}
             <div className="sm:col-span-2 lg:col-span-1">
               <div className="flex items-center gap-2.5 mb-4">
                 <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center shadow-sm shadow-primary/20">
@@ -663,10 +732,10 @@ export default function Home(): ReactElement {
                   </svg>
                 </div>
                 <div>
-                  <span className="text-lg font-bold text-on-surface">
+                  <span className="text-lg font-bold text-on-surface transition-colors duration-300">
                     HisWise
                   </span>
-                  <span className="text-xs text-on-surface-variant ml-1.5">
+                  <span className="text-xs text-on-surface-variant ml-1.5 transition-colors duration-300">
                     RAG-edu
                   </span>
                 </div>
@@ -680,7 +749,6 @@ export default function Home(): ReactElement {
               </p>
             </div>
 
-            {/* Link columns */}
             {[
               {
                 title: "Nền tảng",
@@ -729,7 +797,6 @@ export default function Home(): ReactElement {
             ))}
           </div>
 
-          {/* Bottom bar */}
           <div className="pt-6 border-t border-outline-variant/40 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-xs text-on-surface-variant/60">
               Phát triển bởi cộng đồng RAG-edu. Mã nguồn mở trên GitHub.
