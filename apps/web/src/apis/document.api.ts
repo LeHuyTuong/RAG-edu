@@ -129,6 +129,14 @@ export const reclassifyDocument = async (id: string): Promise<void> => {
   await apiClient.post(API_ENDPOINTS.DOCUMENTS.RECLASSIFY(id));
 };
 
+export const restoreDocument = async (id: string): Promise<void> => {
+  await apiClient.post(`/api/v1/documents/${id}/restore`);
+};
+
+export const hardDeleteDocument = async (id: string): Promise<void> => {
+  await apiClient.delete(`/api/v1/documents/${id}/hard`);
+};
+
 export const rejectDocument = async (
   id: string,
   payload: RejectDocumentPayload,

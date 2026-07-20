@@ -59,6 +59,12 @@ stich/
 /implmentation_notes.md
 /AGENTS.md
 
-uploads/
+# Local configs
+backend/src/main/resources/application-local.yml
+backend/src/main/java/com/example/historyrag/config/DataInitializer.java
+backend/data/
+
+# Python & Dependencies
 **/__pycache__/
 *.pyc
+pnpm-lock.yaml

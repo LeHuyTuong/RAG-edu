@@ -8,7 +8,9 @@ import {
   approveDocument,
   deleteDocument,
   fetchDocuments,
+  hardDeleteDocument,
   reclassifyDocument,
+  restoreDocument,
 } from "@/apis/document.api";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -85,7 +87,11 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
   const [reclassifyingId, setReclassifyingId] = useState<string | null>(null);
   const [deleteDocId, setDeleteDocId] = useState<string | null>(null);
   const [deleteDocTitle, setDeleteDocTitle] = useState("");
+  const [isHardDelete, setIsHardDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [restoreId, setRestoreId] = useState<string | null>(null);
+  const [restoreTitle, setRestoreTitle] = useState("");
+  const [isRestoring, setIsRestoring] = useState(false);
 
   const [filterStatus, setFilterStatus] = useState<"ALL" | DocumentRagStatus>(
     "ALL",
@@ -226,24 +232,56 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
     }
   };
 
-  const handleDelete = async (documentId: string, title: string) => {
+  const handleDelete = async (
+    documentId: string,
+    title: string,
+    hard = false,
+  ) => {
     setDeleteDocId(documentId);
     setDeleteDocTitle(title);
+    setIsHardDelete(hard);
+  };
+
+  const handleRestore = (documentId: string, title: string) => {
+    setRestoreId(documentId);
+    setRestoreTitle(title);
   };
 
   const confirmDelete = async () => {
     if (!deleteDocId) return;
     setIsDeleting(true);
     try {
-      await deleteDocument(deleteDocId);
-      toast.success("Đã xóa tài liệu thành công.");
+      if (isHardDelete) {
+        await hardDeleteDocument(deleteDocId);
+        toast.success("Đã xóa vĩnh viễn tài liệu.");
+      } else {
+        await deleteDocument(deleteDocId);
+        toast.success("Đã chuyển tài liệu vào thùng rác.");
+      }
       setDeleteDocId(null);
       setDeleteDocTitle("");
+      setIsHardDelete(false);
       await load(currentPage, filterStatus);
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const confirmRestore = async () => {
+    if (!restoreId) return;
+    setIsRestoring(true);
+    try {
+      await restoreDocument(restoreId);
+      toast.success("Khôi phục tài liệu thành công!");
+      setRestoreId(null);
+      setRestoreTitle("");
+      await load(currentPage, filterStatus);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setIsRestoring(false);
     }
   };
 
@@ -321,15 +359,38 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
         >
           <MaterialIcon name="visibility" />
         </Link>
-        <button
-          aria-label={`Xóa ${doc.title}`}
-          className="inline-flex h-9 w-9 items-center justify-center rounded text-on-surface-variant transition-colors hover:bg-error/10 hover:text-error"
-          onClick={() => handleDelete(String(doc.id), doc.title)}
-          title={`Xóa ${doc.title}`}
-          type="button"
-        >
-          <MaterialIcon name="delete" />
-        </button>
+        {doc.ragStatus === "SOFT_DELETED" ? (
+          <>
+            <button
+              aria-label={`Khôi phục ${doc.title}`}
+              className="inline-flex h-9 w-9 items-center justify-center rounded text-emerald-600 transition-colors hover:bg-emerald-50 hover:text-emerald-700"
+              onClick={() => handleRestore(String(doc.id), doc.title)}
+              title={`Khôi phục ${doc.title}`}
+              type="button"
+            >
+              <MaterialIcon name="restore_from_trash" />
+            </button>
+            <button
+              aria-label={`Xóa vĩnh viễn ${doc.title}`}
+              className="inline-flex h-9 w-9 items-center justify-center rounded text-on-surface-variant transition-colors hover:bg-error/10 hover:text-error"
+              onClick={() => handleDelete(String(doc.id), doc.title, true)}
+              title={`Xóa vĩnh viễn ${doc.title}`}
+              type="button"
+            >
+              <MaterialIcon name="delete_forever" />
+            </button>
+          </>
+        ) : (
+          <button
+            aria-label={`Xóa ${doc.title}`}
+            className="inline-flex h-9 w-9 items-center justify-center rounded text-on-surface-variant transition-colors hover:bg-error/10 hover:text-error"
+            onClick={() => handleDelete(String(doc.id), doc.title)}
+            title={`Xóa ${doc.title}`}
+            type="button"
+          >
+            <MaterialIcon name="delete" />
+          </button>
+        )}
       </div>,
     ],
   }));
@@ -413,23 +474,36 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
 
       {deleteDocId ? (
         <AppDialog
-          title="Xóa tài liệu?"
+          title={
+            isHardDelete ? "Xóa vĩnh viễn tài liệu?" : "Chuyển vào thùng rác?"
+          }
           description={
-            <>
-              Bạn sắp xóa vĩnh viễn tài liệu{" "}
-              <span className="font-semibold text-on-surface">
-                {deleteDocTitle}
-              </span>
-              . Thao tác này không thể hoàn tác.
-            </>
+            isHardDelete ? (
+              <>
+                Bạn sắp xóa vĩnh viễn tài liệu{" "}
+                <span className="font-semibold text-on-surface">
+                  {deleteDocTitle}
+                </span>
+                . Thao tác này không thể hoàn tác.
+              </>
+            ) : (
+              <>
+                Bạn sắp chuyển tài liệu{" "}
+                <span className="font-semibold text-on-surface">
+                  {deleteDocTitle}
+                </span>{" "}
+                vào thùng rác. Bạn có thể khôi phục lại bất kỳ lúc nào.
+              </>
+            )
           }
           icon="delete_forever"
-          tone="error"
+          tone={isHardDelete ? "error" : "neutral"}
           open
           onOpenChange={(open) => {
             if (!open && !isDeleting) {
               setDeleteDocId(null);
               setDeleteDocTitle("");
+              setIsHardDelete(false);
             }
           }}
           footer={
@@ -440,23 +514,87 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
                 onClick={() => {
                   setDeleteDocId(null);
                   setDeleteDocTitle("");
+                  setIsHardDelete(false);
                 }}
               >
                 Hủy
               </Button>
               <Button
                 disabled={isDeleting}
-                className="bg-error text-on-error hover:bg-error/90"
+                className={
+                  isHardDelete
+                    ? "bg-error text-on-error hover:bg-error/90"
+                    : "bg-amber-600 text-white hover:bg-amber-700"
+                }
                 onClick={() => void confirmDelete()}
               >
-                {isDeleting ? "Đang xóa..." : "Xóa vĩnh viễn"}
+                {isDeleting
+                  ? "Đang xóa..."
+                  : isHardDelete
+                    ? "Xóa vĩnh viễn"
+                    : "Chuyển vào thùng rác"}
               </Button>
             </>
           }
         >
-          <div className="rounded-xl border border-error/15 bg-error/5 px-4 py-3 text-sm text-on-surface-variant">
-            Tài liệu sẽ bị xóa khỏi hệ thống tra cứu RAG. Hành động này không
-            thể hoàn tác.
+          <div
+            className={`rounded-xl border px-4 py-3 text-sm ${
+              isHardDelete
+                ? "border-error/15 bg-error/5 text-on-surface-variant"
+                : "border-amber-200 bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800"
+            }`}
+          >
+            {isHardDelete
+              ? "Tài liệu sẽ bị xóa vĩnh viễn khỏi hệ thống tra cứu RAG. Hành động này không thể hoàn tác."
+              : "Tài liệu sẽ được chuyển vào thùng rác. Bạn có thể khôi phục lại bất kỳ lúc nào."}
+          </div>
+        </AppDialog>
+      ) : null}
+
+      {restoreId ? (
+        <AppDialog
+          title="Khôi phục tài liệu?"
+          description={
+            <>
+              Bạn sắp khôi phục tài liệu{" "}
+              <span className="font-semibold text-on-surface">
+                {restoreTitle}
+              </span>
+              . Tài liệu sẽ trở lại trạng thái hoạt động.
+            </>
+          }
+          icon="restore_from_trash"
+          open
+          onOpenChange={(open) => {
+            if (!open && !isRestoring) {
+              setRestoreId(null);
+              setRestoreTitle("");
+            }
+          }}
+          footer={
+            <>
+              <Button
+                disabled={isRestoring}
+                variant="outline"
+                onClick={() => {
+                  setRestoreId(null);
+                  setRestoreTitle("");
+                }}
+              >
+                Hủy
+              </Button>
+              <Button
+                disabled={isRestoring}
+                className="bg-emerald-600 text-white hover:bg-emerald-700"
+                onClick={() => void confirmRestore()}
+              >
+                {isRestoring ? "Đang khôi phục..." : "Khôi phục"}
+              </Button>
+            </>
+          }
+        >
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800">
+            Tài liệu sẽ được khôi phục và có thể truy cập trở lại.
           </div>
         </AppDialog>
       ) : null}

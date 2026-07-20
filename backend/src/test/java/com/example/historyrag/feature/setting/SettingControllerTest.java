@@ -36,8 +36,8 @@ class SettingControllerTest {
 
     @Test
     void updateConfig_validRequest_callsService() throws Exception {
-        SettingUpdateRequest request = new SettingUpdateRequest("pdf,txt", 25, "0 * * * * *");
-        when(settingService.updateConfig(eq(request))).thenReturn(new SettingResponse("pdf,txt", "25", "0 * * * * *"));
+        SettingUpdateRequest request = new SettingUpdateRequest("pdf,txt", 25, "0 * * * * *", null, null, null);
+        when(settingService.updateConfig(eq(request))).thenReturn(new SettingResponse("pdf,txt", "25", "0 * * * * *", null, null, null));
 
         mockMvc.perform(patch("/api/v1/admin/config")
                         .contentType(MediaType.APPLICATION_JSON)

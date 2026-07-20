@@ -233,11 +233,11 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     @Transactional
-    public void delete(Long id, Long ownerId) {
+    public void delete(Long id, Long currentUserId, boolean isAdmin) {
         Document doc = documentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
 
-        if (!doc.getOwnerId().equals(ownerId)) {
+        if (!isAdmin && !doc.getOwnerId().equals(currentUserId)) {
             throw new ResourceNotFoundException("Document", "id", id);
         }
 
@@ -274,11 +274,11 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     @Transactional
-    public void restore(Long id, Long ownerId) {
+    public void restore(Long id, Long currentUserId, boolean isAdmin) {
         Document doc = documentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
 
-        if (!doc.getOwnerId().equals(ownerId)) {
+        if (!isAdmin && !doc.getOwnerId().equals(currentUserId)) {
             throw new ResourceNotFoundException("Document", "id", id);
         }
 
@@ -293,11 +293,11 @@ public class DocumentServiceImpl implements DocumentService {
 
     @Override
     @Transactional
-    public void hardDelete(Long id, Long ownerId) {
+    public void hardDelete(Long id, Long currentUserId, boolean isAdmin) {
         Document doc = documentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Document", "id", id));
 
-        if (!doc.getOwnerId().equals(ownerId)) {
+        if (!isAdmin && !doc.getOwnerId().equals(currentUserId)) {
             throw new ResourceNotFoundException("Document", "id", id);
         }
 

@@ -38,7 +38,7 @@ class AdminDashboardControllerTest {
         var documents = new DashboardResponse.DocumentStats(10L, 6L, 4L, 0L);
         var subjects = new DashboardResponse.SubjectStats(0L);
         when(adminDashboardService.getDashboard())
-                .thenReturn(new DashboardResponse(accounts, documents, subjects, List.of()));
+                .thenReturn(new DashboardResponse(accounts, documents, subjects, null, List.of()));
 
         mockMvc.perform(get("/api/v1/admin/dashboard"))
                 .andExpect(status().isOk())
