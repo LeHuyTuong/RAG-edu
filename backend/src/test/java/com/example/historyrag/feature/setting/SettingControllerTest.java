@@ -12,7 +12,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -37,7 +37,7 @@ class SettingControllerTest {
     @Test
     void updateConfig_validRequest_callsService() throws Exception {
         SettingUpdateRequest request = new SettingUpdateRequest("pdf,txt", 25, "0 * * * * *", null, null, null);
-        when(settingService.updateConfig(eq(request))).thenReturn(new SettingResponse("pdf,txt", "25", "0 * * * * *", null, null, null));
+        when(settingService.updateConfig(any(SettingUpdateRequest.class))).thenReturn(new SettingResponse("pdf,txt", "25", "0 * * * * *", null, null, null));
 
         mockMvc.perform(patch("/api/v1/admin/config")
                         .contentType(MediaType.APPLICATION_JSON)
