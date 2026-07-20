@@ -318,20 +318,24 @@ export default function Home(): ReactElement {
           </Link>
 
           <nav className="hidden lg:flex items-center gap-1">
-            {[
-              { href: "/", label: "Trang chủ" },
-              { href: "/library", label: "Kho tư liệu" },
-              { href: "/community", label: "Thảo luận" },
-              { href: "/uploads", label: "Đăng tải" },
-            ].map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="relative px-4 py-2 text-sm font-medium text-on-surface-variant hover:text-primary transition-colors duration-200 rounded-lg"
-              >
-                {link.label}
-              </Link>
-            ))}
+            <Link
+              href="/"
+              className="relative px-4 py-2 text-sm font-bold text-primary rounded-lg after:absolute after:bottom-0 after:left-1/2 after:-translate-x-1/2 after:h-0.5 after:w-6 after:rounded-full after:bg-primary"
+            >
+              Trang chủ
+            </Link>
+            <Link
+              href="/library"
+              className="relative px-4 py-2 text-sm font-medium text-on-surface-variant hover:text-primary transition-colors duration-200 rounded-lg"
+            >
+              Kho tư liệu
+            </Link>
+            <Link
+              href="/uploads"
+              className="relative px-4 py-2 text-sm font-medium text-on-surface-variant hover:text-primary transition-colors duration-200 rounded-lg"
+            >
+              Đăng tải
+            </Link>
           </nav>
 
           <div className="flex items-center gap-3">
@@ -432,8 +436,8 @@ export default function Home(): ReactElement {
 
         <div className="max-w-7xl mx-auto px-8 py-16 lg:py-24">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-            {/* ── Left: Text + Search with staggered entrance ── */}
-            <div className="flex flex-col gap-8">
+            {/* ── Left: Text + Stats with staggered entrance ── */}
+            <div className="flex flex-col gap-10">
               <div className="flex flex-col gap-5">
                 {/* Badge — delay 0 */}
                 <div
@@ -472,48 +476,11 @@ export default function Home(): ReactElement {
                 </p>
               </div>
 
-              {/* Search bar — delay 350ms + focus glow */}
+              {/* Stats — delay 350ms */}
               <div
-                className={`flex items-center bg-surface border border-outline-variant/70 rounded-2xl p-1.5 shadow-sm
-                  transition-all duration-300 ease-out
-                  focus-within:shadow-lg focus-within:border-primary/50 focus-within:ring-4 focus-within:ring-primary/10
+                className={`flex items-center gap-8 pt-4 transition-all duration-700 ease-out
                   ${heroLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
                 style={{ transitionDelay: "350ms" }}
-              >
-                <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/6 shrink-0">
-                  <svg
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2.5"
-                    className="text-primary"
-                  >
-                    <circle cx="11" cy="11" r="8" />
-                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                  </svg>
-                </div>
-                <input
-                  type="text"
-                  placeholder="Tìm tư liệu lịch sử, sự kiện, nhân vật..."
-                  className="flex-1 border-none outline-none px-3 py-2.5 bg-transparent text-on-surface placeholder-on-surface-variant/60 text-sm"
-                />
-                <button
-                  type="button"
-                  className="bg-primary hover:bg-primary/90 text-white font-semibold px-6 py-2.5 rounded-xl text-sm
-                    shadow-sm shadow-primary/20 transition-all duration-200 cursor-pointer whitespace-nowrap
-                    hover:scale-105 active:scale-95 hover:shadow-md hover:shadow-primary/25"
-                >
-                  Tìm kiếm
-                </button>
-              </div>
-
-              {/* Stats — delay 500ms */}
-              <div
-                className={`flex items-center gap-8 pt-2 transition-all duration-700 ease-out
-                  ${heroLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}
-                style={{ transitionDelay: "500ms" }}
               >
                 {[
                   { value: "1,200+", label: "Tư liệu" },
