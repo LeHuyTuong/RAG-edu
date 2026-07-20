@@ -13,10 +13,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
+import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Mockito.when;
+import com.example.historyrag.feature.billing.UserSubscriptionRepository;
 
 @ExtendWith(MockitoExtension.class)
 class AdminDashboardServiceImplTest {
@@ -59,6 +60,14 @@ class AdminDashboardServiceImplTest {
         when(documentService.countByStatus(DocumentStatus.PENDING_REVIEW)).thenReturn(0L);
 
         when(subjectService.countAll()).thenReturn(3L);
+        when(userSubscriptionRepository.countByStatus("ACTIVE"))
+        .thenReturn(5L);
+
+        when(userSubscriptionRepository.calculateTotalRevenue())
+        .thenReturn(1200000L);
+
+        when(userSubscriptionRepository.findAll())
+        .thenReturn(List.of());
 
         DashboardResponse response = adminDashboardService.getDashboard();
 

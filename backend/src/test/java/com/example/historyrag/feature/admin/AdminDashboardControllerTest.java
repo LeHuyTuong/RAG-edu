@@ -37,10 +37,15 @@ class AdminDashboardControllerTest {
         var accounts = new DashboardResponse.AccountStats(42L, 40L, 2L, 0L);
         var documents = new DashboardResponse.DocumentStats(10L, 6L, 4L, 0L);
         var subjects = new DashboardResponse.SubjectStats(0L);
+        var billing = new DashboardResponse.BillingStats(
+        0L,
+        0L,
+        List.of()
+);
         when(adminDashboardService.getDashboard())
-                .thenReturn(new DashboardResponse(accounts, documents, subjects, null, List.of()));
+                .thenReturn(new DashboardResponse(accounts, documents, subjects, billing, List.of()));
 
-        mockMvc.perform(get("/api/v1/admin/dashboard"))
+                 mockMvc.perform(get("/api/v1/admin/dashboard"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.statusCode").value(200))
                 .andExpect(jsonPath("$.message").value("Lấy thông tin dashboard thành công"))
