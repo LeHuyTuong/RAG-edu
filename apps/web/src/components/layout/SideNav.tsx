@@ -41,10 +41,10 @@ export const SideNav: FC<SideNavProps> = ({
     const isActive =
       !item.action && isActiveRoute(pathname, item.href, item.exact);
 
-    const className = `flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all ${
+    const className = `flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200 ${
       isActive
-        ? "bg-primary/10 text-primary"
-        : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+        ? "bg-primary/10 text-primary font-semibold shadow-sm shadow-primary/5"
+        : "text-on-surface-variant hover:bg-surface-container hover:text-on-surface"
     }`;
 
     const content = (

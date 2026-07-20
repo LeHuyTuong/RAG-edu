@@ -27,9 +27,12 @@ export const UserInfo: FC = () => {
       ? ROUTE_PATHS.MODERATOR_ROUTES.SETTINGS
       : ROUTE_PATHS.PROTECTED_ROUTES.PROFILE;
 
-  const content = (
-    <>
-      <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 ring-2 ring-primary/20">
+  return (
+    <Link
+      href={href}
+      className="group flex items-center gap-3 rounded-xl border border-outline-variant/60 bg-surface-container-low p-3 transition-all duration-200 hover:border-primary/30 hover:bg-surface-container hover:shadow-sm"
+    >
+      <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary/10 ring-2 ring-primary/15">
         {user?.avatar && !isDefaultAvatar(user.avatar) ? (
           <img
             alt={user.name}
@@ -37,31 +40,22 @@ export const UserInfo: FC = () => {
             src={user.avatar}
           />
         ) : (
-          <span className="text-sm font-semibold text-primary">{initials}</span>
+          <span className="text-sm font-bold text-primary">{initials}</span>
         )}
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate font-label-md text-label-md font-semibold text-on-surface">
+        <p className="truncate text-sm font-semibold leading-tight text-on-surface">
           {user?.name ?? "Người dùng"}
         </p>
-        <p className="truncate font-label-sm text-label-sm text-on-surface-variant">
+        <p className="truncate text-[12px] text-on-surface-variant/70 mt-0.5">
           {user?.email ?? user?.role ?? ""}
         </p>
       </div>
 
-      <span className="material-symbols-outlined shrink-0 text-[18px] text-on-surface-variant transition-colors group-hover:text-primary">
+      <span className="material-symbols-outlined shrink-0 text-[18px] text-on-surface-variant/50 transition-colors group-hover:text-primary">
         chevron_right
       </span>
-    </>
-  );
-
-  return (
-    <Link
-      href={href}
-      className="group flex items-center gap-3 rounded-2xl border border-outline-variant bg-surface-container-low p-3 transition-colors hover:bg-surface-container-high"
-    >
-      {content}
     </Link>
   );
 };

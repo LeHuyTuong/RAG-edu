@@ -64,7 +64,9 @@ export const fetchDocuments = async (
 export const fetchDocumentDetail = async (
   id: string,
 ): Promise<DocumentDetail> => {
-  const result = await apiClient.get(API_ENDPOINTS.DOCUMENTS.DETAIL(id));
+  const result = await apiClient.get(API_ENDPOINTS.DOCUMENTS.DETAIL(id), {
+    skipToast: true,
+  });
   return result as unknown as DocumentDetail;
 };
 

@@ -1,8 +1,6 @@
 "use client";
 
 import type { FC } from "react";
-import { Button } from "@/components/ui/Button";
-import { InputField } from "@/components/ui/InputField";
 import { useLibraryStore } from "../store/useLibraryStore";
 
 /**
@@ -15,106 +13,103 @@ export const FilterBar: FC = () => {
   const { filters, subjects, isLoadingSubjects, setSearch, setSubjectId } =
     useLibraryStore();
 
-  const handleReset = () => {
-    setSearch("");
-    setSubjectId("");
-  };
-
   return (
     <aside
-      className="
-        w-64 xl:w-72 shrink-0 h-full overflow-y-auto
-        rounded-2xl
-        border border-outline-variant/60
-        bg-surface/80 backdrop-blur-md
-        p-5 shadow-sm shadow-black/5
-      "
+      className="w-64 xl:w-72 shrink-0 h-full overflow-y-auto rounded-2xl border border-outline-variant/60
+        bg-surface/80 backdrop-blur-md p-5 shadow-sm shadow-black/5"
     >
       <h2 className="mb-4 text-sm font-semibold uppercase tracking-widest text-on-surface-variant">
         Bộ lọc
       </h2>
 
       {/* ── Search ── */}
-      <div className="mb-5">
-        <InputField
-          placeholder="Tìm tư liệu lịch sử..."
-          value={filters.search}
-          onChange={(e) => setSearch(e.target.value)}
-          leftIcon={
-            <span className="material-symbols-outlined text-[18px]">
-              search
-            </span>
-          }
-        />
+      <div className="mb-6 relative">
+        <div className="relative flex items-center">
+          <span className="material-symbols-outlined absolute left-3 text-[18px] text-on-surface-variant/50 pointer-events-none">
+            search
+          </span>
+          <input
+            type="text"
+            placeholder="Tìm tư liệu lịch sử..."
+            value={filters.search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-xl border border-outline-variant/60 bg-surface-container-low pl-10 pr-9 py-2.5
+              text-sm text-on-surface placeholder-on-surface-variant/40 outline-none
+              transition-all duration-200
+              focus:border-primary/50 focus:ring-3 focus:ring-primary/10"
+          />
+          {filters.search ? (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="absolute right-2.5 text-on-surface-variant/40 hover:text-on-surface-variant transition-colors"
+            >
+              <span className="material-symbols-outlined text-[18px]">
+                close
+              </span>
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {/* ── Subject filter ── */}
-      <div className="mb-5">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-on-surface-variant">
-          Giai đoạn
+      <div>
+        <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-on-surface-variant">
+          Chủ đề / Lĩnh vực
         </p>
 
         {isLoadingSubjects ? (
-          <div className="space-y-2">
-            {Array.from({ length: 4 }).map((_, i) => (
+          <div className="flex flex-wrap gap-2">
+            {Array.from({ length: 5 }).map((_, i) => (
               <div
                 key={i}
-                className="h-4 w-full animate-pulse rounded bg-surface-variant"
+                className="h-8 w-20 animate-pulse rounded-lg bg-surface-variant"
               />
             ))}
           </div>
         ) : (
-          <div className="space-y-1">
-            {/* "All" option */}
-            <label className="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-1.5 transition-colors hover:bg-surface-container-low">
-              <input
-                type="radio"
-                name="subject"
-                value=""
-                checked={filters.subjectId === ""}
-                onChange={() => setSubjectId("")}
-                className="accent-primary"
-              />
-              <span className="text-sm text-on-surface">Tất cả</span>
-            </label>
+          <div className="flex flex-wrap gap-2">
+            {/* "Tất cả" pill */}
+            <button
+              type="button"
+              onClick={() => setSubjectId("")}
+              className={`rounded-lg border px-3 py-1.5 text-[13px] font-semibold transition-all duration-200
+                ${
+                  filters.subjectId === ""
+                    ? "bg-primary text-white border-primary shadow-sm shadow-primary/20"
+                    : "bg-surface-container-low text-on-surface-variant border-outline-variant/60 hover:border-primary/30 hover:text-primary"
+                }`}
+            >
+              Tất cả
+            </button>
 
-            {subjects.map((subject) => (
-              <label
-                key={subject.id}
-                className="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-1.5 transition-colors hover:bg-surface-container-low"
-              >
-                <input
-                  type="radio"
-                  name="subject"
-                  value={subject.id}
-                  checked={filters.subjectId === subject.id}
-                  onChange={() => setSubjectId(subject.id)}
-                  className="accent-primary"
-                />
-                <span className="line-clamp-1 text-sm text-on-surface">
+            {subjects.map((subject) => {
+              const isActive = filters.subjectId === subject.id;
+              return (
+                <button
+                  key={subject.id}
+                  type="button"
+                  onClick={() => setSubjectId(subject.id)}
+                  className={`rounded-lg border px-3 py-1.5 text-[13px] font-semibold transition-all duration-200
+                    ${
+                      isActive
+                        ? "bg-primary text-white border-primary shadow-sm shadow-primary/20"
+                        : "bg-surface-container-low text-on-surface-variant border-outline-variant/60 hover:border-primary/30 hover:text-primary"
+                    }`}
+                >
                   {subject.name}
-                </span>
-              </label>
-            ))}
+                </button>
+              );
+            })}
 
             {subjects.length === 0 && !isLoadingSubjects ? (
               <p className="text-xs text-on-surface-variant">
-                Chưa có giai đoạn lịch sử nào.
+                Chưa có chủ đề nào.
               </p>
             ) : null}
           </div>
         )}
       </div>
-
-      {/* ── Reset ── */}
-      <Button
-        variant="outline"
-        className="w-full"
-        type="button"
-        onClick={handleReset}
-      >
-        Làm mới bộ lọc
-      </Button>
     </aside>
   );
 };

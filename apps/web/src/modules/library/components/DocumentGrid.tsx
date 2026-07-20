@@ -9,7 +9,7 @@ interface DocumentGridProps {
   error: string | null;
 }
 
-const SKELETON_COUNT = 9;
+const SKELETON_COUNT = 12;
 
 /** Responsive 3-column (xl) / 2-column (md) / 1-column grid of document cards */
 export const DocumentGrid: FC<DocumentGridProps> = ({
@@ -42,7 +42,7 @@ export const DocumentGrid: FC<DocumentGridProps> = ({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {isLoading
         ? Array.from({ length: SKELETON_COUNT }).map((_, i) => (
             <DocumentCardSkeleton key={i} />
