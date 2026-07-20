@@ -29,6 +29,7 @@ export function useInView<T extends HTMLElement = HTMLDivElement>(
   const observerCallback = useCallback(
     (entries: IntersectionObserverEntry[]) => {
       const [entry] = entries;
+      if (!entry) return;
       if (entry.isIntersecting) {
         if (!triggerOnce || !triggered.current) {
           setInView(true);
