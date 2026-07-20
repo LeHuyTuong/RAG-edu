@@ -6,10 +6,13 @@ import { toast } from "sonner";
 
 import {
   approveDocument,
+  deleteDocument,
   fetchDocuments,
   reclassifyDocument,
 } from "@/apis/document.api";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { AppDialog } from "@/components/ui/AppDialog";
 import { Pagination } from "@/components/ui/Pagination";
 import { SelectField } from "@/components/ui/SelectField";
 import { Table, type TableRow } from "@/components/ui/Table";
@@ -80,6 +83,9 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
   );
   const [bulkApproveLoading, setBulkApproveLoading] = useState(false);
   const [reclassifyingId, setReclassifyingId] = useState<string | null>(null);
+  const [deleteDocId, setDeleteDocId] = useState<string | null>(null);
+  const [deleteDocTitle, setDeleteDocTitle] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const [filterStatus, setFilterStatus] = useState<"ALL" | DocumentRagStatus>(
     "ALL",
@@ -220,6 +226,27 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
     }
   };
 
+  const handleDelete = async (documentId: string, title: string) => {
+    setDeleteDocId(documentId);
+    setDeleteDocTitle(title);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteDocId) return;
+    setIsDeleting(true);
+    try {
+      await deleteDocument(deleteDocId);
+      toast.success("Đã xóa tài liệu thành công.");
+      setDeleteDocId(null);
+      setDeleteDocTitle("");
+      await load(currentPage, filterStatus);
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const rows: TableRow[] = visibleDocuments.map((doc) => ({
     id: doc.id,
     highlighted:
@@ -294,6 +321,15 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
         >
           <MaterialIcon name="visibility" />
         </Link>
+        <button
+          aria-label={`Xóa ${doc.title}`}
+          className="inline-flex h-9 w-9 items-center justify-center rounded text-on-surface-variant transition-colors hover:bg-error/10 hover:text-error"
+          onClick={() => handleDelete(String(doc.id), doc.title)}
+          title={`Xóa ${doc.title}`}
+          type="button"
+        >
+          <MaterialIcon name="delete" />
+        </button>
       </div>,
     ],
   }));
@@ -374,6 +410,56 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
         suggestions={suggestedQuestions}
         textareaLabel="Câu hỏi AI cho các tài liệu đã chọn"
       />
+
+      {deleteDocId ? (
+        <AppDialog
+          title="Xóa tài liệu?"
+          description={
+            <>
+              Bạn sắp xóa vĩnh viễn tài liệu{" "}
+              <span className="font-semibold text-on-surface">
+                {deleteDocTitle}
+              </span>
+              . Thao tác này không thể hoàn tác.
+            </>
+          }
+          icon="delete_forever"
+          tone="error"
+          open
+          onOpenChange={(open) => {
+            if (!open && !isDeleting) {
+              setDeleteDocId(null);
+              setDeleteDocTitle("");
+            }
+          }}
+          footer={
+            <>
+              <Button
+                disabled={isDeleting}
+                variant="outline"
+                onClick={() => {
+                  setDeleteDocId(null);
+                  setDeleteDocTitle("");
+                }}
+              >
+                Hủy
+              </Button>
+              <Button
+                disabled={isDeleting}
+                className="bg-error text-on-error hover:bg-error/90"
+                onClick={() => void confirmDelete()}
+              >
+                {isDeleting ? "Đang xóa..." : "Xóa vĩnh viễn"}
+              </Button>
+            </>
+          }
+        >
+          <div className="rounded-xl border border-error/15 bg-error/5 px-4 py-3 text-sm text-on-surface-variant">
+            Tài liệu sẽ bị xóa khỏi hệ thống tra cứu RAG. Hành động này không
+            thể hoàn tác.
+          </div>
+        </AppDialog>
+      ) : null}
     </div>
   );
 }

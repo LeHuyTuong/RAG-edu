@@ -10,6 +10,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import {
   deleteDocument,
@@ -43,6 +44,7 @@ export default function MyDocumentPage(): React.JSX.Element {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const [openInEditMode, setOpenInEditMode] = useState(false);
+  const [openInDeleteMode, setOpenInDeleteMode] = useState(false);
 
   const load = useCallback(async (page: number) => {
     setIsLoading(true);
@@ -72,6 +74,7 @@ export default function MyDocumentPage(): React.JSX.Element {
     setDeletingId(id);
     try {
       await deleteDocument(id);
+      toast.success("Xóa tài liệu thành công!");
       const targetPage =
         documents.length === 1 && currentPage > 1
           ? currentPage - 1
@@ -95,6 +98,12 @@ export default function MyDocumentPage(): React.JSX.Element {
   const handleEdit = (document: LibraryDocument) => {
     setEditError(null);
     setOpenInEditMode(true);
+    setViewingDocument(document);
+  };
+
+  const handleDeleteDirect = (document: LibraryDocument) => {
+    setEditError(null);
+    setOpenInDeleteMode(true);
     setViewingDocument(document);
   };
 
@@ -138,6 +147,7 @@ export default function MyDocumentPage(): React.JSX.Element {
         onPageChange={setCurrentPage}
         onView={handleView}
         onEdit={handleEdit}
+        onDeleteDirect={handleDeleteDirect}
         deletingId={deletingId}
         savingId={savingId}
       />
@@ -149,12 +159,15 @@ export default function MyDocumentPage(): React.JSX.Element {
         isOpen={viewingDocument !== null}
         isSaving={savingId !== null}
         error={editError}
-        initialMode={openInEditMode ? "edit" : "view"}
+        initialMode={
+          openInDeleteMode ? "delete" : openInEditMode ? "edit" : "view"
+        }
         onCancel={() => {
           if (savingId || deletingId) return;
           setViewingDocument(null);
           setEditError(null);
           setOpenInEditMode(false);
+          setOpenInDeleteMode(false);
         }}
         onDelete={(document) => void handleDelete(document.id)}
         onSave={handleSaveEdit}

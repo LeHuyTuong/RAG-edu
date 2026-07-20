@@ -102,6 +102,7 @@ interface Props {
   readonly onPageChange: (page: number) => void;
   readonly onView: (document: LibraryDocument) => void;
   readonly onEdit: (document: LibraryDocument) => void;
+  readonly onDeleteDirect: (document: LibraryDocument) => void;
   readonly deletingId: string | null;
   readonly savingId: string | null;
 }
@@ -115,6 +116,7 @@ export function DocumentTable({
   onPageChange,
   onView,
   onEdit,
+  onDeleteDirect,
   deletingId,
   savingId,
 }: Props): React.JSX.Element {
@@ -230,6 +232,23 @@ export function DocumentTable({
               className="material-symbols-outlined text-[20px]"
             >
               visibility
+            </span>
+          </Button>
+          <Button
+            aria-label={`Xóa ${doc.title}`}
+            variant="ghost"
+            size="sm"
+            className="h-9 w-9 p-0 text-on-surface-variant hover:bg-surface-container-high hover:text-error"
+            onClick={() => onDeleteDirect(doc)}
+            disabled={savingId === doc.id || deletingId === doc.id}
+            title={`Xóa ${doc.title}`}
+            type="button"
+          >
+            <span
+              aria-hidden="true"
+              className="material-symbols-outlined text-[20px]"
+            >
+              delete
             </span>
           </Button>
         </div>,
