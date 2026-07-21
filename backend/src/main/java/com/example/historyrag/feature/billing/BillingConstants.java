@@ -7,6 +7,7 @@ public final class BillingConstants {
 
     public static final String STATUS_ACTIVE = "ACTIVE";
     public static final String STATUS_CANCELLED = "CANCELLED";
+    public static final String STATUS_REFUNDED = "REFUNDED";
     public static final String FREE_PLAN_CODE = "FREE";
     public static final String CHAT_EVENT_TYPE = "AI_CHAT";
     public static final String DEFAULT_BILLING_CYCLE = "MONTHLY";
