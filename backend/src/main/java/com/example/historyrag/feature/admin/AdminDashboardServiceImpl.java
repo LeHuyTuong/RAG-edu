@@ -2,7 +2,7 @@ package com.example.historyrag.feature.admin;
 
 import com.example.historyrag.feature.admin.dto.DashboardActivityResponse;
 import com.example.historyrag.feature.admin.dto.DashboardResponse;
-import com.example.historyrag.feature.billing.UserSubscriptionRepository;
+import com.example.historyrag.feature.billing.UserSubscriptionService;
 import com.example.historyrag.feature.document.DocumentService;
 import com.example.historyrag.feature.document.DocumentStatus;
 import com.example.historyrag.feature.subject.SubjectService;
@@ -31,7 +31,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
     private final UserService userService;
     private final DocumentService documentService;
     private final SubjectService subjectService;
-    private final UserSubscriptionRepository userSubscriptionRepository;
+    private final UserSubscriptionService userSubscriptionService;
 
     @Override
     @Transactional(readOnly = true)
@@ -52,8 +52,8 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         long pendingDocs = uploadingDocs + indexingDocs + reindexingDocs + failedDocs + pendingReviewDocs;
         long subjectCount = subjectService.countAll();
 
-        long activeSubscriptions = userSubscriptionRepository.countByStatus("ACTIVE");
-        Long calculatedRevenue = userSubscriptionRepository.calculateTotalRevenue();
+        long activeSubscriptions = userSubscriptionService.countByStatus("ACTIVE");
+        Long calculatedRevenue = userSubscriptionService.calculateTotalRevenue();
         long totalRevenue = calculatedRevenue != null ? calculatedRevenue : 0L;
 
         List<DashboardResponse.RevenueData> revenueChart = buildRevenueChart();
@@ -74,7 +74,7 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
             revenueByMonth.put(now.minusMonths(i).format(MONTH_FORMATTER), 0L);
         }
 
-        List<Object[]> dbResults = userSubscriptionRepository.calculateRevenueByMonth();
+        List<Object[]> dbResults = userSubscriptionService.calculateRevenueByMonth();
         for (Object[] row : dbResults) {
             int year = ((Number) row[0]).intValue();
             int month = ((Number) row[1]).intValue();

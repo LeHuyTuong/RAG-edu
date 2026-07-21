@@ -15,20 +15,20 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class BillingServiceImpl implements BillingService {
 
-    private final BillingPlanRepository planRepository;
-    private final UserSubscriptionRepository subscriptionRepository;
-    private final UsagePeriodRepository usagePeriodRepository;
-    private final UsageEventRepository usageEventRepository;
+    private final BillingPlanService planService;
+    private final UserSubscriptionService subscriptionService;
+    private final UsagePeriodService usagePeriodService;
+    private final UsageEventService usageEventService;
 
     public BillingServiceImpl(
-            BillingPlanRepository planRepository,
-            UserSubscriptionRepository subscriptionRepository,
-            UsagePeriodRepository usagePeriodRepository,
-            UsageEventRepository usageEventRepository) {
-        this.planRepository = planRepository;
-        this.subscriptionRepository = subscriptionRepository;
-        this.usagePeriodRepository = usagePeriodRepository;
-        this.usageEventRepository = usageEventRepository;
+            BillingPlanService planService,
+            UserSubscriptionService subscriptionService,
+            UsagePeriodService usagePeriodService,
+            UsageEventService usageEventService) {
+        this.planService = planService;
+        this.subscriptionService = subscriptionService;
+        this.usagePeriodService = usagePeriodService;
+        this.usageEventService = usageEventService;
     }
 
     @Override
@@ -42,15 +42,17 @@ public class BillingServiceImpl implements BillingService {
     @Override
     @Transactional
     public BillingSummaryResponse demoPurchase(Long userId, String planCode) {
-        BillingPlan plan = planRepository.findByCodeAndActiveTrue(planCode)
+        BillingPlan plan = planService.findByCodeAndActiveTrue(planCode)
                 .orElseThrow(() -> new ResourceNotFoundException("BillingPlan", "code", planCode));
 
         Instant now = Instant.now();
-        subscriptionRepository.findByUserIdAndStatus(userId, BillingConstants.STATUS_ACTIVE)
-                .forEach(subscription -> {
-                    subscription.setStatus(BillingConstants.STATUS_CANCELLED);
-                    subscriptionRepository.save(subscription);
-                });
+        List<UserSubscription> activeSubscriptions = subscriptionService.findByUserIdAndStatus(userId, BillingConstants.STATUS_ACTIVE);
+        for (UserSubscription subscription : activeSubscriptions) {
+            subscription.setStatus(BillingConstants.STATUS_CANCELLED);
+        }
+        if (!activeSubscriptions.isEmpty()) {
+            subscriptionService.saveAll(activeSubscriptions);
+        }
 
         UserSubscription subscription = new UserSubscription();
         subscription.setUserId(userId);
@@ -62,7 +64,7 @@ public class BillingServiceImpl implements BillingService {
                 BillingConstants.SUBSCRIPTION_PERIOD_AMOUNT,
                 BillingConstants.SUBSCRIPTION_PERIOD_UNIT));
         subscription.setDemoPaymentReference(BillingConstants.DEMO_PAYMENT_PREFIX + UUID.randomUUID());
-        subscription = subscriptionRepository.save(subscription);
+        subscription = subscriptionService.save(subscription);
 
         UsagePeriod usage = createUsagePeriod(userId, subscription);
         return toSummary(subscription, usage);
@@ -79,7 +81,7 @@ public class BillingServiceImpl implements BillingService {
         }
 
         usage.setChatUsed(usage.getChatUsed() + 1);
-        usagePeriodRepository.save(usage);
+        usagePeriodService.save(usage);
 
         UsageEvent event = new UsageEvent();
         event.setUserId(userId);
@@ -87,7 +89,7 @@ public class BillingServiceImpl implements BillingService {
         event.setEventType(BillingConstants.CHAT_EVENT_TYPE);
         event.setAmount(1);
         event.setDescription(description);
-        usageEventRepository.save(event);
+        usageEventService.save(event);
     }
 
     @Override
@@ -108,7 +110,7 @@ public class BillingServiceImpl implements BillingService {
 
         usage.setDocumentUsed(usage.getDocumentUsed() + 1);
         usage.setStorageMbUsed(usage.getStorageMbUsed() + fileSizeMb);
-        usagePeriodRepository.save(usage);
+        usagePeriodService.save(usage);
 
         UsageEvent event = new UsageEvent();
         event.setUserId(userId);
@@ -116,7 +118,7 @@ public class BillingServiceImpl implements BillingService {
         event.setEventType("DOCUMENT_UPLOAD");
         event.setAmount(fileSizeMb);
         event.setDescription(description);
-        usageEventRepository.save(event);
+        usageEventService.save(event);
     }
 
     @Override
@@ -136,14 +138,13 @@ public class BillingServiceImpl implements BillingService {
 
     private UserSubscription getOrCreateActiveSubscription(Long userId) {
         Instant now = Instant.now();
-        return subscriptionRepository
-                .findFirstByUserIdAndStatusAndCurrentPeriodEndAfterOrderByCreatedAtDesc(
-                        userId, BillingConstants.STATUS_ACTIVE, now)
+        return subscriptionService
+                .findActiveSubscription(userId, now)
                 .orElseGet(() -> createFreeSubscription(userId));
     }
 
     private UserSubscription createFreeSubscription(Long userId) {
-        BillingPlan freePlan = planRepository.findByCodeAndActiveTrue(BillingConstants.FREE_PLAN_CODE)
+        BillingPlan freePlan = planService.findByCodeAndActiveTrue(BillingConstants.FREE_PLAN_CODE)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "BillingPlan", "code", BillingConstants.FREE_PLAN_CODE));
         Instant now = Instant.now();
@@ -157,13 +158,13 @@ public class BillingServiceImpl implements BillingService {
                 BillingConstants.SUBSCRIPTION_PERIOD_AMOUNT,
                 BillingConstants.SUBSCRIPTION_PERIOD_UNIT));
         subscription.setDemoPaymentReference(BillingConstants.AUTO_FREE_PAYMENT_REFERENCE);
-        return subscriptionRepository.save(subscription);
+        return subscriptionService.save(subscription);
     }
 
     private UsagePeriod getOrCreateCurrentUsage(Long userId, UserSubscription subscription) {
         Instant now = Instant.now();
-        return usagePeriodRepository
-                .findFirstByUserIdAndPeriodStartLessThanEqualAndPeriodEndAfterOrderByCreatedAtDesc(userId, now, now)
+        return usagePeriodService
+                .findCurrentUsage(userId, now, now)
                 .orElseGet(() -> createUsagePeriod(userId, subscription));
     }
 
@@ -173,7 +174,7 @@ public class BillingServiceImpl implements BillingService {
     // gần như đồng thời lúc quota sắp cạn.
     private UsagePeriod getOrCreateCurrentUsageForUpdate(Long userId, UserSubscription subscription) {
         Instant now = Instant.now();
-        List<UsagePeriod> locked = usagePeriodRepository.lockCurrentUsageForUpdate(userId, now);
+        List<UsagePeriod> locked = usagePeriodService.lockCurrentUsageForUpdate(userId, now);
         if (!locked.isEmpty()) {
             return locked.get(0);
         }
@@ -193,14 +194,14 @@ public class BillingServiceImpl implements BillingService {
         usage.setDocumentUsed(0);
         usage.setStorageMbLimit(plan.getStorageMb());
         usage.setStorageMbUsed(0);
-        return usagePeriodRepository.save(usage);
+        return usagePeriodService.save(usage);
     }
 
     private BillingSummaryResponse toSummary(UserSubscription subscription, UsagePeriod usage) {
         return new BillingSummaryResponse(
                 toSubscriptionResponse(subscription),
                 toUsageResponse(usage),
-                planRepository.findByActiveTrueOrderByDisplayOrderAsc()
+                planService.findByActiveTrueOrderByDisplayOrderAsc()
                         .stream()
                         .map(this::toPlanResponse)
                         .toList());

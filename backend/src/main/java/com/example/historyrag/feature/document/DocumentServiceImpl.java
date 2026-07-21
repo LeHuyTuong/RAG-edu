@@ -10,7 +10,7 @@ import com.example.historyrag.feature.document.dto.SubjectDto;
 import com.example.historyrag.feature.document.dto.UpdateDocumentRequest;
 import com.example.historyrag.feature.document.event.DocumentIngestRequested;
 import com.example.historyrag.feature.document.chunk.DocumentChunk;
-import com.example.historyrag.feature.document.chunk.DocumentChunkRepository;
+import com.example.historyrag.feature.document.chunk.DocumentChunkService;
 import com.example.historyrag.feature.folder.FolderService;
 import com.example.historyrag.feature.subject.SubjectService;
 import com.example.historyrag.feature.user.UserService;
@@ -51,7 +51,7 @@ public class DocumentServiceImpl implements DocumentService {
     private final RagClientService ragClientService;
     private final FileStorageService fileStorageService;
     private final ApplicationEventPublisher eventPublisher;
-    private final DocumentChunkRepository documentChunkRepository;
+    private final DocumentChunkService documentChunkService;
     private final PdfWatermarkService pdfWatermarkService;
     private final com.example.historyrag.feature.billing.BillingService billingService;
     private final ContentHashLockRegistry contentHashLockRegistry;
@@ -721,7 +721,7 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     private void saveIngestedChunks(Document doc, RagIngestResponse response) {
-        documentChunkRepository.deleteByDocumentId(doc.getId());
+        documentChunkService.deleteByDocumentId(doc.getId());
         if (response.chunks() == null || response.chunks().isEmpty()) {
             return;
         }
@@ -738,6 +738,6 @@ public class DocumentServiceImpl implements DocumentService {
                     return chunk;
                 })
                 .toList();
-        documentChunkRepository.saveAll(chunks);
+        documentChunkService.saveAll(chunks);
     }
 }
