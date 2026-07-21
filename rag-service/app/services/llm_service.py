@@ -2,26 +2,35 @@
 Bước 3/4 trong chat pipeline: gọi LLM sinh câu trả lời.
 
 Vai trò: nhận system_prompt + user_message đã được prompt_service build,
-gọi LLM (Cerebras hoặc Google GenAI), trả về answer string.
+gọi LLM (Cerebras chính → OpenRouter → Groq fallback cuối), trả về answer string.
 
-Hai provider:
-  - cerebras: OpenAI-compatible API qua httpx (chat chính)
-  - google:   GenAI SDK (Gemma) — fallback
+Flow: Cerebras → nếu lỗi → OpenRouter (Gemini 2.5 Flash) → nếu lỗi → Groq
 
 Flow trong /rag/chat:
   prompt_service  →  (system_prompt, user_message)
     → generate(system_prompt, user_message, temperature)
     → answer  →  citation_service
 
-Raise ValueError nếu LLM trả rỗng — chat_routes bắt exception này
-và fallback về _NO_DATA_MSG thay vì crash 500.
+Raise ValueError nếu cả 3 provider đều trả rỗng.
 """
 import json
+import logging
 import re
 
 import httpx
 
 from app.config import settings
+from app.schemas.config import AiConfig
+
+logger = logging.getLogger("rag.llm")
+
+def _get_providers(ai_config: AiConfig = None) -> list[str]:
+    preferred = ai_config.active_llm_provider.lower() if ai_config and ai_config.active_llm_provider else settings.llm_provider.lower()
+    providers = [preferred]
+    for p in ["cerebras", "openrouter", "groq"]:
+        if p != preferred:
+            providers.append(p)
+    return providers
 
 
 def _clean_text(text: str) -> str:
@@ -36,90 +45,63 @@ def _clean_text(text: str) -> str:
     return text.strip()
 
 
-def generate(system_prompt: str, user_message: str, temperature: float = 0.2) -> str:
-    provider = settings.llm_provider
-
-    if provider == "cerebras":
-        return _clean_text(_generate_cerebras(system_prompt, user_message, temperature))
-    return _clean_text(_generate_google(system_prompt, user_message, temperature))
-
-
-def generate_stream(system_prompt: str, user_message: str, temperature: float = 0.2):
-    provider = settings.llm_provider
-
-    if provider == "cerebras":
-        for text in _stream_cerebras(system_prompt, user_message, temperature):
-            yield text
-    else:
-        for text in _stream_google(system_prompt, user_message, temperature):
-            yield text
+def generate(system_prompt: str, user_message: str, temperature: float = 0.2, ai_config: AiConfig = None) -> str:
+    last_err = None
+    for p in _get_providers(ai_config):
+        try:
+            if p == "cerebras":
+                return _clean_text(_generate_cerebras(system_prompt, user_message, temperature, ai_config))
+            elif p == "openrouter":
+                return _clean_text(_generate_openrouter(system_prompt, user_message, temperature))
+            elif p == "groq":
+                return _clean_text(_generate_groq(system_prompt, user_message, temperature))
+        except Exception as e:
+            logger.warning("%s failed, falling back: %s", p, e)
+            last_err = e
+    raise ValueError(f"All LLM providers failed. Last error: {last_err}")
 
 
-# ─── Cerebras (OpenAI-compatible) ───────────────────────────────────────────
+def generate_with_wikipedia(system_prompt: str, user_message: str, temperature: float = 0.2, ai_config: AiConfig = None) -> str:
+    # MVP: Fallback to standard generate
+    # In future, this can be enhanced to perform an iterative tool-call loop with wikipedia_service
+    return generate(system_prompt, user_message, temperature, ai_config)
 
 
-def _generate_cerebras(system_prompt: str, user_message: str, temperature: float) -> str:
-    payload = _cerebras_payload(system_prompt, user_message, temperature, stream=False)
-
-    with httpx.Client(timeout=120) as client:
-        resp = client.post(
-            f"{settings.cerebras_base_url}/chat/completions",
-            headers=_cerebras_headers(),
-            json=payload,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-
-    text = (data.get("choices") or [{}])[0].get("message", {}).get("content", "")
-    text = (text or "").strip()
-    if not text:
-        raise ValueError("Cerebras returned empty response")
-    return text
-
-
-def _stream_cerebras(system_prompt: str, user_message: str, temperature: float):
-    payload = _cerebras_payload(system_prompt, user_message, temperature, stream=True)
-
-    with httpx.Client(timeout=120) as client:
-        with client.stream(
-            "POST",
-            f"{settings.cerebras_base_url}/chat/completions",
-            headers=_cerebras_headers(),
-            json=payload,
-        ) as resp:
-            resp.raise_for_status()
-            has_text = False
-            for line in resp.iter_lines():
-                if not line.startswith("data: "):
-                    continue
-                chunk_data = line.removeprefix("data: ").strip()
-                if chunk_data == "[DONE]":
-                    break
-                try:
-                    chunk = json.loads(chunk_data)
-                except json.JSONDecodeError:
-                    continue
-                delta = (
-                    chunk.get("choices") or [{}]
-                )[0].get("delta", {}).get("content", "")
-                if delta:
-                    has_text = True
-                    yield delta
-
-    if not has_text:
-        raise ValueError("Cerebras returned empty stream")
+def generate_stream(system_prompt: str, user_message: str, temperature: float = 0.2, ai_config: AiConfig = None):
+    last_err = None
+    for p in _get_providers(ai_config):
+        try:
+            if p == "cerebras":
+                for text in _stream_cerebras(system_prompt, user_message, temperature, ai_config):
+                    yield text
+                return
+            elif p == "openrouter":
+                for text in _stream_openrouter(system_prompt, user_message, temperature):
+                    yield text
+                return
+            elif p == "groq":
+                for text in _stream_groq(system_prompt, user_message, temperature):
+                    yield text
+                return
+        except Exception as e:
+            logger.warning("%s stream failed, falling back: %s", p, e)
+            last_err = e
+    raise ValueError(f"All LLM stream providers failed. Last error: {last_err}")
 
 
-def _cerebras_headers() -> dict:
+# ─── OpenAI-compatible helpers ──────────────────────────────────────────────
+
+
+def _openai_headers(api_key: str) -> dict:
     return {
-        "Authorization": f"Bearer {settings.cerebras_api_key}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
 
 
-def _cerebras_payload(system_prompt: str, user_message: str, temperature: float, stream: bool) -> dict:
+def _openai_payload(model: str, system_prompt: str, user_message: str, temperature: float, stream: bool) -> dict:
     return {
-        "model": settings.cerebras_model,
+        "model": model,
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message},
@@ -129,63 +111,126 @@ def _cerebras_payload(system_prompt: str, user_message: str, temperature: float,
     }
 
 
-# ─── Google GenAI (Gemma — fallback) ────────────────────────────────────────
+def _parse_openai_response(data: dict) -> str:
+    text = (data.get("choices") or [{}])[0].get("message", {}).get("content", "")
+    return (text or "").strip()
 
 
-from typing import Optional
-from google import genai
-from google.genai import types
+def _stream_openai_lines(resp: httpx.Response):
+    """Generator yield từng delta text từ SSE stream OpenAI-compatible."""
+    has_text = False
+    for line in resp.iter_lines():
+        if not line.startswith("data: "):
+            continue
+        chunk_data = line.removeprefix("data: ").strip()
+        if chunk_data == "[DONE]":
+            break
+        try:
+            chunk = json.loads(chunk_data)
+        except json.JSONDecodeError:
+            continue
+        delta = (chunk.get("choices") or [{}])[0].get("delta", {}).get("content", "")
+        if delta:
+            has_text = True
+            yield delta
+    if not has_text:
+        raise ValueError("LLM stream returned empty")
 
-_google_client: Optional[genai.Client] = None
+
+# ─── Cerebras (OpenAI-compatible) ───────────────────────────────────────────
 
 
-def _get_google_client() -> genai.Client:
-    global _google_client
-    if _google_client is None:
-        _google_client = genai.Client(api_key=settings.google_api_key)
-    return _google_client
-
-
-def _generate_google(system_prompt: str, user_message: str, temperature: float) -> str:
-    response = _get_google_client().models.generate_content(
-        model=settings.llm_model,
-        contents=user_message,
-        config=types.GenerateContentConfig(
-            system_instruction=system_prompt,
-            temperature=temperature,
-        ),
-    )
-    text = (response.text or "").strip()
+def _generate_cerebras(system_prompt: str, user_message: str, temperature: float, ai_config: AiConfig = None) -> str:
+    payload = _openai_payload(settings.cerebras_model, system_prompt, user_message, temperature, stream=False)
+    api_key = ai_config.cerebras_api_key if ai_config and ai_config.cerebras_api_key else settings.cerebras_api_key
+    with httpx.Client(timeout=120) as client:
+        resp = client.post(
+            f"{settings.cerebras_base_url}/chat/completions",
+            headers=_openai_headers(api_key),
+            json=payload,
+        )
+        resp.raise_for_status()
+        text = _parse_openai_response(resp.json())
     if not text:
-        raise ValueError("LLM returned empty response")
+        raise ValueError("Cerebras returned empty response")
     return text
 
 
-def _stream_google(system_prompt: str, user_message: str, temperature: float):
-    models = _get_google_client().models
-    stream_fn = getattr(models, "generate_content_stream", None)
-    if stream_fn is None:
-        yield from _chunk_text(_generate_google(system_prompt, user_message, temperature))
-        return
-
-    has_text = False
-    for chunk in stream_fn(
-        model=settings.llm_model,
-        contents=user_message,
-        config=types.GenerateContentConfig(
-            system_instruction=system_prompt,
-            temperature=temperature,
-        ),
-    ):
-        text = getattr(chunk, "text", None) or ""
-        if text:
-            has_text = True
-            yield text
-
-    if not has_text:
-        raise ValueError("LLM returned empty stream")
+def _stream_cerebras(system_prompt: str, user_message: str, temperature: float, ai_config: AiConfig = None):
+    payload = _openai_payload(settings.cerebras_model, system_prompt, user_message, temperature, stream=True)
+    api_key = ai_config.cerebras_api_key if ai_config and ai_config.cerebras_api_key else settings.cerebras_api_key
+    with httpx.Client(timeout=120) as client:
+        with client.stream(
+            "POST",
+            f"{settings.cerebras_base_url}/chat/completions",
+            headers=_openai_headers(api_key),
+            json=payload,
+        ) as resp:
+            resp.raise_for_status()
+            yield from _stream_openai_lines(resp)
 
 
-def _chunk_text(text: str, chunk_size: int = 48):
-    for index in range(0, len(text), chunk_size):
-        yield text[index:index + chunk_size]
+# ─── OpenRouter fallback (Gemini 2.5 Flash — tiếng Việt tốt nhất) ───────────
+
+
+def _openrouter_headers() -> dict:
+    return _openai_headers(settings.openrouter_api_key)
+
+
+def _generate_openrouter(system_prompt: str, user_message: str, temperature: float) -> str:
+    payload = _openai_payload(settings.openrouter_model, system_prompt, user_message, temperature, stream=False)
+    with httpx.Client(timeout=120) as client:
+        resp = client.post(
+            f"{settings.openrouter_base_url}/chat/completions",
+            headers=_openrouter_headers(),
+            json=payload,
+        )
+        resp.raise_for_status()
+        text = _parse_openai_response(resp.json())
+    if not text:
+        raise ValueError("OpenRouter returned empty response")
+    return text
+
+
+def _stream_openrouter(system_prompt: str, user_message: str, temperature: float):
+    payload = _openai_payload(settings.openrouter_model, system_prompt, user_message, temperature, stream=True)
+    with httpx.Client(timeout=120) as client:
+        with client.stream(
+            "POST",
+            f"{settings.openrouter_base_url}/chat/completions",
+            headers=_openrouter_headers(),
+            json=payload,
+        ) as resp:
+            resp.raise_for_status()
+            yield from _stream_openai_lines(resp)
+
+
+# ─── Groq fallback cuối ─────────────────────────────────────────────────────
+
+
+def _generate_groq(system_prompt: str, user_message: str, temperature: float) -> str:
+    payload = _openai_payload(settings.groq_model, system_prompt, user_message, temperature, stream=False)
+    with httpx.Client(timeout=120) as client:
+        resp = client.post(
+            f"{settings.groq_base_url}/chat/completions",
+            headers=_openai_headers(settings.groq_api_key),
+            json=payload,
+        )
+        resp.raise_for_status()
+        text = _parse_openai_response(resp.json())
+    if not text:
+        raise ValueError("Groq returned empty response")
+    return text
+
+
+def _stream_groq(system_prompt: str, user_message: str, temperature: float):
+    payload = _openai_payload(settings.groq_model, system_prompt, user_message, temperature, stream=True)
+    with httpx.Client(timeout=120) as client:
+        with client.stream(
+            "POST",
+            f"{settings.groq_base_url}/chat/completions",
+            headers=_openai_headers(settings.groq_api_key),
+            json=payload,
+        ) as resp:
+            resp.raise_for_status()
+            yield from _stream_openai_lines(resp)

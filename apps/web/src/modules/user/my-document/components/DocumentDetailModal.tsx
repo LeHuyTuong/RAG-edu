@@ -15,6 +15,7 @@ import type {
   UpdateDocumentPayload,
 } from "@/types/document.type";
 import { formatDate } from "@/utils";
+import { getDisplayFromStatus } from "@/shared/documentStatus";
 
 type DialogMode = "view" | "edit" | "delete";
 
@@ -25,6 +26,7 @@ interface Props {
   readonly isSaving: boolean;
   readonly deletingId: string | null;
   readonly error: string | null;
+  readonly initialMode?: DialogMode;
   readonly onCancel: () => void;
   readonly onDelete: (document: LibraryDocument) => void;
   readonly onSave: (
@@ -33,26 +35,12 @@ interface Props {
   ) => Promise<void> | void;
 }
 
-function getStatusDisplay(status: string, isPublic: boolean) {
-  const normalizedStatus = status.toLowerCase();
-
-  if (normalizedStatus === "approved" || (status === "ACTIVE" && isPublic)) {
-    return { label: "Đã duyệt", tone: "success" as const };
-  }
-  if (normalizedStatus === "pending" || status === "PENDING") {
-    return { label: "Chờ duyệt", tone: "warning" as const };
-  }
-  if (normalizedStatus === "rejected" || status === "REJECTED") {
-    return { label: "Bị từ chối", tone: "error" as const };
-  }
-  if (normalizedStatus === "deleted" || status === "DELETED") {
-    return { label: "Đã xóa", tone: "neutral" as const };
-  }
-  if (!isPublic || normalizedStatus === "private") {
-    return { label: "Riêng tư", tone: "neutral" as const };
-  }
-
-  return { label: status, tone: "neutral" as const };
+function getStatusDisplay(document: LibraryDocument) {
+  return getDisplayFromStatus(
+    document.status,
+    document.ragStatus,
+    document.isPublic,
+  );
 }
 
 function DetailItem({
@@ -79,12 +67,14 @@ export function DocumentDetailModal({
   isSaving,
   deletingId,
   error,
+  initialMode,
   onCancel,
   onDelete,
   onSave,
 }: Props): React.JSX.Element | null {
   const [mode, setMode] = useState<DialogMode>("view");
   const [title, setTitle] = useState("");
+  const [originalAuthor, setOriginalAuthor] = useState("");
   const [subjectId, setSubjectId] = useState("");
   const [isPublic, setIsPublic] = useState(false);
   const [folderId, setFolderId] = useState("");
@@ -93,12 +83,13 @@ export function DocumentDetailModal({
   useEffect(() => {
     if (!document) return;
 
-    setMode("view");
+    setMode(initialMode ?? "view");
     setTitle(document.title);
+    setOriginalAuthor(document.originalAuthor ?? "");
     setSubjectId(document.subject?.id ?? "");
     setIsPublic(document.isPublic);
     setFolderId(document.folderId ? String(document.folderId) : "");
-  }, [document]);
+  }, [document, initialMode]);
 
   useEffect(() => {
     listFolders()
@@ -130,7 +121,7 @@ export function DocumentDetailModal({
 
   if (!isOpen || !document) return null;
 
-  const status = getStatusDisplay(document.status, document.isPublic);
+  const status = getStatusDisplay(document);
   const isDeleting = deletingId === document.id;
   const selectedFolderName =
     folders.find((folder) => String(folder.id) === String(document.folderId))
@@ -149,6 +140,7 @@ export function DocumentDetailModal({
 
     await onSave(document, {
       title: nextTitle,
+      originalAuthor: originalAuthor.trim() || undefined,
       subjectId: subjectId || undefined,
       isPublic,
       folderId: folderId ? Number(folderId) : undefined,
@@ -192,6 +184,15 @@ export function DocumentDetailModal({
             onChange={(event) => setTitle(event.target.value)}
             required
             value={title}
+          />
+
+          <InputField
+            disabled={isSaving}
+            label="Tác giả gốc (nếu có)"
+            onChange={(event) => setOriginalAuthor(event.target.value)}
+            placeholder="Tên người/tổ chức tạo ra nội dung gốc của tài liệu"
+            value={originalAuthor}
+            maxLength={255}
           />
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -254,8 +255,8 @@ export function DocumentDetailModal({
         icon="delete_forever"
         onOpenChange={handleOpenChange}
         open={isOpen}
-        title="Xóa tài liệu?"
-        tone="error"
+        title="Chuyển vào thùng rác?"
+        tone="neutral"
         footer={
           <>
             <Button
@@ -270,16 +271,16 @@ export function DocumentDetailModal({
               disabled={isDeleting}
               onClick={() => onDelete(document)}
               type="button"
-              variant="destructive"
+              className="bg-amber-600 text-white hover:bg-amber-700"
             >
-              {isDeleting ? "Đang xóa..." : "Xóa vĩnh viễn"}
+              {isDeleting ? "Đang xóa..." : "Chuyển vào thùng rác"}
             </Button>
           </>
         }
       >
-        <div className="rounded-xl border border-error/15 bg-error/5 px-4 py-3 text-sm text-on-surface-variant">
-          Thao tác này không thể hoàn tác. Tài liệu sẽ bị xóa khỏi danh sách của
-          bạn.
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800">
+          Tài liệu sẽ được chuyển vào thùng rác. Bạn có thể khôi phục lại bất kỳ
+          lúc nào.
         </div>
       </AppDialog>
     );
@@ -329,6 +330,10 @@ export function DocumentDetailModal({
       <div className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2">
           <DetailItem label="Tên tài liệu" value={document.title} />
+          <DetailItem
+            label="Tác giả gốc"
+            value={document.originalAuthor || "Chưa cập nhật"}
+          />
           <DetailItem
             label="Môn học"
             value={document.subject?.name ?? "Chưa phân loại"}

@@ -8,6 +8,7 @@ public record RagIngestResponse(
         String status,
         String collection,
         String embeddingModel,
+        String documentContentHash,
         List<RagIngestedChunkResponse> chunks
 ) {
     public RagIngestResponse {

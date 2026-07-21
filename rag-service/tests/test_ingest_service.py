@@ -32,7 +32,7 @@ def test_ingest_completed_path_builds_payloads_and_reingests(monkeypatch):
 
     monkeypatch.setattr(ingest_service, "extract", lambda **kwargs: [PageText(21, "raw")])
     monkeypatch.setattr(ingest_service, "chunk", lambda pages, size, overlap: chunks)
-    monkeypatch.setattr(ingest_service, "embed_documents", lambda texts: [[1.0], [2.0]])
+    monkeypatch.setattr(ingest_service, "embed_documents", lambda texts, ai_config=None: [[1.0], [2.0]])
     monkeypatch.setattr(ingest_service, "point_id", lambda source_id, chunk_index: f"{source_id}-{chunk_index}")
     monkeypatch.setattr(ingest_service, "ensure_collection", lambda collection: calls.append(("ensure", collection)))
     monkeypatch.setattr(ingest_service, "delete_by_source_id", lambda collection, source_id: calls.append(("delete", collection, source_id)))
@@ -67,7 +67,7 @@ def test_ingest_empty_does_not_call_embedding_or_qdrant(monkeypatch):
 
     monkeypatch.setattr(ingest_service, "extract", lambda **kwargs: [PageText(None, "   ")])
     monkeypatch.setattr(ingest_service, "chunk", lambda pages, size, overlap: [])
-    monkeypatch.setattr(ingest_service, "embed_documents", lambda texts: called.append("embed"))
+    monkeypatch.setattr(ingest_service, "embed_documents", lambda texts, ai_config=None: called.append("embed"))
     monkeypatch.setattr(ingest_service, "ensure_collection", lambda collection: called.append("ensure"))
     monkeypatch.setattr(ingest_service, "delete_by_source_id", lambda collection, source_id: called.append("delete"))
     monkeypatch.setattr(ingest_service, "upsert", lambda collection, ids, vectors, payloads: called.append("upsert"))

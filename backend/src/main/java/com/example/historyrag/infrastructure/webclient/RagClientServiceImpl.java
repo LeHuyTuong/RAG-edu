@@ -1,5 +1,7 @@
 package com.example.historyrag.infrastructure.webclient;
 
+import com.example.historyrag.feature.setting.SettingService;
+import com.example.historyrag.feature.setting.dto.SettingResponse;
 import com.example.historyrag.infrastructure.webclient.dto.RagChatRequest;
 import com.example.historyrag.infrastructure.webclient.dto.RagChatResponse;
 import com.example.historyrag.infrastructure.webclient.dto.RagClassifyRequest;
@@ -28,12 +30,15 @@ public class RagClientServiceImpl implements RagClientService {
 
     private final WebClient webClient;
     private final Duration requestTimeout;
+    private final SettingService settingService;
 
     public RagClientServiceImpl(
             WebClient.Builder webClientBuilder,
+            SettingService settingService,
             @Value("${app.rag.base-url}") String ragBaseUrl,
             @Value("${app.rag.request-timeout:60s}") Duration requestTimeout) {
         this.webClient = webClientBuilder.baseUrl(ragBaseUrl).build();
+        this.settingService = settingService;
         this.requestTimeout = requestTimeout;
     }
 
@@ -44,7 +49,7 @@ public class RagClientServiceImpl implements RagClientService {
                 .uri(uri)
                 .contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.APPLICATION_JSON)
-                .headers(headers -> setTraceparent(headers, traceparent))
+                .headers(headers -> setCommonHeaders(headers, traceparent))
                 .bodyValue(request)
                 .retrieve()
                 .bodyToMono(responseType)
@@ -54,7 +59,7 @@ public class RagClientServiceImpl implements RagClientService {
     private <R> R get(String uri, String traceparent, Class<R> responseType) {
         return webClient.get()
                 .uri(uri)
-                .headers(headers -> setTraceparent(headers, traceparent))
+                .headers(headers -> setCommonHeaders(headers, traceparent))
                 .retrieve()
                 .bodyToMono(responseType)
                 .block(requestTimeout);
@@ -64,7 +69,7 @@ public class RagClientServiceImpl implements RagClientService {
         return webClient.delete()
                 .uri(uri)
                 .accept(MediaType.APPLICATION_JSON)
-                .headers(headers -> setTraceparent(headers, traceparent))
+                .headers(headers -> setCommonHeaders(headers, traceparent))
                 .retrieve()
                 .bodyToMono(responseType)
                 .block(requestTimeout);
@@ -93,7 +98,7 @@ public class RagClientServiceImpl implements RagClientService {
                 .uri("/rag/chat/stream")
                 .contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.TEXT_EVENT_STREAM)
-                .headers(headers -> setTraceparent(headers, traceparent))
+                .headers(headers -> setCommonHeaders(headers, traceparent))
                 .bodyValue(request)
                 .retrieve()
                 .bodyToFlux(new ParameterizedTypeReference<ServerSentEvent<String>>() {
@@ -125,9 +130,23 @@ public class RagClientServiceImpl implements RagClientService {
         return delete(uri, traceparent, RagDeleteResponse.class);
     }
 
-    private void setTraceparent(HttpHeaders headers, String traceparent) {
+    private void setCommonHeaders(HttpHeaders headers, String traceparent) {
         if (traceparent != null && !traceparent.isBlank()) {
             headers.set(TRACE_PARENT_HEADER, traceparent);
+        }
+        try {
+            SettingResponse config = settingService.getConfig();
+            if (config.geminiApiKeys() != null && !config.geminiApiKeys().isBlank()) {
+                headers.set("X-AI-Gemini-Api-Keys", config.geminiApiKeys());
+            }
+            if (config.cerebrasApiKey() != null && !config.cerebrasApiKey().isBlank()) {
+                headers.set("X-AI-Cerebras-Api-Key", config.cerebrasApiKey());
+            }
+            if (config.activeLlmProvider() != null && !config.activeLlmProvider().isBlank()) {
+                headers.set("X-AI-Active-Llm-Provider", config.activeLlmProvider());
+            }
+        } catch (Exception e) {
+            // Ignore if DB not ready yet
         }
     }
 

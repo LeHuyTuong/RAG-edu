@@ -32,6 +32,7 @@ export const ROUTE_PATHS = {
     PROFILE: "/profile",
     SETTINGS: "/settings",
     UPLOADS: "/uploads",
+    BILLING: "/billing",
     FAVORITES: "/favorites",
     MY_DOCUMENTS: "/my-documents",
     MY_UPLOADS: "/my-uploads",
@@ -47,6 +48,7 @@ export const ROUTE_PATHS = {
     DOCUMENT_DETAIL: "/admin/documents/:id",
     CATEGORIES: "/admin/categories",
     SUBJECTS: "/admin/subjects",
+    BILLING: "/admin/billing",
     REPORTS: "/admin/reports",
 
     SETTINGS: "/admin/settings",

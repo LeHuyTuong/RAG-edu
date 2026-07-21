@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildCloudinaryDownloadUrl,
   buildDownloadFileName,
+  buildProtectedFileUrl,
+  buildProtectedDownloadUrl,
 } from "./document-download";
 
 describe("buildCloudinaryDownloadUrl", () => {
@@ -66,5 +68,17 @@ describe("buildDownloadFileName", () => {
 
   it("falls back when title or format is missing", () => {
     expect(buildDownloadFileName("   ", "unknown")).toBe("document");
+  });
+});
+
+describe("buildProtectedDownloadUrl", () => {
+  it("builds the backend download endpoint", () => {
+    expect(buildProtectedDownloadUrl(42)).toBe("/api/v1/documents/42/download");
+  });
+});
+
+describe("buildProtectedFileUrl", () => {
+  it("builds the backend inline file endpoint", () => {
+    expect(buildProtectedFileUrl(42)).toBe("/api/v1/documents/42/file");
   });
 });

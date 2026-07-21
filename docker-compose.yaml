@@ -71,10 +71,22 @@ services:
       - DEFAULT_CHUNK_SIZE=${DEFAULT_CHUNK_SIZE:-800}
       - DEFAULT_CHUNK_OVERLAP=${DEFAULT_CHUNK_OVERLAP:-120}
       - DEFAULT_TOP_K=${DEFAULT_TOP_K:-5}
-      - SCORE_THRESHOLD=${SCORE_THRESHOLD:-0.5}
+      - SCORE_THRESHOLD=${SCORE_THRESHOLD:-0.0}
     volumes:
       - uploaded_files:/app/uploads
+    depends_on:
+      qdrant:
+        condition: service_started
+
+  qdrant:
+    image: qdrant/qdrant:v1.12.6
+    ports:
+      - "${QDRANT_PORT:-6333}:6333"
+      - "${QDRANT_GRPC_PORT:-6334}:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
 
 volumes:
   mysql_data:
   uploaded_files:
+  qdrant_data:

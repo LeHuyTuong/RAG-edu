@@ -64,7 +64,9 @@ export const fetchDocuments = async (
 export const fetchDocumentDetail = async (
   id: string,
 ): Promise<DocumentDetail> => {
-  const result = await apiClient.get(API_ENDPOINTS.DOCUMENTS.DETAIL(id));
+  const result = await apiClient.get(API_ENDPOINTS.DOCUMENTS.DETAIL(id), {
+    skipToast: true,
+  });
   return result as unknown as DocumentDetail;
 };
 
@@ -121,6 +123,18 @@ export const updateDocument = async (
 export const approveDocument = async (id: string): Promise<DocumentDetail> => {
   const result = await apiClient.post(API_ENDPOINTS.DOCUMENTS.APPROVE(id));
   return result as unknown as DocumentDetail;
+};
+
+export const reclassifyDocument = async (id: string): Promise<void> => {
+  await apiClient.post(API_ENDPOINTS.DOCUMENTS.RECLASSIFY(id));
+};
+
+export const restoreDocument = async (id: string): Promise<void> => {
+  await apiClient.post(`/api/v1/documents/${id}/restore`);
+};
+
+export const hardDeleteDocument = async (id: string): Promise<void> => {
+  await apiClient.delete(`/api/v1/documents/${id}/hard`);
 };
 
 export const rejectDocument = async (

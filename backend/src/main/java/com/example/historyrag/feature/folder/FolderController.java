@@ -3,6 +3,7 @@ package com.example.historyrag.feature.folder;
 import com.example.historyrag.shared.ApiResponse;
 import com.example.historyrag.shared.JwtUtils;
 import com.example.historyrag.exception.ResourceNotFoundException;
+import com.example.historyrag.feature.billing.BillingService;
 import com.example.historyrag.feature.folder.dto.FolderChatRequest;
 import com.example.historyrag.feature.folder.dto.FolderRequest;
 import com.example.historyrag.feature.folder.dto.FolderResponse;
@@ -23,10 +24,12 @@ public class FolderController {
 
     private final FolderService folderService;
     private final RagService ragService;
+    private final BillingService billingService;
 
-    public FolderController(FolderService folderService, RagService ragService) {
+    public FolderController(FolderService folderService, RagService ragService, BillingService billingService) {
         this.folderService = folderService;
         this.ragService = ragService;
+        this.billingService = billingService;
     }
 
     @PostMapping
@@ -74,6 +77,7 @@ public class FolderController {
         if (!folderService.existsByIdAndOwner(id, userId)) {
             throw new ResourceNotFoundException("Folder", "id", id);
         }
+        billingService.consumeChatCredit(userId, "Folder chat");
         RagChatRequest ragRequest = new RagChatRequest(
                 request.question(),
                 request.topK(),
@@ -122,6 +126,9 @@ public class FolderController {
             @Valid @RequestBody FolderChatRequest request) {
         // Look up folder by share token (no JWT)
         FolderResponse folder = folderService.getByShareToken(token);
+        // Chat công khai không yêu cầu đăng nhập, nhưng vẫn phải tốn chi phí LLM thật —
+        // trừ vào quota của chủ sở hữu folder để tránh bị lạm dụng vô hạn miễn phí.
+        billingService.consumeChatCredit(folder.ownerId(), "Chat công khai qua folder share");
         RagChatRequest ragRequest = new RagChatRequest(
                 request.question(),
                 request.topK(),

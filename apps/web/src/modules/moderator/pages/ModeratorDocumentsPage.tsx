@@ -27,7 +27,7 @@ const pageSize = 10;
 const documentColumns = [
   { key: "title", label: "TIÊU ĐỀ TÀI LIỆU" },
   { key: "author", label: "TÁC GIẢ" },
-  { key: "subject", label: "MÔN HỌC" },
+  { key: "subject", label: "GIAI ĐOẠN" },
   { key: "uploadDate", label: "NGÀY TẢI" },
   { key: "status", label: "TRẠNG THÁI" },
   { key: "actions", label: "THAO TÁC", align: "right" as const },
@@ -36,6 +36,37 @@ const documentColumns = [
 function formatDocumentType(publicId: string): string {
   const extension = publicId.split(".").pop()?.toUpperCase();
   return extension && extension.length <= 5 ? extension : "FILE";
+}
+
+/** Badge trạng thái AI review: đỏ (DANGER) dùng tone chuẩn, vàng (WARNING) dùng màu amber
+ * cục bộ vì hệ thống design token hiện chưa có tone vàng dùng chung. */
+function AiReviewBadge({
+  document,
+}: {
+  readonly document: LibraryDocument;
+}): React.JSX.Element {
+  const confidencePct =
+    typeof document.aiConfidence === "number"
+      ? ` (${Math.round(document.aiConfidence * 100)}%)`
+      : "";
+
+  if (document.aiWarningLevel === "DANGER") {
+    return (
+      <ModeratorBadge tone="error">
+        Cần kiểm tra kỹ{confidencePct}
+      </ModeratorBadge>
+    );
+  }
+
+  if (document.aiWarningLevel === "WARNING") {
+    return (
+      <span className="inline-flex items-center rounded bg-amber-100 px-2 py-1 font-label-sm text-label-sm text-amber-900">
+        Nên kiểm tra{confidencePct}
+      </span>
+    );
+  }
+
+  return <ModeratorBadge tone="tertiary">Chờ duyệt</ModeratorBadge>;
 }
 
 export default function ModeratorDocumentsPage(): React.JSX.Element {
@@ -56,7 +87,7 @@ export default function ModeratorDocumentsPage(): React.JSX.Element {
       const response = await fetchDocuments({
         page: currentPage,
         limit: pageSize,
-        status: "PENDING",
+        status: "PENDING_REVIEW",
       });
       setDocuments(response.documents);
     } catch {
@@ -202,9 +233,7 @@ export default function ModeratorDocumentsPage(): React.JSX.Element {
         >
           {formatDate(document.createdAt)}
         </span>,
-        <ModeratorBadge key="status" tone="tertiary">
-          Chờ duyệt
-        </ModeratorBadge>,
+        <AiReviewBadge document={document} key="status" />,
         <div className="flex justify-end gap-2" key="actions">
           <IconButton
             href={`/moderator/documents/${document.id}`}

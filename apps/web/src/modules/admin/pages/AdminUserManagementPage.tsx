@@ -4,14 +4,17 @@ import { AppDialog } from "@/components/ui/AppDialog";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { InputField } from "@/components/ui/InputField";
 import { Pagination } from "@/components/ui/Pagination";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { SelectField } from "@/components/ui/SelectField";
 import { Table, type TableRow } from "@/components/ui/Table";
 import type { StatusTone } from "@/types";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   banAdminAccount,
+  createAdminAccount,
   fetchAdminAccountDetail,
   fetchAdminAccounts,
   type AdminAccount,
@@ -134,6 +137,44 @@ export default function AdminUserManagementPage(): React.JSX.Element {
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [isBanning, setIsBanning] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [formErrorMessage, setFormErrorMessage] = useState("");
+  const [draft, setDraft] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "USER" as AdminUserRole,
+  });
+
+  const handleOpenAdd = () => {
+    setDraft({ name: "", email: "", password: "", role: "USER" });
+    setFormErrorMessage("");
+    setFormOpen(true);
+  };
+
+  const handleSaveUser = async () => {
+    if (!draft.name.trim() || !draft.email.trim() || !draft.password.trim()) {
+      setFormErrorMessage("Vui lòng nhập đầy đủ Tên, Email và Mật khẩu.");
+      return;
+    }
+    setIsSaving(true);
+    setFormErrorMessage("");
+    try {
+      await createAdminAccount({
+        name: draft.name.trim(),
+        email: draft.email.trim(),
+        password: draft.password.trim(),
+        role: draft.role,
+      });
+      setFormOpen(false);
+      void loadUsers();
+    } catch (error) {
+      setFormErrorMessage(getErrorMessage(error, "Không thể tạo người dùng."));
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const loadUsers = useCallback(async () => {
     setIsLoading(true);
@@ -157,6 +198,15 @@ export default function AdminUserManagementPage(): React.JSX.Element {
   useEffect(() => {
     void loadUsers();
   }, [loadUsers]);
+
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (searchParams.get("action") === "add") {
+      handleOpenAdd();
+      // Remove the query param so it doesn't re-open on refresh if they closed it
+      window.history.replaceState({}, "", "/admin/users");
+    }
+  }, [searchParams]);
 
   const filteredUsers = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -282,13 +332,22 @@ export default function AdminUserManagementPage(): React.JSX.Element {
 
   return (
     <div className="flex flex-col gap-6 p-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-normal text-on-surface">
-          Quản lý người dùng
-        </h1>
-        <p className="mt-2 max-w-2xl font-body-md text-body-md text-on-surface-variant">
-          Tìm kiếm, lọc trạng thái và thao tác nhanh với tài khoản hệ thống.
-        </p>
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-normal text-on-surface">
+            Quản lý người dùng
+          </h1>
+          <p className="mt-2 max-w-2xl font-body-md text-body-md text-on-surface-variant">
+            Tìm kiếm, lọc trạng thái và thao tác nhanh với tài khoản hệ thống.
+          </p>
+        </div>
+        <Button
+          className="inline-flex h-[42px] items-center justify-center gap-2 self-start rounded-xl px-6"
+          onClick={handleOpenAdd}
+        >
+          <MaterialIcon className="text-[18px]" name="person_add" />
+          Thêm người dùng
+        </Button>
       </div>
 
       {errorMessage ? (
@@ -485,6 +544,77 @@ export default function AdminUserManagementPage(): React.JSX.Element {
           </div>
         </div>
       ) : null}
+
+      <AppDialog
+        onOpenChange={(open) => {
+          if (!open && !isSaving) setFormOpen(false);
+        }}
+        open={formOpen}
+        title="Thêm người dùng mới"
+        footer={
+          <>
+            <Button
+              disabled={isSaving}
+              onClick={() => setFormOpen(false)}
+              variant="outline"
+            >
+              Hủy
+            </Button>
+            <Button
+              disabled={isSaving}
+              onClick={() => void handleSaveUser()}
+              type="button"
+              variant="primary"
+            >
+              {isSaving ? "Đang tạo..." : "Tạo mới"}
+            </Button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-4 py-4">
+          {formErrorMessage ? (
+            <div className="rounded border border-error/30 bg-error-container px-3 py-2 text-sm text-error">
+              {formErrorMessage}
+            </div>
+          ) : null}
+          <InputField
+            label="Tên hiển thị"
+            value={draft.name}
+            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+            disabled={isSaving}
+            placeholder="Ví dụ: Nguyễn Văn A"
+          />
+          <InputField
+            label="Email"
+            type="email"
+            value={draft.email}
+            onChange={(e) => setDraft({ ...draft, email: e.target.value })}
+            disabled={isSaving}
+            placeholder="Ví dụ: nva@example.com"
+          />
+          <InputField
+            label="Mật khẩu"
+            type="password"
+            value={draft.password}
+            onChange={(e) => setDraft({ ...draft, password: e.target.value })}
+            disabled={isSaving}
+            placeholder="Tối thiểu 8 ký tự"
+          />
+          <SelectField
+            label="Vai trò"
+            options={[
+              { label: "Người dùng", value: "USER" },
+              { label: "Kiểm duyệt viên", value: "MODERATOR" },
+              { label: "Quản trị viên", value: "ADMIN" },
+            ]}
+            value={draft.role}
+            onChange={(value) =>
+              setDraft({ ...draft, role: value as AdminUserRole })
+            }
+            disabled={isSaving}
+          />
+        </div>
+      </AppDialog>
     </div>
   );
 }

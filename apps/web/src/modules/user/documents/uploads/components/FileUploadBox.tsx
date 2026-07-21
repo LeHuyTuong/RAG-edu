@@ -18,6 +18,7 @@
 import { useState, useCallback } from "react";
 import { validateFile } from "@/utils/validate.file";
 import { formatFileSize } from "@/utils";
+import { toast } from "sonner";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -55,6 +56,7 @@ export default function FileUploadBox({
       const result = validateFile(file, config);
       if (!result.valid) {
         setValidationError(result.error ?? "Tệp không hợp lệ.");
+        toast.error(result.error ?? "Chỉ nhận tài liệu!");
         onFileChange(null);
         return;
       }
@@ -141,7 +143,7 @@ export default function FileUploadBox({
             <input
               type="file"
               className="sr-only"
-              accept={config.allowedMimeTypes.join(",")}
+              accept=".pdf, .doc, .docx, .txt, application/pdf, text/plain, application/msword, application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               onChange={onInputChange}
               disabled={isSubmitting}
             />

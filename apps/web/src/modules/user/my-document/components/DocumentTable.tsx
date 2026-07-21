@@ -9,12 +9,14 @@
  */
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { InputField } from "@/components/ui/InputField";
 import { Pagination } from "@/components/ui/Pagination";
+import { SelectField } from "@/components/ui/SelectField";
 import { Table, type TableRow } from "@/components/ui/Table";
 import type { StatusTone } from "@/types";
 
@@ -25,6 +27,7 @@ type BadgeStatusTone = Extract<
 >;
 
 import { formatDate } from "@/utils";
+import { getDisplayFromStatus } from "@/shared/documentStatus";
 import type { LibraryDocument, PaginationMeta } from "@/types/document.type";
 
 const COLUMNS = [
@@ -34,45 +37,13 @@ const COLUMNS = [
   { key: "actions", label: "Thao tác", align: "center" as const },
 ] as const;
 
-function getStatusDisplay(
-  status: string,
-  isPublic: boolean,
-): { label: string; tone: BadgeStatusTone } {
-  const normalizedStatus = status.toLowerCase();
-
-  if (normalizedStatus === "approved") {
-    return { label: "Đã duyệt", tone: "success" };
-  }
-  if (normalizedStatus === "private") {
-    return { label: "Riêng tư", tone: "neutral" };
-  }
-  if (normalizedStatus === "pending") {
-    return { label: "Chờ duyệt", tone: "warning" };
-  }
-  if (normalizedStatus === "rejected") {
-    return { label: "Bị từ chối", tone: "error" };
-  }
-  if (normalizedStatus === "deleted") {
-    return { label: "Đã xóa", tone: "neutral" };
-  }
-
-  if (status === "ACTIVE" && isPublic) {
-    return { label: "Đã duyệt", tone: "success" };
-  }
-  if (status === "ACTIVE" && !isPublic) {
-    return { label: "Riêng tư", tone: "neutral" };
-  }
-  if (status === "PENDING") {
-    return { label: "Chờ duyệt", tone: "warning" };
-  }
-  if (status === "REJECTED") {
-    return { label: "Bị từ chối", tone: "error" };
-  }
-  if (status === "DELETED") {
-    return { label: "Đã xóa", tone: "neutral" };
-  }
-
-  return { label: status, tone: "neutral" };
+// Hiển thị trạng thái theo state machine thật (ragStatus). Fallback về chuỗi
+// `status` collapsed nếu response chưa có ragStatus.
+function getStatusDisplay(doc: LibraryDocument): {
+  label: string;
+  tone: BadgeStatusTone;
+} {
+  return getDisplayFromStatus(doc.status, doc.ragStatus, doc.isPublic);
 }
 
 function formatToIcon(publicId: string): string {
@@ -102,6 +73,26 @@ function SkeletonRows({ count }: { count: number }): React.JSX.Element {
   );
 }
 
+const STATUS_OPTIONS = [
+  { label: "Tất cả trạng thái", value: "ALL" },
+  { label: "Đang tải lên", value: "UPLOADING" },
+  { label: "Đang kiểm duyệt", value: "REVIEWING" },
+  { label: "Chờ duyệt", value: "PENDING_REVIEW" },
+  { label: "Đang index", value: "INDEXING" },
+  { label: "Đang index lại", value: "REINDEXING" },
+  { label: "Hoàn tất (READY)", value: "READY" },
+  { label: "Index lỗi", value: "FAILED" },
+  { label: "Bị từ chối", value: "REJECTED" },
+  { label: "Đã xóa", value: "SOFT_DELETED" },
+];
+
+const SORT_OPTIONS = [
+  { label: "Mới nhất", value: "NEWEST" },
+  { label: "Cũ nhất", value: "OLDEST" },
+  { label: "Tên A-Z", value: "NAME_ASC" },
+  { label: "Tên Z-A", value: "NAME_DESC" },
+];
+
 interface Props {
   readonly documents: LibraryDocument[];
   readonly pagination: PaginationMeta | null;
@@ -110,6 +101,11 @@ interface Props {
   readonly skeletonCount: number;
   readonly onPageChange: (page: number) => void;
   readonly onView: (document: LibraryDocument) => void;
+  readonly onEdit: (document: LibraryDocument) => void;
+  readonly onDeleteDirect: (document: LibraryDocument) => void;
+  readonly onRestore?: (document: LibraryDocument) => void;
+  readonly filterStatus?: string;
+  readonly onStatusChange?: (status: string) => void;
   readonly deletingId: string | null;
   readonly savingId: string | null;
 }
@@ -121,26 +117,63 @@ export function DocumentTable({
   error,
   skeletonCount,
   onPageChange,
-  onView,
+  onEdit,
+  onDeleteDirect,
+  onRestore,
+  onStatusChange,
   deletingId,
   savingId,
 }: Props): React.JSX.Element {
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState("ALL");
+  const [sortOption, setSortOption] = useState("NEWEST");
   const normalizedSearchTerm = searchTerm.trim();
-  const isSearching = normalizedSearchTerm.length > 0;
+  const isSearching = normalizedSearchTerm.length > 0 || filterStatus !== "ALL";
 
   const visibleDocuments = useMemo(() => {
+    let filtered = documents;
+
     const term = normalizedSearchTerm.toLowerCase();
-    if (!term) return documents;
-    return documents.filter(
-      (document) =>
-        document.title.toLowerCase().includes(term) ||
-        (document.subject?.name.toLowerCase().includes(term) ?? false),
-    );
-  }, [documents, normalizedSearchTerm]);
+    if (term) {
+      filtered = filtered.filter(
+        (document) =>
+          document.title.toLowerCase().includes(term) ||
+          (document.subject?.name.toLowerCase().includes(term) ?? false),
+      );
+    }
+
+    if (filterStatus !== "ALL") {
+      filtered = filtered.filter(
+        (doc) =>
+          doc.ragStatus === filterStatus ||
+          (!doc.ragStatus && filterStatus === doc.status),
+      );
+    }
+
+    const sorted = [...filtered];
+    sorted.sort((a, b) => {
+      if (sortOption === "NEWEST") {
+        return (
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      } else if (sortOption === "OLDEST") {
+        return (
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+      } else if (sortOption === "NAME_ASC") {
+        return a.title.localeCompare(b.title);
+      } else if (sortOption === "NAME_DESC") {
+        return b.title.localeCompare(a.title);
+      }
+      return 0;
+    });
+
+    return sorted;
+  }, [documents, normalizedSearchTerm, filterStatus, sortOption]);
 
   const tableRows: TableRow[] = visibleDocuments.map((doc) => {
-    const status = getStatusDisplay(doc.status, doc.isPublic);
+    const status = getStatusDisplay(doc);
     const icon = formatToIcon(doc.publicId);
 
     return {
@@ -170,26 +203,101 @@ export function DocumentTable({
         <div key="status" className="flex justify-center">
           <Badge tone={status.tone}>{status.label}</Badge>
         </div>,
-        <div key="actions" className="flex justify-center gap-2">
-          <Button
-            aria-label={`Xem chi tiết ${doc.title}`}
-            variant="ghost"
-            size="sm"
-            className="h-9 w-9 p-0 text-on-surface-variant hover:bg-surface-container-high hover:text-primary"
-            onClick={() => onView(doc)}
-            disabled={savingId === doc.id || deletingId === doc.id}
-            title={`Xem chi tiết ${doc.title}`}
-            type="button"
-          >
-            <span
-              aria-hidden="true"
-              className="material-symbols-outlined text-[22px]"
-            >
-              {savingId === doc.id || deletingId === doc.id
-                ? "sync"
-                : "visibility"}
-            </span>
-          </Button>
+        <div key="actions" className="flex justify-center gap-1">
+          {doc.ragStatus === "SOFT_DELETED" ? (
+            <>
+              <Button
+                aria-label={`Khôi phục ${doc.title}`}
+                variant="ghost"
+                size="sm"
+                className="h-9 w-9 p-0 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
+                onClick={() => onRestore?.(doc)}
+                disabled={savingId === doc.id || deletingId === doc.id}
+                title={`Khôi phục ${doc.title}`}
+                type="button"
+              >
+                <span
+                  aria-hidden="true"
+                  className="material-symbols-outlined text-[20px]"
+                >
+                  restore_from_trash
+                </span>
+              </Button>
+              <Button
+                aria-label={`Xóa vĩnh viễn ${doc.title}`}
+                variant="ghost"
+                size="sm"
+                className="h-9 w-9 p-0 text-on-surface-variant hover:bg-surface-container-high hover:text-error"
+                onClick={() => onDeleteDirect(doc)}
+                disabled={savingId === doc.id || deletingId === doc.id}
+                title={`Xóa vĩnh viễn ${doc.title}`}
+                type="button"
+              >
+                <span
+                  aria-hidden="true"
+                  className="material-symbols-outlined text-[20px]"
+                >
+                  delete_forever
+                </span>
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                aria-label={`Chỉnh sửa ${doc.title}`}
+                variant="ghost"
+                size="sm"
+                className="h-9 w-9 p-0 text-on-surface-variant hover:bg-surface-container-high hover:text-primary"
+                onClick={() => onEdit(doc)}
+                disabled={savingId === doc.id || deletingId === doc.id}
+                title={`Chỉnh sửa ${doc.title}`}
+                type="button"
+              >
+                <span
+                  aria-hidden="true"
+                  className="material-symbols-outlined text-[20px]"
+                >
+                  {savingId === doc.id || deletingId === doc.id
+                    ? "sync"
+                    : "edit"}
+                </span>
+              </Button>
+              <Button
+                aria-label={`Xem trước ${doc.title}`}
+                variant="ghost"
+                size="sm"
+                className="h-9 w-9 p-0 text-on-surface-variant hover:bg-surface-container-high hover:text-primary"
+                onClick={() => router.push(`/documents/${doc.id}`)}
+                disabled={savingId === doc.id || deletingId === doc.id}
+                title={`Xem trước ${doc.title}`}
+                type="button"
+              >
+                <span
+                  aria-hidden="true"
+                  className="material-symbols-outlined text-[20px]"
+                >
+                  visibility
+                </span>
+              </Button>
+              <Button
+                aria-label={`Xóa ${doc.title}`}
+                variant="ghost"
+                size="sm"
+                className="h-9 w-9 p-0 text-on-surface-variant hover:bg-surface-container-high hover:text-error"
+                onClick={() => onDeleteDirect(doc)}
+                disabled={savingId === doc.id || deletingId === doc.id}
+                title={`Xóa ${doc.title}`}
+                type="button"
+              >
+                <span
+                  aria-hidden="true"
+                  className="material-symbols-outlined text-[20px]"
+                >
+                  delete
+                </span>
+              </Button>
+            </>
+          )}
         </div>,
       ],
     };
@@ -226,22 +334,23 @@ export function DocumentTable({
               }
             />
           </div>
-          <Button variant="outline" type="button" size="sm">
-            <span className="flex items-center gap-1">
-              <span className="material-symbols-outlined text-[16px]">
-                filter_list
-              </span>
-              Bộ lọc
-            </span>
-          </Button>
-          <Button variant="outline" type="button" size="sm">
-            <span className="flex items-center gap-1">
-              <span className="material-symbols-outlined text-[16px]">
-                sort
-              </span>
-              Sắp xếp
-            </span>
-          </Button>
+          <div className="w-48">
+            <SelectField
+              options={STATUS_OPTIONS}
+              value={filterStatus}
+              onChange={(v) => {
+                setFilterStatus(v);
+                onStatusChange?.(v);
+              }}
+            />
+          </div>
+          <div className="w-36">
+            <SelectField
+              options={SORT_OPTIONS}
+              value={sortOption}
+              onChange={setSortOption}
+            />
+          </div>
         </div>
       </div>
 
@@ -270,9 +379,8 @@ export function DocumentTable({
           <Table
             columns={COLUMNS}
             rows={tableRows}
-            onRowClick={(row) => {
-              const doc = documents.find((d) => d.id === row.id);
-              if (doc) onView(doc);
+            onRowDoubleClick={(row) => {
+              router.push(`/documents/${row.id}`);
             }}
           />
         )}

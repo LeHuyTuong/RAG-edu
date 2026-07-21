@@ -30,6 +30,10 @@ public class Document extends BaseEntity {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    @Size(max = 255)
+    @Column(name = "original_author", length = 255)
+    private String originalAuthor;
+
     @Column(name = "file_url", length = 2000)
     private String fileUrl;
 
@@ -64,6 +68,9 @@ public class Document extends BaseEntity {
 
     @Column(name = "chunk_count")
     private Integer chunkCount;
+
+    @Column(name = "content_hash", length = 64)
+    private String contentHash;
 
     @Column(name = "uploaded_at", updatable = false)
     private Instant uploadedAt;

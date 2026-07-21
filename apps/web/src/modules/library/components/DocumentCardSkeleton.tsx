@@ -1,42 +1,37 @@
 import type { FC } from "react";
 
-/** Pulse skeleton that mirrors the exact dimensions of DocumentCard */
+/** Pulse skeleton that mirrors the new clean DocumentCard layout */
 export const DocumentCardSkeleton: FC = () => {
   return (
-    <div
-      className="
-        flex flex-col overflow-hidden
-        rounded-2xl
-        border border-outline-variant/60
-        bg-surface/80
-        shadow-sm shadow-black/5
-        animate-pulse
-      "
-    >
-      {/* Thumbnail placeholder */}
-      <div className="h-28 bg-surface-variant" />
+    <div className="flex flex-col rounded-xl border border-outline-variant/60 bg-surface p-5 animate-pulse">
+      {/* Top badge row */}
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="h-5 w-10 rounded-md bg-surface-variant" />
+        <div className="h-5 w-16 rounded-full bg-surface-variant" />
+      </div>
 
-      {/* Content placeholder */}
-      <div className="flex flex-col gap-3 p-4">
-        {/* Title — two lines */}
-        <div className="space-y-1.5">
-          <div className="h-3.5 w-full rounded bg-surface-variant" />
-          <div className="h-3.5 w-3/4 rounded bg-surface-variant" />
-        </div>
+      {/* Title */}
+      <div className="h-4 w-full rounded bg-surface-variant mb-1.5" />
+      <div className="h-4 w-2/3 rounded bg-surface-variant mb-2" />
 
-        {/* Author row */}
-        <div className="flex items-center gap-2">
-          <div className="h-5 w-5 rounded-full bg-surface-variant" />
-          <div className="h-3 w-1/2 rounded bg-surface-variant" />
-        </div>
+      {/* Subject badge */}
+      <div className="h-5 w-20 rounded-lg bg-surface-variant mb-3" />
 
-        {/* Subject */}
-        <div className="h-3 w-2/3 rounded bg-surface-variant" />
+      {/* Stats */}
+      <div className="flex gap-3 mb-3">
+        <div className="h-3 w-14 rounded bg-surface-variant" />
+        <div className="h-3 w-16 rounded bg-surface-variant" />
+        <div className="h-3 w-12 rounded bg-surface-variant" />
+      </div>
 
-        {/* Footer */}
-        <div className="mt-auto flex items-center justify-between border-t border-outline-variant/40 pt-2">
-          <div className="h-3 w-1/4 rounded bg-surface-variant" />
-          <div className="h-3 w-3 rounded bg-surface-variant" />
+      {/* Divider */}
+      <div className="border-t border-outline-variant/30 pt-3 mt-auto">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="h-6 w-6 rounded-full bg-surface-variant" />
+            <div className="h-3 w-20 rounded bg-surface-variant" />
+          </div>
+          <div className="h-3 w-20 rounded bg-surface-variant" />
         </div>
       </div>
     </div>

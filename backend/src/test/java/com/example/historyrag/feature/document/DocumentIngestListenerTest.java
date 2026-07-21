@@ -1,6 +1,7 @@
 package com.example.historyrag.feature.document;
 
 import com.example.historyrag.feature.document.event.DocumentIngestRequested;
+import com.example.historyrag.feature.document.chunk.DocumentChunkRepository;
 import com.example.historyrag.infrastructure.file.FileStorageService;
 import com.example.historyrag.infrastructure.webclient.RagClientService;
 import com.example.historyrag.infrastructure.webclient.dto.RagClassifyRequest;
@@ -32,28 +33,32 @@ class DocumentIngestListenerTest {
     @Mock private DocumentRepository documentRepository;
     @Mock private RagClientService ragClientService;
     @Mock private FileStorageService fileStorageService;
+    @Mock private DocumentChunkRepository documentChunkRepository;
 
     @Test
-    @DisplayName("handleDocumentIngest — should classify and ingest with internal filePath")
-    void handleDocumentIngest_usesInternalFilePath() {
+    @DisplayName("handleDocumentIngest — should classify then auto-approve with confidence >= 0.9")
+    void handleDocumentIngest_autoApprove_highConfidence() {
         Document document = document(7L, DocumentStatus.UPLOADING, "lesson.pdf");
         when(documentRepository.findById(7L)).thenReturn(Optional.of(document));
         when(fileStorageService.resolveInternalPath("lesson.pdf")).thenReturn("/app/uploads/lesson.pdf");
         when(ragClientService.classify(any(RagClassifyRequest.class), isNull()))
-                .thenReturn(new RagClassifyResponse(7L, true, 0.95, "history", "OK"));
+                .thenReturn(new RagClassifyResponse(7L, true, 0.95, "HISTORY", "OK"));
         when(ragClientService.ingest(any(RagIngestRequest.class), isNull()))
                 .thenReturn(new RagIngestResponse(
                         7L,
                         "COMPLETED",
                         "history_chunks",
                         "gemini-embedding-001",
+                        "abc123hash",
                         List.of(new RagIngestedChunkResponse(0, "point-1", "hash-1"))
                 ));
         DocumentIngestListener listener = new DocumentIngestListener(
                 documentRepository,
                 ragClientService,
                 fileStorageService,
-                true
+                documentChunkRepository,
+                true,
+                new ContentHashLockRegistry()
         );
 
         listener.handleDocumentIngest(new DocumentIngestRequested(7L));
@@ -67,7 +72,47 @@ class DocumentIngestListenerTest {
         verify(ragClientService).ingest(ingestCaptor.capture(), isNull());
         assertEquals("/app/uploads/lesson.pdf", ingestCaptor.getValue().filePath());
         assertNull(ingestCaptor.getValue().sourceUrl());
+        assertEquals("AUTO_APPROVED", document.getAiReviewStatus());
+        assertEquals("NONE", document.getAiWarningLevel());
         assertEquals(DocumentStatus.READY, document.getStatus());
+        verify(documentChunkRepository).deleteByDocumentId(7L);
+        verify(documentChunkRepository).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("handleDocumentIngest — should classify then ingest when review disabled")
+    void handleDocumentIngest_reviewDisabled_ingestDirectly() {
+        Document document = document(7L, DocumentStatus.UPLOADING, "lesson.pdf");
+        when(documentRepository.findById(7L)).thenReturn(Optional.of(document));
+        when(fileStorageService.resolveInternalPath("lesson.pdf")).thenReturn("/app/uploads/lesson.pdf");
+        when(ragClientService.ingest(any(RagIngestRequest.class), isNull()))
+                .thenReturn(new RagIngestResponse(
+                        7L,
+                        "COMPLETED",
+                        "history_chunks",
+                        "gemini-embedding-001",
+                        "abc123hash",
+                        List.of(new RagIngestedChunkResponse(0, "point-1", "hash-1"))
+                ));
+        DocumentIngestListener listener = new DocumentIngestListener(
+                documentRepository,
+                ragClientService,
+                fileStorageService,
+                documentChunkRepository,
+                false, // review disabled
+                new ContentHashLockRegistry()
+        );
+
+        listener.handleDocumentIngest(new DocumentIngestRequested(7L));
+
+        verify(ragClientService, never()).classify(any(), any());
+        ArgumentCaptor<RagIngestRequest> ingestCaptor = ArgumentCaptor.forClass(RagIngestRequest.class);
+        verify(ragClientService).ingest(ingestCaptor.capture(), isNull());
+        assertEquals("/app/uploads/lesson.pdf", ingestCaptor.getValue().filePath());
+        assertNull(ingestCaptor.getValue().sourceUrl());
+        assertEquals(DocumentStatus.READY, document.getStatus());
+        verify(documentChunkRepository).deleteByDocumentId(7L);
+        verify(documentChunkRepository).saveAll(any());
     }
 
     @Test
@@ -79,7 +124,9 @@ class DocumentIngestListenerTest {
                 documentRepository,
                 ragClientService,
                 fileStorageService,
-                true
+                documentChunkRepository,
+                true,
+                new ContentHashLockRegistry()
         );
 
         listener.handleDocumentIngest(new DocumentIngestRequested(8L));

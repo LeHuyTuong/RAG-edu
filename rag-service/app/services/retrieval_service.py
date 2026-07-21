@@ -1,25 +1,24 @@
 """
 Bước 1/4 trong chat pipeline: embed câu hỏi và search Qdrant.
 
-Vai trò: cầu nối giữa câu hỏi thô của user và các chunk liên quan trong Qdrant.
-Nhận question string, trả về list ScoredPoint để prompt_service build context.
-
-Flow trong /rag/chat:
-  chat_routes
-    → retrieve(question, top_k, source_ids, tag_ids)
-      1. embed_query(question)           — biến câu hỏi thành vector 768 chiều
-      2. vector_repository.search(...)   — cosine search topK + filter + threshold
-    → [ScoredPoint, ...]  →  prompt_service
-
-Filter source_ids / tag_ids đi thẳng xuống Qdrant — không cần đọc MySQL.
-score_threshold lọc chunk quá xa về ngữ nghĩa trước khi đưa vào prompt.
+Auto-detect năm từ câu hỏi → filter chunk theo year range trong payload.
+Ví dụ: "1945" → chỉ lấy chunk có yearStart <= 1945 <= yearEnd + 2.
 """
+import re
 from qdrant_client.models import ScoredPoint
 
 from app.config import settings
 from app.services.embedding_service import embed_query
 from app.vectorstore.vector_repository import search
+from app.schemas.config import AiConfig
 from typing import Optional
+
+
+def _extract_year_from_question(question: str) -> int | None:
+    matches = re.findall(r'\b(1[89]\d{2}|20\d{2})\b', question)
+    if matches:
+        return int(matches[0])
+    return None
 
 
 def retrieve(
@@ -29,8 +28,14 @@ def retrieve(
     tag_ids: list[int] | None = None,
     folder_id: Optional[int] = None,
     user_id: Optional[int] = None,
+    ai_config: AiConfig = None,
 ) -> list[ScoredPoint]:
-    query_vector = embed_query(question)
+    year = _extract_year_from_question(question)
+    # Boost query với năm nếu có
+    if year:
+        question = f"{question} năm {year}"
+
+    query_vector = embed_query(question, ai_config)
     return search(
         collection=settings.qdrant_collection,
         query_vector=query_vector,
@@ -40,4 +45,5 @@ def retrieve(
         tag_ids=tag_ids,
         folder_id=folder_id,
         user_id=user_id,
+        question_year=year,
     )

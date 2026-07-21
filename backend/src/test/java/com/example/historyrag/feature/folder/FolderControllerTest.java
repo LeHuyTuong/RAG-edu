@@ -1,6 +1,7 @@
 package com.example.historyrag.feature.folder;
 
 import com.example.historyrag.feature.folder.dto.FolderResponse;
+import com.example.historyrag.feature.billing.BillingService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,6 +34,7 @@ class FolderControllerTest {
 
     @Mock private FolderService folderService;
     @Mock private com.example.historyrag.feature.rag.RagService ragService;
+    @Mock private BillingService billingService;
 
     private MockMvc mockMvc;
 
@@ -40,7 +42,7 @@ class FolderControllerTest {
     void setUp() {
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
-        mockMvc = MockMvcBuilders.standaloneSetup(new FolderController(folderService, ragService))
+        mockMvc = MockMvcBuilders.standaloneSetup(new FolderController(folderService, ragService, billingService))
                 .setValidator(validator)
                 .setCustomArgumentResolvers(new JwtArgumentResolver())
                 .build();

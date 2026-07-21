@@ -20,6 +20,8 @@ tạo bản sao — đây là lý do delete đứng trước upsert trong flow.
 Trả "EMPTY" nếu không extract được chunk, "COMPLETED" nếu thành công.
 Exception từ bất kỳ bước nào sẽ bubble lên ingest_routes và trả 500.
 """
+import hashlib
+import re
 from datetime import datetime, timezone
 
 from app.config import settings
@@ -29,10 +31,27 @@ from app.services.embedding_service import embed_documents
 from app.services.extract_service import extract
 from app.vectorstore.qdrant_client import ensure_collection
 from app.vectorstore.vector_repository import delete_by_source_id, point_id, upsert
+from app.schemas.config import AiConfig
 from typing import Optional
 
 
-def ingest(req: RagIngestRequest) -> RagIngestResponse:
+def _parse_year_range(title: str) -> tuple[int | None, int | None]:
+    """Trích năm từ title: 'năm 1945-1950' → (1945, 1950), '1954' → (1954, 1954)"""
+    if not title:
+        return None, None
+    matches = re.findall(r'(\d{4})', title)
+    if len(matches) >= 2:
+        y1, y2 = int(matches[0]), int(matches[-1])
+        if abs(y2 - y1) <= 100:
+            return min(y1, y2), max(y1, y2)
+    if matches:
+        y = int(matches[0])
+        if 1900 <= y <= 2100:
+            return y, y
+    return None, None
+
+
+def ingest(req: RagIngestRequest, ai_config: AiConfig = None) -> RagIngestResponse:
     chunk_size = req.settings.chunkSize or settings.default_chunk_size
     chunk_overlap = req.settings.chunkOverlap or settings.default_chunk_overlap
     collection = settings.qdrant_collection
@@ -42,6 +61,11 @@ def ingest(req: RagIngestRequest) -> RagIngestResponse:
         file_path=req.filePath,
         source_url=req.sourceUrl,
     )
+
+    full_text = " ".join(p.text for p in pages)
+    normalized = re.sub(r"\s+", " ", full_text).strip().lower()
+    document_content_hash = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+
     chunks = chunk(pages, chunk_size, chunk_overlap)
 
     if not chunks:
@@ -50,29 +74,52 @@ def ingest(req: RagIngestRequest) -> RagIngestResponse:
             status="EMPTY",
             collection=collection,
             embeddingModel=settings.embedding_model,
+            documentContentHash=document_content_hash,
             chunks=[],
         )
 
     texts = [c.text for c in chunks]
-    vectors = embed_documents(texts)
+    vectors = embed_documents(texts, ai_config)
 
     created_at = datetime.now(timezone.utc).isoformat()
-    payloads = [
-        _build_payload(req, c.chunk_index, c.page_number, c.text, created_at)
-        for c in chunks
-    ]
+    # Chỉ upsert vector + metadata gọn (bỏ chunkText để tránh vượt 32MB limit)
     ids = [point_id(req.sourceId, c.chunk_index) for c in chunks]
 
+    # Trích năm từ title để lưu vào payload → filter khi search
+    year_start, year_end = _parse_year_range(req.title)
+
     ensure_collection(collection)
-    # Xóa vector cũ trước khi upsert để re-ingest không tạo bản sao
     delete_by_source_id(collection, req.sourceId)
-    upsert(collection, ids, vectors, payloads)
+
+    BATCH_SIZE = 100
+    for i in range(0, len(chunks), BATCH_SIZE):
+        batch_ids = ids[i:i + BATCH_SIZE]
+        batch_vectors = vectors[i:i + BATCH_SIZE]
+        batch_payloads = [
+            {
+                "sourceId": req.sourceId,
+                "sourceType": req.sourceType,
+                "documentId": req.documentId,
+                "folderId": req.metadata.folderId,
+                "userId": req.metadata.userId,
+                "title": req.title,
+                "chunkIndex": chunks[j].chunk_index,
+                "pageNumber": chunks[j].page_number,
+                "chunkText": chunks[j].text[:2000],
+                "yearStart": year_start,
+                "yearEnd": year_end,
+                "createdAt": created_at,
+            }
+            for j in range(i, min(i + BATCH_SIZE, len(chunks)))
+        ]
+        upsert(collection, batch_ids, batch_vectors, batch_payloads)
 
     return RagIngestResponse(
         sourceId=req.sourceId,
         status="COMPLETED",
         collection=collection,
         embeddingModel=settings.embedding_model,
+        documentContentHash=document_content_hash,
         chunks=[
             IngestedChunk(
                 chunkIndex=chunks[i].chunk_index,

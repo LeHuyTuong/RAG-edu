@@ -1,5 +1,1 @@
-import { SettingsPage } from "@/modules/settings";
-
-export default function Page(): React.JSX.Element {
-  return <SettingsPage />;
-}
+export { default } from "@/modules/admin/pages/AdminSystemSettingsPage";

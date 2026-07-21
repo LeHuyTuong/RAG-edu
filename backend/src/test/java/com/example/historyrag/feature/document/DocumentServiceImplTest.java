@@ -2,23 +2,22 @@ package com.example.historyrag.feature.document;
 
 import com.example.historyrag.exception.InvalidRequestException;
 import com.example.historyrag.exception.ResourceNotFoundException;
+import com.example.historyrag.feature.document.event.DocumentIngestRequested;
 import com.example.historyrag.feature.document.dto.CreateDocumentRequest;
 import com.example.historyrag.feature.document.dto.DocumentResponse;
 import com.example.historyrag.feature.document.dto.UpdateDocumentRequest;
 import com.example.historyrag.feature.folder.FolderService;
+import com.example.historyrag.feature.document.chunk.DocumentChunkRepository;
 import com.example.historyrag.feature.subject.SubjectService;
 import com.example.historyrag.feature.user.UserService;
 import com.example.historyrag.feature.user.dto.AccountResponse;
 import com.example.historyrag.infrastructure.file.FileStorageService;
+import com.example.historyrag.infrastructure.file.PdfWatermarkService;
 import com.example.historyrag.infrastructure.webclient.RagClientService;
-import com.example.historyrag.infrastructure.webclient.dto.RagIngestRequest;
-import com.example.historyrag.infrastructure.webclient.dto.RagIngestResponse;
-import com.example.historyrag.infrastructure.webclient.dto.RagIngestedChunkResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
@@ -45,6 +44,9 @@ class DocumentServiceImplTest {
     @Mock private RagClientService ragClientService;
     @Mock private FileStorageService fileStorageService;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private DocumentChunkRepository documentChunkRepository;
+    @Mock private PdfWatermarkService pdfWatermarkService;
+    @Mock private com.example.historyrag.feature.billing.BillingService billingService;
 
     private DocumentServiceImpl documentService;
 
@@ -57,7 +59,11 @@ class DocumentServiceImplTest {
                 subjectService,
                 ragClientService,
                 fileStorageService,
-                eventPublisher);
+                eventPublisher,
+                documentChunkRepository,
+                pdfWatermarkService,
+                billingService,
+                new ContentHashLockRegistry());
     }
 
     @Test
@@ -75,7 +81,7 @@ class DocumentServiceImplTest {
         assertThrows(ResourceNotFoundException.class,
                 () -> documentService.update(
                         1L,
-                        new UpdateDocumentRequest(null, null, foreignFolderId, null, null),
+                        new UpdateDocumentRequest(null, null, null, foreignFolderId, null, null),
                         ownerId));
 
         verify(documentRepository, never()).save(document);
@@ -85,7 +91,7 @@ class DocumentServiceImplTest {
     @DisplayName("create — should reject folder that does not belong to owner")
     void create_folderOwnedByAnotherUser_throwsNotFound() {
         CreateDocumentRequest request = new CreateDocumentRequest(
-                "Lesson", null,
+                "Lesson", null, null,
                 "https://res.cloudinary.com/demo/lesson.pdf",
                 "demo/lesson.pdf",1000L,"pdf","raw",null,false,99L);
         when(folderService.existsByIdAndOwner(99L, 10L)).thenReturn(false);
@@ -137,24 +143,17 @@ class DocumentServiceImplTest {
     }
 
     @Test
-    @DisplayName("approve — should re-ingest FAILED document with internal filePath before marking READY")
-    void approve_failedDocument_reingestsWithInternalFilePathBeforeReady() {
+    @DisplayName("approve — should publish FAILED document without blocking on ingest (sets INDEXING)")
+    void approve_failedDocument_marksReadyWithoutBlockingOnIngest() {
         Document document = document(7L, DocumentStatus.FAILED, "failed.pdf");
         when(documentRepository.findById(7L)).thenReturn(Optional.of(document));
-        when(fileStorageService.resolveInternalPath("failed.pdf")).thenReturn("/app/uploads/failed.pdf");
-        when(ragClientService.ingest(any(RagIngestRequest.class), isNull()))
-                .thenReturn(completedIngestResponse(7L));
 
         documentService.approve(7L, 1L);
 
-        ArgumentCaptor<RagIngestRequest> requestCaptor = ArgumentCaptor.forClass(RagIngestRequest.class);
-        verify(ragClientService).ingest(requestCaptor.capture(), isNull());
-        RagIngestRequest request = requestCaptor.getValue();
-        assertEquals("/app/uploads/failed.pdf", request.filePath());
-        assertNull(request.sourceUrl());
-        assertEquals(DocumentStatus.READY, document.getStatus());
+        verify(ragClientService, never()).ingest(any(), any());
+        verify(eventPublisher).publishEvent(new DocumentIngestRequested(7L));
+        assertEquals(DocumentStatus.INDEXING, document.getStatus());
         assertTrue(document.getIsPublic());
-        assertEquals(1, document.getChunkCount());
         assertEquals(1L, document.getReviewedById());
     }
 
@@ -209,15 +208,5 @@ class DocumentServiceImplTest {
         document.setFolderId(30L);
         document.setIsPublic(false);
         return document;
-    }
-
-    private static RagIngestResponse completedIngestResponse(Long sourceId) {
-        return new RagIngestResponse(
-                sourceId,
-                "COMPLETED",
-                "history_chunks",
-                "gemini-embedding-001",
-                List.of(new RagIngestedChunkResponse(0, "point-1", "hash-1"))
-        );
     }
 }

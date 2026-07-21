@@ -262,7 +262,9 @@ class RagClientServiceImplTest {
     }
 
     private RagClientServiceImpl newService() {
-        return new RagClientServiceImpl(WebClient.builder(), baseUrl, Duration.ofSeconds(5));
+        com.example.historyrag.feature.setting.SettingService settingService = org.mockito.Mockito.mock(com.example.historyrag.feature.setting.SettingService.class);
+        org.mockito.Mockito.when(settingService.getConfig()).thenReturn(new com.example.historyrag.feature.setting.dto.SettingResponse("", "", "", "", "", ""));
+        return new RagClientServiceImpl(WebClient.builder(), settingService, baseUrl, Duration.ofSeconds(5));
     }
 
     private static void sendJson(HttpExchange exchange, int status, String body) throws IOException {

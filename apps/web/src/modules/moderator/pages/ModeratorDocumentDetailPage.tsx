@@ -23,6 +23,7 @@ import { formatDate } from "@/utils";
 import { DocumentPreview } from "@/modules/user/documents/detail/components/DocumentPreview";
 import type { DocumentPreviewData } from "@/modules/user/documents/detail/type";
 import { loadDocumentPreview } from "@/modules/user/documents/detail/utils/document-preview";
+import { useAuthStore } from "@/stores/auth/store";
 
 import {
   EmptyState,
@@ -120,6 +121,7 @@ export default function ModeratorDocumentDetailPage({
   readonly documentId: string;
 }): React.JSX.Element {
   const router = useRouter();
+  const accessToken = useAuthStore((state) => state.accessToken);
   const [document, setDocument] = useState<DocumentDetail | null>(null);
   const [preview, setPreview] = useState<DocumentPreviewData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -136,7 +138,12 @@ export default function ModeratorDocumentDetailPage({
       setDocument(response);
 
       try {
-        setPreview(await loadDocumentPreview(response));
+        if (!accessToken) throw new Error("Missing access token");
+        setPreview((previous) => {
+          if (previous?.objectUrl) URL.revokeObjectURL(previous.objectUrl);
+          return previous;
+        });
+        setPreview(await loadDocumentPreview(response, accessToken));
       } catch (previewError) {
         console.error(
           "Could not load moderator document preview",
@@ -150,7 +157,13 @@ export default function ModeratorDocumentDetailPage({
     } finally {
       setIsLoading(false);
     }
-  }, [documentId]);
+  }, [documentId, accessToken]);
+
+  useEffect(() => {
+    return () => {
+      if (preview?.objectUrl) URL.revokeObjectURL(preview.objectUrl);
+    };
+  }, [preview?.objectUrl]);
 
   useEffect(() => {
     loadDocument();
@@ -205,7 +218,9 @@ export default function ModeratorDocumentDetailPage({
   }
 
   const status = document.status ?? "PENDING";
-  const canReview = status === "PENDING";
+  // Chỉ duyệt được tài liệu đang chờ kiểm duyệt (theo state machine thật),
+  // không phải doc đang INDEXING/FAILED/READY.
+  const canReview = document.ragStatus === "PENDING_REVIEW";
 
   return (
     <>
@@ -271,6 +286,14 @@ export default function ModeratorDocumentDetailPage({
                 </dt>
                 <dd className="font-body-md text-body-md">
                   {document.description || "Tài liệu chưa có mô tả."}
+                </dd>
+              </div>
+              <div>
+                <dt className="mb-1 font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
+                  Tác giả gốc
+                </dt>
+                <dd className="font-body-md text-body-md">
+                  {document.originalAuthor || "Người tải lên chưa khai báo"}
                 </dd>
               </div>
               <div className="grid grid-cols-2 gap-4">

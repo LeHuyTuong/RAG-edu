@@ -2,6 +2,7 @@ package com.example.historyrag.feature.rag;
 
 import com.example.historyrag.exception.InvalidRequestException;
 import com.example.historyrag.exception.ResourceNotFoundException;
+import com.example.historyrag.feature.billing.BillingService;
 import com.example.historyrag.shared.JwtUtils;
 import com.example.historyrag.feature.document.DocumentService;
 import com.example.historyrag.feature.folder.FolderService;
@@ -38,14 +39,17 @@ public class RagController {
     private final RagService ragService;
     private final DocumentService documentService;
     private final FolderService folderService;
+    private final BillingService billingService;
 
     public RagController(
             RagService ragService,
             DocumentService documentService,
-            FolderService folderService) {
+            FolderService folderService,
+            BillingService billingService) {
         this.ragService = ragService;
         this.documentService = documentService;
         this.folderService = folderService;
+        this.billingService = billingService;
     }
 
     @GetMapping("/health")
@@ -61,6 +65,7 @@ public class RagController {
             @RequestHeader(value = "traceparent", required = false) String traceparent) {
         Long userId = currentUserId(jwt);
         RagChatRequest securedRequest = secureChatRequest(request, userId, isAdmin(jwt));
+        billingService.consumeChatCredit(userId, "RAG chat");
         return ResponseEntity.ok(ApiResponse.success(ragService.chat(securedRequest, traceparent)));
     }
 
@@ -70,7 +75,9 @@ public class RagController {
             @AuthenticationPrincipal Jwt jwt,
             @RequestHeader(value = "traceparent", required = false) String traceparent) {
         Long userId = currentUserId(jwt);
-        return ragService.streamChat(secureChatRequest(request, userId, isAdmin(jwt)), traceparent);
+        RagChatRequest securedRequest = secureChatRequest(request, userId, isAdmin(jwt));
+        billingService.consumeChatCredit(userId, "RAG stream chat");
+        return ragService.streamChat(securedRequest, traceparent);
     }
 
     @PostMapping("/retrieve")
@@ -177,8 +184,8 @@ public class RagController {
             return;
         }
         boolean documentsExist = canViewAnyDocument
-                ? documentService.allExistByIds(sourceIds)
-                : documentService.allExistByIdsAndOwner(sourceIds, userId);
+                ? documentService.allReadyForAiByIds(sourceIds)
+                : documentService.allReadyForAiByIdsAndOwner(sourceIds, userId);
         if (!documentsExist) {
             throw new ResourceNotFoundException("Document", "id", sourceIds);
         }

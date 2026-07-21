@@ -30,8 +30,8 @@ const PUBLIC_AUTH_ENDPOINTS = [
   API_ENDPOINTS.AUTH.REGISTER,
   API_ENDPOINTS.AUTH.VERIFY_EMAIL,
   API_ENDPOINTS.AUTH.REFRESH,
-  "/api/v1/auth/forgot-password",
-  "/api/v1/auth/reset-password",
+  API_ENDPOINTS.AUTH.FORGOT_PASSWORD,
+  API_ENDPOINTS.AUTH.RESET_PASSWORD,
 ] as const;
 
 const isPublicAuthEndpoint = (url?: string): boolean =>

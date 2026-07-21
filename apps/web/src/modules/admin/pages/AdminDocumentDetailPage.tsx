@@ -15,9 +15,11 @@ import { DocumentPreview } from "@/modules/user/documents/detail/components/Docu
 import type { DocumentPreviewData } from "@/modules/user/documents/detail/type";
 import { loadDocumentPreview } from "@/modules/user/documents/detail/utils/document-preview";
 import { RejectDocumentModal } from "@/modules/moderator/components/RejectDocumentModal";
+import { useAuthStore } from "@/stores/auth/store";
 import type { DocumentDetail, DocumentStatus } from "@/types/document.type";
 import { formatDate, formatFileSize } from "@/utils";
 import { getErrorMessage } from "@/utils/error";
+import { getRagStatusDisplay } from "@/shared/documentStatus";
 
 import { AdminDocumentAiAssistant } from "../components/AdminDocumentAiAssistant";
 import { AdminCard, MaterialIcon } from "../components/AdminPrimitives";
@@ -67,6 +69,7 @@ export default function AdminDocumentDetailPage({
 }: {
   readonly documentId: string;
 }): React.JSX.Element {
+  const accessToken = useAuthStore((state) => state.accessToken);
   const [document, setDocument] = useState<DocumentDetail | null>(null);
   const [preview, setPreview] = useState<DocumentPreviewData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -83,7 +86,12 @@ export default function AdminDocumentDetailPage({
       setDocument(response);
 
       try {
-        setPreview(await loadDocumentPreview(response));
+        if (!accessToken) throw new Error("Missing access token");
+        setPreview((previous) => {
+          if (previous?.objectUrl) URL.revokeObjectURL(previous.objectUrl);
+          return previous;
+        });
+        setPreview(await loadDocumentPreview(response, accessToken));
       } catch {
         setPreview({ type: "unsupported" });
       }
@@ -93,7 +101,13 @@ export default function AdminDocumentDetailPage({
     } finally {
       setLoading(false);
     }
-  }, [documentId]);
+  }, [documentId, accessToken]);
+
+  useEffect(() => {
+    return () => {
+      if (preview?.objectUrl) URL.revokeObjectURL(preview.objectUrl);
+    };
+  }, [preview?.objectUrl]);
 
   useEffect(() => {
     void loadDocument();
@@ -159,7 +173,8 @@ export default function AdminDocumentDetailPage({
   }
 
   const status = document.status ?? "PENDING";
-  const canReview = status === "PENDING";
+  // Chỉ duyệt được khi đang chờ kiểm duyệt (theo state machine thật).
+  const canReview = document.ragStatus === "PENDING_REVIEW";
   const assistantDocuments = [
     {
       id: document.id,
@@ -185,7 +200,7 @@ export default function AdminDocumentDetailPage({
           </h1>
           <p className="mt-2 max-w-3xl text-on-surface-variant">
             Xem nội dung, hỏi AI hỗ trợ kiểm duyệt và quyết định duyệt hoặc từ
-            chối tài liệu này.
+            chối tư liệu này.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -244,7 +259,7 @@ export default function AdminDocumentDetailPage({
                 }
               />
               <DetailItem
-                label="Tác giả"
+                label="Người tải"
                 value={
                   <span>
                     {document.author.name}
@@ -255,12 +270,16 @@ export default function AdminDocumentDetailPage({
                 }
               />
               <DetailItem
-                label="Môn học"
+                label="Danh mục lịch sử"
                 value={document.subject?.name ?? "Chưa phân loại"}
               />
               <DetailItem
                 label="Mô tả"
-                value={document.description || "Tài liệu chưa có mô tả."}
+                value={document.description || "Tư liệu chưa có mô tả."}
+              />
+              <DetailItem
+                label="Tác giả gốc"
+                value={document.originalAuthor || "Người tải lên chưa khai báo"}
               />
               <div className="grid grid-cols-2 gap-4">
                 <DetailItem
@@ -272,8 +291,8 @@ export default function AdminDocumentDetailPage({
                   value={formatFileSize(document.sizeInBytes)}
                 />
                 <DetailItem
-                  label="Số trang"
-                  value={document.pageCount ? `${document.pageCount}` : "—"}
+                  label="Số chunks"
+                  value={document.chunkCount ? `${document.chunkCount}` : "—"}
                 />
                 <DetailItem
                   label="Ngày tải"
@@ -282,7 +301,7 @@ export default function AdminDocumentDetailPage({
               </div>
               {document.rejectionReason ? (
                 <DetailItem
-                  label="Lý do từ chối"
+                  label="Nhận xét AI"
                   value={document.rejectionReason}
                 />
               ) : null}
@@ -295,8 +314,15 @@ export default function AdminDocumentDetailPage({
             </h2>
             <dl className="space-y-4">
               <DetailItem
-                label="RAG status"
-                value={String(document.ragStatus ?? "Chưa có")}
+                label="Trạng thái xử lý RAG"
+                value={
+                  document.ragStatus
+                    ? getRagStatusDisplay(
+                        document.ragStatus,
+                        document.isPublic ?? false,
+                      ).label
+                    : "Chưa có"
+                }
               />
               <DetailItem
                 label="Độ tin cậy"

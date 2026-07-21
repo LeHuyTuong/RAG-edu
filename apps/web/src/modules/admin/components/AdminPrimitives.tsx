@@ -60,7 +60,7 @@ export function AdminToneIcon({
     <span
       className={`inline-flex h-10 w-10 items-center justify-center rounded ${toneClasses[tone]}`}
     >
-      <MaterialIcon name={icon} />
+      <MaterialIcon name={icon} filled />
     </span>
   );
 }

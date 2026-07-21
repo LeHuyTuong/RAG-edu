@@ -9,6 +9,7 @@ import com.example.historyrag.infrastructure.webclient.dto.RagIngestMetadata;
 import com.example.historyrag.infrastructure.webclient.dto.RagIngestResponse;
 import com.example.historyrag.infrastructure.webclient.dto.RagRetrieveRequest;
 import com.example.historyrag.infrastructure.webclient.dto.RagRetrieveResponse;
+import com.example.historyrag.feature.billing.BillingService;
 import com.example.historyrag.feature.document.DocumentService;
 import com.example.historyrag.feature.folder.FolderService;
 import com.example.historyrag.exception.GlobalExceptionHandler;
@@ -52,6 +53,8 @@ class RagControllerTest {
     private DocumentService documentService;
     @Mock
     private FolderService folderService;
+    @Mock
+    private BillingService billingService;
 
     private MockMvc mockMvc;
 
@@ -60,7 +63,7 @@ class RagControllerTest {
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
         mockMvc = MockMvcBuilders
-                .standaloneSetup(new RagController(ragService, documentService, folderService))
+                .standaloneSetup(new RagController(ragService, documentService, folderService, billingService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .setValidator(validator)
                 .setCustomArgumentResolvers(new JwtArgumentResolver())
@@ -113,7 +116,7 @@ class RagControllerTest {
                 0.2,
                 null,
                 null);
-        when(documentService.allExistByIds(List.of(150004L))).thenReturn(true);
+        when(documentService.allReadyForAiByIds(List.of(150004L))).thenReturn(true);
         when(ragService.chat(eq(securedRequest), eq(null)))
                 .thenReturn(new RagChatResponse("Co the duyet", List.of(), true, false));
 
@@ -136,8 +139,6 @@ class RagControllerTest {
                 0.2,
                 null,
                 null);
-        when(documentService.allExistByIdsAndOwner(List.of(150004L), 10L)).thenReturn(false);
-
         mockMvc.perform(post("/api/v1/rag/chat")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -189,7 +190,7 @@ class RagControllerTest {
         when(documentService.existsByIdAndOwner(7L, 10L))
                 .thenReturn(true);
         when(ragService.ingest(eq(securedRequest), eq(null)))
-                .thenReturn(new RagIngestResponse(7L, "COMPLETED", "history", "embed", List.of()));
+                .thenReturn(new RagIngestResponse(7L, "COMPLETED", "history", "embed", "hash", List.of()));
 
         mockMvc.perform(post("/api/v1/rag/ingest")
                         .contentType(MediaType.APPLICATION_JSON)

@@ -33,6 +33,8 @@ export interface LibraryDocument {
   id: string;
   title: string;
   description?: string | null;
+  /** Tác giả gốc của nội dung tài liệu (khác với người tải lên) */
+  originalAuthor?: string | null;
   /** Cloudinary public ID — usable for thumbnail generation */
   publicId: string;
   fileUrl: string;
@@ -52,9 +54,11 @@ export interface LibraryDocument {
   reviewedAt?: string | null;
   rejectionReason?: string | null;
   rejectionDetail?: string | null;
+  /** Điểm tin cậy AI trả về khi kiểm duyệt nội dung (0.0 - 1.0) */
   aiConfidence?: number | null;
-  aiWarningLevel?: string | null;
-  aiReviewStatus?: string | null;
+  /** Mức cảnh báo AI: NONE (đã auto-approve) | WARNING (vàng) | DANGER (đỏ) */
+  aiWarningLevel?: "NONE" | "WARNING" | "DANGER" | null;
+  aiReviewStatus?: "AUTO_APPROVED" | "PENDING_ADMIN" | "REJECTED_BY_AI" | null;
   author: DocumentAuthor;
   subject: DocumentSubject | null;
 }
@@ -94,6 +98,7 @@ export interface SubjectsListResponse {
 export interface CreateDocumentPayload {
   title: string;
   description?: string;
+  originalAuthor?: string;
   fileUrl: string;
   publicId: string;
   sizeInBytes: number;
@@ -107,6 +112,7 @@ export interface CreateDocumentPayload {
 export interface UpdateDocumentPayload {
   title?: string;
   description?: string;
+  originalAuthor?: string;
   subjectId?: string;
   isPublic?: boolean;
   folderId?: number;
@@ -123,7 +129,8 @@ export interface ListDocumentsQuery {
   folderId?: number;
   authorId?: string;
   subjectId?: string;
-  status?: DocumentStatus;
+  /** Backend accepts legacy aliases (DocumentStatus) or the raw 9-state UML enum (DocumentRagStatus) */
+  status?: DocumentStatus | DocumentRagStatus;
   onlyMine?: boolean;
 }
 
@@ -135,6 +142,8 @@ export interface DocumentDetail {
   id: string;
   title: string;
   description: string | null;
+  /** Tác giả gốc của nội dung tài liệu (khác với người tải lên) */
+  originalAuthor?: string | null;
   /** Direct Cloudinary URL — used for download and PDF preview */
   fileUrl: string;
   publicId: string;
