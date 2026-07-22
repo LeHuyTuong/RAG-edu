@@ -4,7 +4,7 @@ import com.example.historyrag.feature.admin.dto.DashboardResponse;
 import com.example.historyrag.feature.document.DocumentService;
 import com.example.historyrag.feature.document.DocumentStatus;
 import com.example.historyrag.feature.subject.SubjectService;
-import com.example.historyrag.feature.billing.UserSubscriptionRepository;
+import com.example.historyrag.feature.billing.UserSubscriptionService;
 import com.example.historyrag.feature.user.User;
 import com.example.historyrag.feature.user.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,13 +31,13 @@ class AdminDashboardServiceImplTest {
     private SubjectService subjectService;
 
     @Mock
-    private UserSubscriptionRepository userSubscriptionRepository;
+    private UserSubscriptionService userSubscriptionService;
 
     private AdminDashboardServiceImpl adminDashboardService;
 
     @BeforeEach
     void setUp() {
-        adminDashboardService = new AdminDashboardServiceImpl(userService, documentService, subjectService, userSubscriptionRepository);
+        adminDashboardService = new AdminDashboardServiceImpl(userService, documentService, subjectService, userSubscriptionService);
     }
 
     @Test
@@ -59,13 +59,13 @@ class AdminDashboardServiceImplTest {
 
         when(subjectService.countAll()).thenReturn(3L);
 
-        when(userSubscriptionRepository.countByStatus("ACTIVE"))
+        when(userSubscriptionService.countByStatus("ACTIVE"))
         .thenReturn(5L);
 
-        when(userSubscriptionRepository.calculateTotalRevenue())
+        when(userSubscriptionService.calculateTotalRevenue())
         .thenReturn(1200000L);
 
-        when(userSubscriptionRepository.calculateRevenueByMonth())
+        when(userSubscriptionService.calculateRevenueByMonth())
         .thenReturn(List.of());
 
 

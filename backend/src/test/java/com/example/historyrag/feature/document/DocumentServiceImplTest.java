@@ -7,7 +7,7 @@ import com.example.historyrag.feature.document.dto.CreateDocumentRequest;
 import com.example.historyrag.feature.document.dto.DocumentResponse;
 import com.example.historyrag.feature.document.dto.UpdateDocumentRequest;
 import com.example.historyrag.feature.folder.FolderService;
-import com.example.historyrag.feature.document.chunk.DocumentChunkRepository;
+import com.example.historyrag.feature.document.chunk.DocumentChunkService;
 import com.example.historyrag.feature.subject.SubjectService;
 import com.example.historyrag.feature.user.UserService;
 import com.example.historyrag.feature.user.dto.AccountResponse;
@@ -44,7 +44,7 @@ class DocumentServiceImplTest {
     @Mock private RagClientService ragClientService;
     @Mock private FileStorageService fileStorageService;
     @Mock private ApplicationEventPublisher eventPublisher;
-    @Mock private DocumentChunkRepository documentChunkRepository;
+    @Mock private DocumentChunkService documentChunkService;
     @Mock private PdfWatermarkService pdfWatermarkService;
     @Mock private com.example.historyrag.feature.billing.BillingService billingService;
 
@@ -60,7 +60,7 @@ class DocumentServiceImplTest {
                 ragClientService,
                 fileStorageService,
                 eventPublisher,
-                documentChunkRepository,
+                documentChunkService,
                 pdfWatermarkService,
                 billingService,
                 new ContentHashLockRegistry());
