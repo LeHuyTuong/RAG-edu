@@ -7,8 +7,6 @@
       }
     ],
     "paths": {
-      "@repo/tokens": ["../../packages/tokens/src/index.ts"],
-      "@repo/tokens/web": ["../../packages/tokens/src/web.ts"],
       "@/*": ["./src/*"],
       "@/types": ["./src/types/index.ts"],
       "@/config/*": ["./src/config/*"],
@@ -20,7 +18,6 @@
       "@/lib/*": ["./src/lib/*"],
       "@/stores/*": ["./src/stores/*"],
       "@/shared/*": ["./src/shared/*"],
-      "@/mockdata": ["./src/mockdata/index.ts"],
       "@/data/*": ["./src/data/*"],
       "@/components": ["./src/components"],
       "@/components/*": ["./src/components/*"],

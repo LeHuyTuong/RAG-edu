@@ -3,7 +3,6 @@ const cloudName =
   globalThis.process?.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ?? "ddxstobvd";
 
 const nextConfig = {
-  transpilePackages: ["@repo/tokens", "@repo/ui"],
   images: {
     remotePatterns: [
       {

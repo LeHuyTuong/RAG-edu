@@ -96,11 +96,6 @@ test.describe("Auth Flows", () => {
       await expect(page).toHaveURL(/\/login/);
     });
 
-    test("should redirect moderator page to login", async ({ page }) => {
-      await page.goto("/moderator");
-      await expect(page).toHaveURL(/\/login/);
-    });
-
     test("should redirect library to login", async ({ page }) => {
       await page.goto("/library");
       await expect(page).toHaveURL(/\/login/);

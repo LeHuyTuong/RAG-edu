@@ -76,7 +76,7 @@ export const deleteFolder = async (id: string): Promise<void> => {
 /**
  * POST /api/v1/folders/:id/chat — Chat trong context của một thư mục.
  * Lưu ý: Endpoint này trả về RagChatResponse (non-stream).
- * Nếu cần streaming SSE, xem rag.api.ts.
+ * Nếu cần streaming SSE, dùng feature RAG tương ứng.
  */
 export const chatInFolder = async (
   id: string,

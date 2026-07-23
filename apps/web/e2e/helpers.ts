@@ -1,24 +1,4 @@
 import type { Page } from "@playwright/test";
-import path from "path";
-import fs from "fs";
-
-// ─── Auth State ───
-
-export interface AuthTokens {
-  user: string | null;
-  moderator: string | null;
-  admin: string | null;
-}
-
-/** Read auth tokens saved by global-setup */
-export function readAuthTokens(): AuthTokens {
-  const envPath = path.resolve(__dirname, ".auth-state.json");
-  try {
-    return JSON.parse(fs.readFileSync(envPath, "utf-8"));
-  } catch {
-    return { user: null, moderator: null, admin: null };
-  }
-}
 
 /**
  * Log in via the UI (email/password form).
@@ -63,29 +43,6 @@ export async function logoutViaUI(page: Page) {
 export async function navigateTo(page: Page, url: string) {
   await page.goto(url);
   await page.waitForLoadState("networkidle");
-}
-
-/** Check if current page URL matches expected pattern */
-export async function expectUrl(page: Page, urlPattern: RegExp | string) {
-  await page.waitForURL(urlPattern, { timeout: 10_000 });
-}
-
-// ─── Form Helpers ───
-
-/** Click a button by its visible text */
-export async function clickButton(page: Page, text: string) {
-  await page.getByRole("button", { name: text }).click();
-}
-
-/** Click a link by its visible text */
-export async function clickLink(page: Page, text: string) {
-  await page.getByRole("link", { name: text }).click();
-}
-
-/** Wait for toast / notification to appear */
-export async function waitForToast(page: Page, timeout = 8_000) {
-  // The app uses sonner Toaster with richColors
-  await page.waitForSelector("[data-sonner-toast]", { timeout });
 }
 
 // ─── Test User Credentials ───

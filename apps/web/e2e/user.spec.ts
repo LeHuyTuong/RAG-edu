@@ -102,13 +102,5 @@ test.describe("User Flows", () => {
       // Should redirect away (either to home or show forbidden)
       await expect(page).toHaveURL(/\/home|\/login|\/dashboard/);
     });
-
-    test("should not allow regular user to access moderator pages", async ({
-      page,
-    }) => {
-      await page.goto("/moderator");
-      // Should redirect away
-      await expect(page).toHaveURL(/\/home|\/login|\/dashboard/);
-    });
   });
 });

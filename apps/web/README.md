@@ -35,9 +35,9 @@ Migrated vertical slices currently include:
 - `src/features/rag` for RAG endpoints, folder-scoped source queries, and streaming chat state.
 - `src/features/admin` for dashboard metrics, account, subject, billing, system configuration, and document-review server state.
 
-`src/apis/document.api.ts` and `src/apis/rag.api.ts` are temporary
-compatibility exports for remaining home and folder consumers. New code must use
-the corresponding feature API or hooks.
+`src/apis/document.api.ts` is a temporary compatibility export for remaining
+home and folder consumers. New code must use the corresponding feature API or
+hooks.
 
 The backend does not expose a `MODERATOR` role or moderator endpoints, so the
 moderator portal, navigation, guards, and routes are intentionally absent from
@@ -69,9 +69,8 @@ src/
 ├── types/                      # TypeScript types and interfaces
 ├── utils/                      # Utility functions
 ├── hooks/                      # Cross-feature client hooks
-├── stores/                     # Compatibility exports / client state
-├── lib/                        # Compatibility helpers
-└── mockdata/                   # Mock data for development
+├── stores/                     # Client state
+└── lib/                        # Compatibility helpers
 ```
 
 ### Core Conventions
@@ -94,8 +93,6 @@ import { APP_CONFIG, ROUTE_PATHS } from "@/config";
 import { validateEmail, truncate } from "@/utils";
 import { useAuth, useLogin } from "@/features/auth";
 import { apiClient } from "@/shared/api/api-client";
-import { MOCK_DOCUMENTS } from "@/mockdata";
-import SearchBar from "@/components/SearchBar";
 ```
 
 ## Routes and Access Control
@@ -126,26 +123,12 @@ const detailPath = getRoutePath(ROUTE_PATHS.LIBRARY_DETAIL, { id: "123" });
 5. Keep shared UI in [src/components/](./src/components) and theme usage aligned with [src/styles/globals.css](./src/styles/globals.css).
 6. If the route or guard behavior changes, update [src/routes/README.md](./src/routes/README.md).
 
-This is the Next.js web app for AI Study Hub. It consumes shared design tokens from `@repo/tokens`, keeps feature logic in route modules, and uses the App Router for the public, auth, and protected experience.
-
-## Shared Design Tokens
-
-Use `@repo/tokens` for colors, spacing, radius, typography, and other shared values.
-
-- Keep web-only theme bootstrapping in [src/app/layout.tsx](./src/app/layout.tsx).
-- Use the CSS variables exposed by `createWebThemeStyles()` in [src/styles/globals.css](./src/styles/globals.css) and component styles.
-- Prefer shared tokens over app-local magic numbers so the web app stays aligned with the rest of the workspace.
-
-Example:
-
-```ts
-import { createWebThemeStyles } from "@repo/tokens/web";
-```
+This is the Next.js web app for AI Study Hub. It keeps feature logic in route
+modules and uses the App Router for the public, auth, and protected experience.
 
 ## Related Docs
 
 - [Project overview](../docs/PROJECT_OVERVIEW.md)
 - [Design system](../docs/DESIGN.md)
-- [Shared tokens](../docs/SHARED_TOKENS.md)
 - [Route management](./src/routes/README.md)
 - [Page development guide](../docs/PAGE_DEVELOPMENT_GUIDE.md)
