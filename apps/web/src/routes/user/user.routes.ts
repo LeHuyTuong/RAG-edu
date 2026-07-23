@@ -65,12 +65,6 @@ export const userRouterConfig = {
     public: false,
     requiresAuth: true,
   },
-  CHANGE_PASSWORD: {
-    path: ROUTE_PATHS.PROTECTED_ROUTES.CHANGE_PASSWORD,
-    title: "Đổi mật khẩu",
-    public: false,
-    requiresAuth: true,
-  },
 } as const;
 
 const matchesRouteSegment = (pathname: string, route: string): boolean => {

@@ -18,9 +18,6 @@ export const ROUTE_PATHS = {
   AUTH_ROUTES: {
     LOGIN: "/login",
     REGISTER: "/register",
-    FORGOT_PASSWORD: "/forgot-password",
-    RESET_PASSWORD: "/reset-password/:token",
-    VERIFY_EMAIL: "/verify-email/:token",
   },
 
   // ========== PROTECTED ROUTES (Require authentication) ==========
@@ -36,7 +33,6 @@ export const ROUTE_PATHS = {
     FAVORITES: "/favorites",
     MY_DOCUMENTS: "/my-documents",
     MY_UPLOADS: "/my-uploads",
-    CHANGE_PASSWORD: "/settings/change-password",
   },
 
   // ========== ADMIN ROUTES (Require admin role) ==========
@@ -67,7 +63,6 @@ export const ROUTE_PATHS = {
 
 /**
  * Get route with optional parameters
- * @example getRoutePath(ROUTE_PATHS.AUTH_ROUTES.VERIFY_EMAIL, { token: 'abc123' })
  * @example getRoutePath(ROUTE_PATHS.LIBRARY_DETAIL, { id: '456' })
  */
 export const getRoutePath = (
