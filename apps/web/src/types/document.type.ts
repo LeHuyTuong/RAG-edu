@@ -127,7 +127,6 @@ export interface ListDocumentsQuery {
   limit?: number;
   search?: string;
   folderId?: number;
-  authorId?: string;
   subjectId?: string;
   /** Backend accepts legacy aliases (DocumentStatus) or the raw 9-state UML enum (DocumentRagStatus) */
   status?: DocumentStatus | DocumentRagStatus;

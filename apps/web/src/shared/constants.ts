@@ -26,9 +26,13 @@ export const API_ENDPOINTS = {
   DOCUMENTS: {
     BASE: "/api/v1/documents",
     DETAIL: (id: string) => `/api/v1/documents/${id}`,
+    FILE: (id: string) => `/api/v1/documents/${id}/file`,
+    DOWNLOAD: (id: string) => `/api/v1/documents/${id}/download`,
     APPROVE: (id: string) => `/api/v1/documents/${id}/approve`,
     REJECT: (id: string) => `/api/v1/documents/${id}/reject`,
     RECLASSIFY: (id: string) => `/api/v1/documents/${id}/reclassify`,
+    RESTORE: (id: string) => `/api/v1/documents/${id}/restore`,
+    HARD_DELETE: (id: string) => `/api/v1/documents/${id}/hard`,
     SHARE: (id: string) => `/api/v1/documents/${id}/share`,
     SHARED: (token: string) => `/api/v1/documents/share/${token}`,
   },
