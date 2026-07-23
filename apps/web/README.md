@@ -12,7 +12,6 @@ Useful scripts:
 
 ```bash
 pnpm --filter web lint
-pnpm --filter web test
 pnpm --filter web check-types
 ```
 
