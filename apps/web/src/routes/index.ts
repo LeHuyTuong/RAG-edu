@@ -20,7 +20,6 @@ export * from "./moderator/moderator.routes";
 export * from "./admin/admin.routes";
 
 // Route guards
-export * from "./guards/auth.guard";
 export * from "./guards/role.guard";
 
 // Protected route component

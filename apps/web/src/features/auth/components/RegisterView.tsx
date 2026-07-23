@@ -5,15 +5,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent, type ReactElement } from "react";
 
 import { BackButton } from "@/components/ui/BackButton";
-import { APP_CONFIG } from "@/config";
-import { apiClient } from "@/lib/axios";
+import { useRegister } from "@/features/auth";
 import { ROUTE_PATHS } from "@/routes/router.const";
-import { API_ENDPOINTS } from "@/shared/constants";
-import { getOrCreateDeviceId } from "@/utils";
-import { useAuthStore } from "@/stores/auth/store";
-import { signin, getCurrentUser } from "@/modules/auth-api";
 
-const getSafeRedirect = (value: string | null): string | null => {
+import { getSafeRedirect } from "../lib/auth.redirect";
+
+const getValidRedirect = (value: string | null): string | null => {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
     return null;
   }
@@ -21,17 +18,16 @@ const getSafeRedirect = (value: string | null): string | null => {
   return value;
 };
 
-export default function RegisterPageClient(): ReactElement {
+export function RegisterView(): ReactElement {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const safeRedirect = getSafeRedirect(searchParams.get("redirect"));
-  const homeHref = safeRedirect ?? ROUTE_PATHS.PROTECTED_ROUTES.HOME;
+  const register = useRegister();
+  const safeRedirect = getValidRedirect(searchParams.get("redirect"));
   const loginHref = safeRedirect
     ? `${ROUTE_PATHS.AUTH_ROUTES.LOGIN}?redirect=${encodeURIComponent(
         safeRedirect,
       )}`
     : ROUTE_PATHS.AUTH_ROUTES.LOGIN;
-  const setAuth = useAuthStore((state) => state.setAuth);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -45,7 +41,6 @@ export default function RegisterPageClient(): ReactElement {
     confirmPassword: "",
     general: "",
   });
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = event.target;
@@ -102,39 +97,21 @@ export default function RegisterPageClient(): ReactElement {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!validate() || isSubmitting) {
+    if (!validate() || register.isPending) {
       return;
     }
 
-    setIsSubmitting(true);
-
     try {
-      const deviceId = getOrCreateDeviceId();
       const name = formData.name.trim();
       const email = formData.email.trim();
 
-      // Đăng ký tài khoản
-      await apiClient.post(API_ENDPOINTS.AUTH.REGISTER, {
+      const user = await register.mutateAsync({
         name,
         email,
         password: formData.password,
-        deviceId,
       });
 
-      // Tự động đăng nhập sau khi đăng ký thành công
-      const result = await signin({
-        email,
-        password: formData.password,
-        deviceId,
-      });
-      if (result?.data?.accessToken) {
-        const user = await getCurrentUser();
-        setAuth(result.data.accessToken, user.role, user);
-        router.replace(homeHref);
-      } else {
-        // Fallback: redirect sang login nếu auto-login không được
-        router.replace(loginHref);
-      }
+      router.replace(getSafeRedirect(searchParams.get("redirect"), user.role));
     } catch (error) {
       const axiosError = error as {
         response?: { data?: { message?: string } };
@@ -148,8 +125,6 @@ export default function RegisterPageClient(): ReactElement {
             ? error.message
             : "Đăng ký thất bại. Vui lòng thử lại."),
       }));
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -268,32 +243,12 @@ export default function RegisterPageClient(): ReactElement {
 
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={register.isPending}
               className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-primary px-5 font-label-lg text-label-lg font-semibold text-on-primary transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isSubmitting ? "Đang đăng ký..." : "Đăng ký"}
+              {register.isPending ? "Đang đăng ký..." : "Đăng ký"}
             </button>
           </form>
-
-          <div className="mt-6 flex items-center gap-3">
-            <div className="h-px flex-1 bg-outline-variant"></div>
-            <span className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
-              Hoặc
-            </span>
-            <div className="h-px flex-1 bg-outline-variant"></div>
-          </div>
-
-          <a
-            href={`${APP_CONFIG.api.baseUrl}${API_ENDPOINTS.AUTH.GOOGLE}`}
-            className="mt-6 inline-flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-outline-variant bg-surface px-5 font-label-lg text-label-lg font-semibold text-on-surface transition-colors hover:bg-surface-container-high"
-          >
-            <img
-              src="https://www.google.com/favicon.ico"
-              alt="Google"
-              className="h-5 w-5"
-            />
-            Đăng ký bằng Google
-          </a>
 
           <p className="mt-6 text-center font-label-sm text-label-sm text-on-surface-variant">
             Đã có tài khoản?{" "}

@@ -6,8 +6,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FC, type ReactNode } from "react";
-import { getAuthSession } from "./guards/auth.guard";
+import { useEffect, type FC, type ReactNode } from "react";
+
+import { useAuth } from "@/features/auth";
 
 export interface GuestRouteProps {
   children: ReactNode;
@@ -17,20 +18,15 @@ export const GuestRoute: FC<GuestRouteProps> = ({
   children,
 }): React.JSX.Element | null => {
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { isAuthenticated, isLoadingUser } = useAuth();
 
   useEffect(() => {
-    setMounted(true);
-    const { isAuthenticated: isAuth } = getAuthSession();
-    setIsAuthenticated(isAuth);
-
-    if (isAuth) {
+    if (!isLoadingUser && isAuthenticated) {
       router.replace("/home");
     }
-  }, [router]);
+  }, [isAuthenticated, isLoadingUser, router]);
 
-  if (!mounted) {
+  if (isLoadingUser) {
     return null;
   }
 

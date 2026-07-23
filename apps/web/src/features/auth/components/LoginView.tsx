@@ -4,78 +4,32 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent, type ReactElement } from "react";
 
-import { APP_CONFIG } from "@/config";
 import { BackButton } from "@/components/ui/BackButton";
-import { buildUserFromAccessToken, extractAccessToken } from "@/lib/auth";
-import { apiClient } from "@/lib/axios";
+import { useLogin } from "@/features/auth";
 import { ROUTE_PATHS } from "@/routes/router.const";
-import { API_ENDPOINTS } from "@/shared/constants";
-import { useAuthStore } from "@/stores/auth/store";
-import type { UserRole } from "@/types";
-import { getOrCreateDeviceId } from "@/utils";
 import { getErrorMessage } from "@/utils/error";
 
-const getDefaultRedirectForRole = (role: UserRole): string => {
-  if (role === "admin") {
-    return ROUTE_PATHS.ADMIN_ROUTES.DASHBOARD;
-  }
+import { getSafeRedirect } from "../lib/auth.redirect";
 
-  if (role === "moderator") {
-    return ROUTE_PATHS.MODERATOR_ROUTES.DASHBOARD;
-  }
-
-  return ROUTE_PATHS.PROTECTED_ROUTES.HOME;
-};
-
-const getSafeRedirect = (value: string | null, role: UserRole): string => {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return getDefaultRedirectForRole(role);
-  }
-
-  return value;
-};
-
-export default function LoginPageClient(): ReactElement {
+export function LoginView(): ReactElement {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const setAuth = useAuthStore((state) => state.setAuth);
+  const login = useLogin();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (isSubmitting) {
+    if (login.isPending) {
       return;
     }
 
     setErrorMessage("");
-    setIsSubmitting(true);
 
     try {
-      const deviceId = getOrCreateDeviceId();
-      const data = await apiClient.post(API_ENDPOINTS.AUTH.LOGIN, {
-        email,
-        password,
-        deviceId,
-      });
-
-      const accessToken = extractAccessToken(data);
-      const user = buildUserFromAccessToken(accessToken ?? undefined, {
-        email,
-      });
-
-      if (!accessToken) {
-        throw new Error("Login succeeded but access token was missing.");
-      }
-
-      if (!user) {
-        throw new Error("Login succeeded but token payload was invalid.");
-      }
-
-      setAuth(accessToken, user.role, user, null);
+      const user = await login.mutateAsync({ email, password });
       router.replace(getSafeRedirect(searchParams.get("redirect"), user.role));
     } catch (error) {
       setErrorMessage(
@@ -83,8 +37,6 @@ export default function LoginPageClient(): ReactElement {
           401: "Email hoặc mật khẩu không đúng.",
         }),
       );
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -151,32 +103,12 @@ export default function LoginPageClient(): ReactElement {
 
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={login.isPending}
               className="inline-flex h-12 w-full items-center justify-center rounded-xl bg-primary px-5 font-label-lg text-label-lg font-semibold text-on-primary transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isSubmitting ? "Đang đăng nhập..." : "Đăng nhập"}
+              {login.isPending ? "Đang đăng nhập..." : "Đăng nhập"}
             </button>
           </form>
-
-          <div className="mt-6 flex items-center gap-3">
-            <div className="h-px flex-1 bg-outline-variant"></div>
-            <span className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
-              Hoặc
-            </span>
-            <div className="h-px flex-1 bg-outline-variant"></div>
-          </div>
-
-          <a
-            href={`${APP_CONFIG.api.baseUrl}${API_ENDPOINTS.AUTH.GOOGLE}`}
-            className="mt-6 inline-flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-outline-variant bg-surface px-5 font-label-lg text-label-lg font-semibold text-on-surface transition-colors hover:bg-surface-container-high"
-          >
-            <img
-              src="https://www.google.com/favicon.ico"
-              alt="Google"
-              className="h-5 w-5"
-            />
-            Đăng nhập bằng Google
-          </a>
 
           <p className="mt-6 text-center font-label-sm text-label-sm text-on-surface-variant">
             Chưa có tài khoản?{" "}
