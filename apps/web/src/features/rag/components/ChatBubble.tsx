@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, type FC } from "react";
-import type { RagCitationResponse } from "@/apis/rag.api";
-import { toast } from "sonner";
-import { Tooltip } from "@/components/ui/Tooltip";
+import type { FC } from "react";
+
+import type { RagCitationResponse } from "../api/rag.api";
 
 interface ChatBubbleProps {
   role: "user" | "assistant";
@@ -17,7 +16,6 @@ export const ChatBubble: FC<ChatBubbleProps> = ({
   citations,
 }) => {
   const isUser = role === "user";
-  const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
 
   const uniqueCitations = citations
     ? citations.filter(
@@ -29,17 +27,6 @@ export const ChatBubble: FC<ChatBubbleProps> = ({
           ) === idx,
       )
     : [];
-
-  const handleFeedback = (type: "up" | "down") => {
-    if (feedback === type) {
-      setFeedback(null);
-    } else {
-      setFeedback(type);
-      toast.success(
-        type === "up" ? "Cảm ơn bạn đã đánh giá tốt!" : "Cảm ơn bạn đã góp ý!",
-      );
-    }
-  };
 
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
@@ -126,42 +113,6 @@ export const ChatBubble: FC<ChatBubbleProps> = ({
             </div>
           )}
         </div>
-
-        {/* Feedback UI */}
-        {!isUser && content && (
-          <div className="flex items-center gap-1 px-2 mt-0.5">
-            <Tooltip text="Câu trả lời tốt">
-              <button
-                type="button"
-                onClick={() => handleFeedback("up")}
-                className={`flex h-6 w-6 items-center justify-center rounded-full transition-colors ${
-                  feedback === "up"
-                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                    : "text-on-surface-variant hover:bg-surface-variant hover:text-on-surface"
-                }`}
-              >
-                <span className="material-symbols-outlined text-[14px]">
-                  thumb_up
-                </span>
-              </button>
-            </Tooltip>
-            <Tooltip text="Câu trả lời chưa tốt">
-              <button
-                type="button"
-                onClick={() => handleFeedback("down")}
-                className={`flex h-6 w-6 items-center justify-center rounded-full transition-colors ${
-                  feedback === "down"
-                    ? "bg-rose-500/10 text-rose-600 dark:text-rose-400"
-                    : "text-on-surface-variant hover:bg-surface-variant hover:text-on-surface"
-                }`}
-              >
-                <span className="material-symbols-outlined text-[14px]">
-                  thumb_down
-                </span>
-              </button>
-            </Tooltip>
-          </div>
-        )}
       </div>
     </div>
   );

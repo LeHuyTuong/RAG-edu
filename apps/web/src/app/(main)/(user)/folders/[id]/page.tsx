@@ -1,1 +1,1 @@
-export { default } from "@/modules/user/folders/pages/FolderChatPage";
+export { default } from "@/features/rag/pages/FolderChatPage";

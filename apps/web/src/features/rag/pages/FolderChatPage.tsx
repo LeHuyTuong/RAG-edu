@@ -3,26 +3,15 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
+
 import { Button } from "@/components/ui/Button";
-import { fetchDocuments } from "@/apis/document.api";
-import { listFolders } from "@/apis/folder.api";
 import type { LibraryDocument } from "@/types/document.type";
+
 import { ChatBubble } from "../components/ChatBubble";
-import { useAuthStore } from "@/stores/auth/store";
-import { chatStream, type RagCitationResponse } from "@/apis/rag.api";
-import { getErrorMessage } from "@/utils/error";
-
-interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  citations?: RagCitationResponse[];
-}
-
-const nextId = () =>
-  typeof crypto !== "undefined" && crypto.randomUUID
-    ? crypto.randomUUID()
-    : `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+import { useFolderChatSources } from "../hooks/use-folder-chat-sources";
+import { useRagChatStream } from "../hooks/use-rag-chat-stream";
+import { isDocumentReadyForAi } from "../lib/rag-sources";
+import type { RagCitationResponse } from "../api/rag.api";
 
 const getDocumentIcon = (document: LibraryDocument): string => {
   const format = `${document.format} ${document.publicId}`.toLowerCase();
@@ -47,25 +36,23 @@ const formatFileSize = (bytes: number): string => {
 const citationKey = (citation: RagCitationResponse, index: number): string =>
   `${citation.id ?? citation.url ?? citation.title ?? citation.source ?? index}`;
 
-const isDocumentReadyForAi = (document: LibraryDocument): boolean =>
-  document.ragStatus === "READY" && (document.chunkCount ?? 0) > 0;
-
 export default function FolderChatPage(): React.JSX.Element {
   const params = useParams();
   const router = useRouter();
   const folderId = params.id as string;
   const numericFolderId = Number(folderId);
 
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [folderName, setFolderName] = useState<string | null>(null);
-  const [input, setInput] = useState("");
-  const [streaming, setStreaming] = useState(false);
-  const [documents, setDocuments] = useState<LibraryDocument[]>([]);
-  const [documentsLoading, setDocumentsLoading] = useState(true);
-  const [documentsError, setDocumentsError] = useState<string | null>(null);
-  const [selectedDocumentIds, setSelectedDocumentIds] = useState<Set<string>>(
-    () => new Set(),
-  );
+  const {
+    documents,
+    error: documentsError,
+    folderName,
+    isLoading: documentsLoading,
+    readySourceIds: selectedSourceIds,
+    selectedDocumentIds,
+    setSelectedDocumentIds,
+  } = useFolderChatSources(numericFolderId);
+  const { messages, input, setInput, streaming, send, cancel } =
+    useRagChatStream();
   const [isDragOver, setIsDragOver] = useState(false);
 
   // Custom features state
@@ -76,11 +63,8 @@ export default function FolderChatPage(): React.JSX.Element {
     "sources" | "documents" | null
   >(null);
 
-  const abortRef = useRef<AbortController | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-
-  const accessToken = useAuthStore((s) => s.accessToken);
 
   const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -89,78 +73,6 @@ export default function FolderChatPage(): React.JSX.Element {
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
-
-  useEffect(() => {
-    if (!Number.isFinite(numericFolderId)) {
-      setFolderName(null);
-      return;
-    }
-
-    let cancelled = false;
-
-    listFolders()
-      .then((folders) => {
-        if (cancelled) return;
-        const activeFolder = folders.find(
-          (folder) => Number(folder.id) === numericFolderId,
-        );
-        setFolderName(activeFolder?.folderName ?? null);
-      })
-      .catch(() => {
-        if (!cancelled) setFolderName(null);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [numericFolderId]);
-
-  useEffect(() => {
-    if (!Number.isFinite(numericFolderId)) {
-      setDocuments([]);
-      setSelectedDocumentIds(new Set());
-      setDocumentsLoading(false);
-      setDocumentsError("Thư mục không hợp lệ");
-      return;
-    }
-
-    let cancelled = false;
-    setDocumentsLoading(true);
-    setDocumentsError(null);
-
-    fetchDocuments({
-      folderId: numericFolderId,
-      limit: 50,
-      onlyMine: true,
-      page: 1,
-    })
-      .then((response) => {
-        if (cancelled) return;
-        setDocuments(response.documents);
-        setSelectedDocumentIds(
-          new Set(
-            response.documents
-              .filter(isDocumentReadyForAi)
-              .map((document) => String(document.id)),
-          ),
-        );
-      })
-      .catch((error) => {
-        if (cancelled) return;
-        const message = getErrorMessage(error);
-        setDocuments([]);
-        setSelectedDocumentIds(new Set());
-        setDocumentsError(message);
-        toast.error(message);
-      })
-      .finally(() => {
-        if (!cancelled) setDocumentsLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [numericFolderId]);
 
   const referenceSources = useMemo(() => {
     const uniqueSources = new Map<string, RagCitationResponse>();
@@ -171,15 +83,6 @@ export default function FolderChatPage(): React.JSX.Element {
     });
     return Array.from(uniqueSources.values());
   }, [messages]);
-
-  const selectedSourceIds = useMemo(
-    () =>
-      documents
-        .filter((document) => selectedDocumentIds.has(String(document.id)))
-        .map((document) => Number(document.id))
-        .filter((id) => Number.isFinite(id)),
-    [documents, selectedDocumentIds],
-  );
 
   const allDocumentsSelected =
     documents.length > 0 &&
@@ -239,92 +142,9 @@ export default function FolderChatPage(): React.JSX.Element {
     [documents],
   );
 
-  const handleSend = useCallback(async () => {
-    const q = input.trim();
-    if (!q || streaming) return;
-    if (selectedSourceIds.length === 0) {
-      toast.error("Chọn ít nhất một tài liệu trong thư mục");
-      return;
-    }
-
-    setInput("");
-    setMessages((prev) => [
-      ...prev,
-      { id: nextId(), role: "user", content: q },
-    ]);
-
-    const assistantId = nextId();
-    setMessages((prev) => [
-      ...prev,
-      { id: assistantId, role: "assistant", content: "", citations: [] },
-    ]);
-
-    setStreaming(true);
-
-    if (!accessToken) {
-      toast.error("Không tìm thấy token xác thực");
-      setStreaming(false);
-      return;
-    }
-
-    const controller = await chatStream(
-      {
-        folderId: numericFolderId,
-        question: q,
-        sourceIds: selectedSourceIds,
-      },
-      accessToken,
-      {
-        onChunk: (token) => {
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === assistantId ? { ...m, content: m.content + token } : m,
-            ),
-          );
-        },
-        onCitations: (citations: RagCitationResponse[]) => {
-          setMessages((prev) =>
-            prev.map((m) => (m.id === assistantId ? { ...m, citations } : m)),
-          );
-        },
-        onComplete: (fullText) => {
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === assistantId
-                ? {
-                    ...m,
-                    content: fullText,
-                  }
-                : m,
-            ),
-          );
-          setStreaming(false);
-        },
-        onError: () => {
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.id === assistantId
-                ? {
-                    ...m,
-                    content:
-                      m.content ||
-                      "Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại sau.",
-                  }
-                : m,
-            ),
-          );
-          setStreaming(false);
-        },
-      },
-    );
-
-    abortRef.current = controller;
-  }, [input, streaming, selectedSourceIds, accessToken, numericFolderId]);
-
-  const handleCancel = useCallback(() => {
-    abortRef.current?.abort();
-    setStreaming(false);
-  }, []);
+  const handleSend = useCallback(() => {
+    void send({ folderId: numericFolderId, sourceIds: selectedSourceIds });
+  }, [numericFolderId, selectedSourceIds, send]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -666,7 +486,7 @@ export default function FolderChatPage(): React.JSX.Element {
                     aria-label="Dừng phản hồi"
                     variant="destructive"
                     size="icon-lg"
-                    onClick={handleCancel}
+                    onClick={cancel}
                   >
                     <span className="material-symbols-outlined text-[20px]">
                       stop
