@@ -6,6 +6,12 @@ import { fetchCurrentUser, signIn, signOut, signUp } from "../api/auth.api";
 import { authKeys } from "../auth.keys";
 import { useAuthStore } from "../store/auth.store";
 
+/**
+ * FLOW DOC: apps/web/docs/FRONTEND-CODE-FLOW-VI.md#flow-auth
+ * Login/register lấy token, nạp current user và ghi cache; logout luôn dọn
+ * session local kể cả khi server session đã hết hạn.
+ */
+
 type Credentials = {
   readonly email: string;
   readonly password: string;

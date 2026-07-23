@@ -9,6 +9,12 @@ import { fetchDocuments } from "../api/documents.api";
 import { documentKeys } from "../documents.keys";
 import { normalizeDocumentListQuery } from "../lib/document-query";
 
+/**
+ * FLOW DOC: apps/web/docs/FRONTEND-CODE-FLOW-VI.md#flow-documents
+ * Normalize query -> tạo key -> fetch documents; React Query sở hữu cache và
+ * trạng thái loading/error của Library.
+ */
+
 type LibraryDocumentsOptions = Pick<
   UseQueryOptions<DocumentsListResponse>,
   "enabled"

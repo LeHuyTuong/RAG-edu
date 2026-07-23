@@ -10,6 +10,12 @@ import { DocumentGrid } from "../components/library/DocumentGrid";
 import { FilterToolbar } from "../components/library/FilterToolbar";
 
 /**
+ * FLOW DOC: apps/web/docs/FRONTEND-CODE-FLOW-VI.md#flow-documents
+ * Page coordinator của /library: đọc filter client state, gọi query hooks và
+ * truyền server data xuống toolbar/grid/pagination để render.
+ */
+
+/**
  * LibraryPage — main entry point for /library.
  *
  * Full-width layout with horizontal filter toolbar above the document grid.

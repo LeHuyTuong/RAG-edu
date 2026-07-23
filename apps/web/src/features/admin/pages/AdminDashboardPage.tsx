@@ -21,6 +21,12 @@ import {
 import type { AdminDashboardStats } from "../api/admin.api";
 import { useAdminDashboard } from "../hooks/use-admin-dashboard";
 
+/**
+ * FLOW DOC: apps/web/docs/FRONTEND-CODE-FLOW-VI.md#flow-admin
+ * Dashboard chỉ điều phối query data -> view model card/chart; endpoint và
+ * cache policy nằm trong useAdminDashboard/admin.api.
+ */
+
 const formatCount = (value: number): string =>
   new Intl.NumberFormat("vi-VN").format(value);
 

@@ -3,6 +3,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 
+/**
+ * FLOW DOC: apps/web/docs/FRONTEND-CODE-FLOW-VI.md#flow-runtime
+ * Một QueryClient ổn định được cấp cho toàn bộ cây component để các feature
+ * dùng chung server-state cache, query key và invalidation.
+ */
+
 export function QueryProvider({
   children,
 }: {

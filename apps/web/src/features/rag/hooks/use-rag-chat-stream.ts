@@ -7,6 +7,12 @@ import { useAuth } from "@/features/auth";
 
 import { chatStream, type RagCitationResponse } from "../api/rag.api";
 
+/**
+ * FLOW DOC: apps/web/docs/FRONTEND-CODE-FLOW-VI.md#flow-rag
+ * Giữ messages/input/streaming ở client state, nối callback SSE vào assistant
+ * message và giữ AbortController để nút Dừng hủy stream.
+ */
+
 export interface RagChatMessage {
   id: string;
   role: "user" | "assistant";

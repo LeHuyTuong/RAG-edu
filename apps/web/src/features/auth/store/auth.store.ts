@@ -1,6 +1,12 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
+/**
+ * FLOW DOC: apps/web/docs/FRONTEND-CODE-FLOW-VI.md#flow-auth
+ * Zustand chỉ giữ client session tối thiểu (accessToken); user profile được
+ * React Query lấy qua /auth/me và cache ở authKeys.me().
+ */
+
 interface AuthSessionState {
   accessToken: string | null;
   isAuthenticated: boolean;

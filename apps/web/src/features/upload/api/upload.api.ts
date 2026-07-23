@@ -3,6 +3,12 @@ import { API_ENDPOINTS } from "@/shared/constants";
 import { DEFAULT_UPLOAD_CONFIG } from "@/constants/upload.const";
 import type { UploadConfig } from "@/types/upload";
 
+/**
+ * FLOW DOC: apps/web/docs/FRONTEND-CODE-FLOW-VI.md#flow-upload
+ * Lớp API của upload: lấy rule từ backend và gửi file multipart; việc tạo
+ * document metadata được tiếp tục ở documents feature.
+ */
+
 interface ServerUploadConfig {
   maxFileSize: number;
   allowedTypes: string;

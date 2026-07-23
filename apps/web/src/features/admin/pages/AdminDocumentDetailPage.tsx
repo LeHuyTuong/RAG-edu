@@ -25,6 +25,12 @@ import {
   MaterialIcon,
 } from "@/features/admin/components/AdminPrimitives";
 
+/**
+ * FLOW DOC: apps/web/docs/FRONTEND-CODE-FLOW-VI.md#flow-admin
+ * Điểm quyết định duyệt/từ chối tài liệu: chỉ cho thao tác khi document đang
+ * PENDING_REVIEW, sau đó mutation sẽ gọi API và invalidate các view document.
+ */
+
 const statusLabels: Record<DocumentStatus, string> = {
   ACTIVE: "Đã duyệt",
   PENDING: "Chờ duyệt",

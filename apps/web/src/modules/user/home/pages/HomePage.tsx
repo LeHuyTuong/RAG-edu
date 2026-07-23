@@ -7,6 +7,12 @@ import { DocumentCarousel } from "../components/DocumentCarousel";
 import { DocumentCardSkeleton } from "../components/DocumentSkeleton";
 import { useLibraryDocuments, useSubjects } from "@/features/documents";
 
+/**
+ * FLOW DOC: apps/web/docs/FRONTEND-CODE-FLOW-VI.md#flow-documents
+ * Home là module tổng hợp: dùng query của documents feature để lấy tài liệu
+ * công khai/chủ đề thật rồi biến đổi thành các section hiển thị.
+ */
+
 /* ── Relative time ── */
 
 function formatRelativeTime(dateStr: string): string {

@@ -8,6 +8,11 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { CookieConsent } from "@/components/patterns/CookieConsent";
 import { QueryProvider } from "@/shared/providers/QueryProvider";
 
+/**
+ * FLOW DOC: apps/web/docs/FRONTEND-CODE-FLOW-VI.md#flow-runtime
+ * Root layout tạo provider và UI infrastructure dùng chung cho mọi route.
+ */
+
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 const inter = Inter({

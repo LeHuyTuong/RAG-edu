@@ -11,6 +11,12 @@ import FileUploadBox from "../components/FileUploadBox";
 import { DocumentUploadForm } from "../components/DocumentUploadForm";
 import { useUploadForm } from "../hooks/use-upload-form";
 
+/**
+ * FLOW DOC: apps/web/docs/FRONTEND-CODE-FLOW-VI.md#flow-upload
+ * Page ghép config/subjects/folders server state với file state và upload form;
+ * request thật nằm trong useCreateUploadedDocument/API layer.
+ */
+
 export default function UploadPage(): React.JSX.Element {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);

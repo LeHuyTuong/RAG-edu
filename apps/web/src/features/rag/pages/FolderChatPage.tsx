@@ -13,6 +13,12 @@ import { useRagChatStream } from "../hooks/use-rag-chat-stream";
 import { isDocumentReadyForAi } from "../lib/rag-sources";
 import type { RagCitationResponse } from "../api/rag.api";
 
+/**
+ * FLOW DOC: apps/web/docs/FRONTEND-CODE-FLOW-VI.md#flow-rag
+ * Workspace coordinator của /folders/:id: chọn source, gửi câu hỏi streaming,
+ * gom citation và dựng layout chat desktop/mobile.
+ */
+
 const getDocumentIcon = (document: LibraryDocument): string => {
   const format = `${document.format} ${document.publicId}`.toLowerCase();
   if (format.includes("pdf")) return "picture_as_pdf";

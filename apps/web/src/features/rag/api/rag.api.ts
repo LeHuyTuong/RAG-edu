@@ -10,6 +10,12 @@
 import { apiClient } from "@/shared/api/api-client";
 import { API_ENDPOINTS } from "@/shared/constants";
 
+/**
+ * FLOW DOC: apps/web/docs/FRONTEND-CODE-FLOW-VI.md#flow-rag
+ * Non-stream request dùng apiClient; SSE chat dùng fetch + ReadableStream vì
+ * caller cần nhận token/citation theo thời gian thực và có thể abort.
+ */
+
 // --- Types ---
 
 export interface RagChatRequest {

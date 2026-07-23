@@ -5,6 +5,12 @@ import type { FC } from "react";
 import type { RagCitationResponse } from "../api/rag.api";
 import { normalizeAgentResponse } from "../lib/normalize-agent-response";
 
+/**
+ * FLOW DOC: apps/web/docs/FRONTEND-CODE-FLOW-VI.md#flow-rag
+ * Chỉ làm sạch assistant text ở presentation boundary; citation object vẫn
+ * được giữ để hiển thị nguồn tham khảo riêng.
+ */
+
 interface ChatBubbleProps {
   role: "user" | "assistant";
   content: string;

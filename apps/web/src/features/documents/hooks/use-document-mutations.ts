@@ -20,6 +20,12 @@ import {
 } from "../api/documents.api";
 import { documentKeys } from "../documents.keys";
 
+/**
+ * FLOW DOC: apps/web/docs/FRONTEND-CODE-FLOW-VI.md#flow-documents
+ * Mutation thành công sẽ invalidate list/mine/detail để các màn hình document
+ * cùng nhìn thấy dữ liệu mới mà không tự quản lý refetch.
+ */
+
 async function invalidateDocumentViews(
   queryClient: ReturnType<typeof useQueryClient>,
   id: string,

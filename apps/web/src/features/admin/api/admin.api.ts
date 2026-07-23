@@ -1,6 +1,12 @@
 import { apiClient } from "@/shared/api/api-client";
 import { API_ENDPOINTS } from "@/shared/constants";
 
+/**
+ * FLOW DOC: apps/web/docs/FRONTEND-CODE-FLOW-VI.md#flow-admin
+ * API boundary cho các domain admin; page không gọi Axios trực tiếp mà đi qua
+ * hook -> object này -> shared apiClient.
+ */
+
 export type AdminAccountRole = "ADMIN" | "USER";
 export type AdminAccountStatus = "ACTIVE" | "BANNED";
 

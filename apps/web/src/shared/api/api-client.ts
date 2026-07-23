@@ -6,6 +6,12 @@ import { getLoginRedirectHref } from "@/features/auth/lib/auth.redirect";
 import { useAuthStore } from "@/features/auth/store/auth.store";
 import { API_ENDPOINTS } from "@/shared/constants";
 
+/**
+ * FLOW DOC: apps/web/docs/FRONTEND-CODE-FLOW-VI.md#flow-api
+ * Đây là HTTP boundary dùng chung: gắn JWT, unwrap response, refresh khi 401,
+ * xóa session/redirect khi refresh thất bại và hiển thị toast lỗi.
+ */
+
 declare module "axios" {
   export interface AxiosRequestConfig {
     skipToast?: boolean;

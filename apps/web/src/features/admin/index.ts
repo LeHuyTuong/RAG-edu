@@ -1,3 +1,8 @@
+/**
+ * FLOW DOC: apps/web/docs/FRONTEND-CODE-FLOW-VI.md#flow-admin
+ * Public API của admin feature: admin API, query keys và các domain hooks.
+ */
+
 export * from "./api/admin.api";
 export { adminQueryKeys } from "./admin.keys";
 export {

@@ -7,6 +7,12 @@ import { useAuth } from "../hooks/use-auth";
 import { getLoginRedirectHref } from "../lib/auth.redirect";
 import { getRoleRedirect, hasRoleAccess, type UserRole } from "./role.guard";
 
+/**
+ * FLOW DOC: apps/web/docs/FRONTEND-CODE-FLOW-VI.md#flow-auth
+ * Guard chặn render khi chưa hydrate user, redirect về login nếu thiếu session
+ * hoặc về dashboard phù hợp nếu role không đủ quyền.
+ */
+
 export interface ProtectedRouteProps {
   readonly children: ReactNode;
   readonly requiredRole?: UserRole;

@@ -2,6 +2,11 @@ import { UserShell } from "@/modules/user/components/UserShell";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
 import type { ReactNode } from "react";
 
+/**
+ * FLOW DOC: apps/web/docs/FRONTEND-CODE-FLOW-VI.md#flow-runtime
+ * Mọi route trong (user) đi qua auth guard rồi mới vào UserShell.
+ */
+
 export default function UserLayout({
   children,
 }: {

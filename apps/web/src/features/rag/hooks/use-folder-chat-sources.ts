@@ -7,6 +7,12 @@ import { getErrorMessage } from "@/utils/error";
 
 import { isDocumentReadyForAi } from "../lib/rag-sources";
 
+/**
+ * FLOW DOC: apps/web/docs/FRONTEND-CODE-FLOW-VI.md#flow-rag
+ * Lấy documents của folder, chỉ giữ source READY có chunk và quản lý selection
+ * cục bộ trước khi sourceIds được gửi cho RAG.
+ */
+
 export function useFolderChatSources(folderId: number) {
   const isValidFolder = Number.isFinite(folderId);
   const documentsQuery = useLibraryDocuments(

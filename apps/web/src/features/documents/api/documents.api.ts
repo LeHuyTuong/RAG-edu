@@ -14,6 +14,12 @@ import type {
 
 import { normalizeDocumentListQuery } from "../lib/document-query";
 
+/**
+ * FLOW DOC: apps/web/docs/FRONTEND-CODE-FLOW-VI.md#flow-documents
+ * API boundary của documents: page/hook chỉ truyền input typed; file này nối
+ * input đó với endpoint và trả về model cho React Query/UI.
+ */
+
 export interface ShareLinkResponse {
   shareToken: string;
   shareUrl: string;
