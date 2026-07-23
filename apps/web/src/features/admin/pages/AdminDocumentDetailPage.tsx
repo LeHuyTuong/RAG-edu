@@ -20,7 +20,6 @@ import { formatDate, formatFileSize } from "@/utils";
 import { getErrorMessage } from "@/utils/error";
 import { getRagStatusDisplay } from "@/shared/documentStatus";
 
-import { AdminDocumentAiAssistant } from "@/features/admin/components/AdminDocumentAiAssistant";
 import {
   AdminCard,
   MaterialIcon,
@@ -42,12 +41,6 @@ const statusTone: Record<
   REJECTED: "error",
   DELETED: "neutral",
 };
-
-const quickReviewPrompts = [
-  "Tài liệu này có liên quan đến lịch sử Việt Nam không?",
-  "Có dấu hiệu nên từ chối tài liệu này không?",
-  "Tóm tắt ngắn gọn lý do nên duyệt hoặc từ chối.",
-] as const;
 
 function DetailItem({
   label,
@@ -141,14 +134,6 @@ export default function AdminDocumentDetailPage({
   const status = document.status ?? "PENDING";
   // Chỉ duyệt được khi đang chờ kiểm duyệt (theo state machine thật).
   const canReview = document.ragStatus === "PENDING_REVIEW";
-  const assistantDocuments = [
-    {
-      id: document.id,
-      title: document.title,
-      subtitle: document.subject?.name ?? document.format.toUpperCase(),
-    },
-  ];
-
   return (
     <div className="space-y-6 pb-24">
       <nav className="flex flex-wrap items-center gap-2 text-sm text-on-surface-variant">
@@ -318,13 +303,6 @@ export default function AdminDocumentDetailPage({
           if (!actionLoading) setRejectOpen(false);
         }}
         onConfirm={handleReject}
-      />
-      <AdminDocumentAiAssistant
-        documents={assistantDocuments}
-        emptyContextMessage="Không có tài liệu nào trong context."
-        submitLabel="Gửi câu hỏi"
-        suggestions={quickReviewPrompts}
-        textareaLabel="Hỏi AI về tài liệu này"
       />
     </div>
   );

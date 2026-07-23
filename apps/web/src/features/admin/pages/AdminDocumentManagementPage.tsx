@@ -22,7 +22,6 @@ import { getRagStatusDisplay } from "@/shared/documentStatus";
 import type { DocumentRagStatus, LibraryDocument } from "@/types/document.type";
 import { getErrorMessage } from "@/utils/error";
 
-import { AdminDocumentAiAssistant } from "@/features/admin/components/AdminDocumentAiAssistant";
 import {
   AdminCard,
   MaterialIcon,
@@ -54,12 +53,6 @@ const STATUS_OPTIONS: { label: string; value: "ALL" | DocumentRagStatus }[] = [
 ];
 
 // Removed local sort options as the backend handles newest-first sorting
-
-const suggestedQuestions = [
-  "Các tài liệu đã chọn có phù hợp để duyệt không?",
-  "Có tài liệu nào không liên quan đến lịch sử không?",
-  "Tóm tắt lý do nên duyệt hoặc cần từ chối.",
-] as const;
 
 // Chỉ tài liệu đang chờ kiểm duyệt mới được chọn để duyệt (không phải doc
 // đang INDEXING/FAILED/READY). Dựa trên state machine thật qua ragStatus.
@@ -128,16 +121,6 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
           selectedDocumentIds.has(String(document.id)),
       ),
     [documents, selectedDocumentIds],
-  );
-
-  const assistantDocuments = useMemo(
-    () =>
-      selectedDocuments.map((document) => ({
-        id: document.id,
-        title: document.title,
-        subtitle: document.subject?.name ?? document.format.toUpperCase(),
-      })),
-    [selectedDocuments],
   );
 
   // local sortOption removed
@@ -437,17 +420,6 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
           />
         </div>
       </AdminCard>
-
-      <AdminDocumentAiAssistant
-        approveDisabled={!canBulkApprove}
-        approveLabel={`Duyệt ${selectedDocuments.length} tài liệu`}
-        approveLoading={bulkApproveLoading}
-        documents={assistantDocuments}
-        emptyContextMessage="Chọn một hoặc nhiều tài liệu trong bảng."
-        onApprove={handleBulkApprove}
-        suggestions={suggestedQuestions}
-        textareaLabel="Câu hỏi AI cho các tài liệu đã chọn"
-      />
 
       {deleteDocId ? (
         <AppDialog
