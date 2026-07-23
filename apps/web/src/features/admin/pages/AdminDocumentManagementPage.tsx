@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import {
-  useApproveDocument,
   useDeleteDocument,
   useHardDeleteDocument,
   useLibraryDocuments,
@@ -90,7 +89,6 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
     limit: pageSize,
     status: filterStatus !== "ALL" ? filterStatus : undefined,
   });
-  const approveDocuments = useApproveDocument();
   const reclassifyDocument = useReclassifyDocument();
   const deleteDocument = useDeleteDocument();
   const hardDeleteDocument = useHardDeleteDocument();
@@ -98,7 +96,6 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
   const documents = documentsQuery.data?.documents ?? [];
   const totalPages = documentsQuery.data?.pagination.totalPages ?? 1;
   const loading = documentsQuery.isLoading;
-  const bulkApproveLoading = approveDocuments.isPending;
   const isDeleting = deleteDocument.isPending || hardDeleteDocument.isPending;
   const isRestoring = restoreDocument.isPending;
 
@@ -112,16 +109,6 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
       return new Set([...current].filter((id) => availableIds.has(id)));
     });
   }, [documents]);
-
-  const selectedDocuments = useMemo(
-    () =>
-      documents.filter(
-        (document) =>
-          canSelectForReview(document) &&
-          selectedDocumentIds.has(String(document.id)),
-      ),
-    [documents, selectedDocumentIds],
-  );
 
   // local sortOption removed
 
@@ -137,8 +124,6 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
     selectableDocuments.every((document) =>
       selectedDocumentIds.has(String(document.id)),
     );
-
-  const canBulkApprove = selectedDocuments.length > 0 && !bulkApproveLoading;
 
   const toggleDocument = (documentId: string, checked: boolean) => {
     setSelectedDocumentIds((current) => {
@@ -169,20 +154,6 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
       });
       return next;
     });
-  };
-
-  const handleBulkApprove = async () => {
-    if (selectedDocuments.length === 0) return;
-
-    try {
-      for (const document of selectedDocuments) {
-        await approveDocuments.mutateAsync(document.id);
-      }
-      toast.success(`Đã duyệt ${selectedDocuments.length} tài liệu`);
-      setSelectedDocumentIds(new Set());
-    } catch (error) {
-      toast.error(getErrorMessage(error));
-    }
   };
 
   const handleReclassify = async (documentId: string) => {
