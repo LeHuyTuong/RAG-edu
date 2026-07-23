@@ -3,8 +3,8 @@
 /**
  * ProfilePage (/profile)
  *
- * Data source: useAuthStore().user — the authenticated user is already held
- * in the store after login, so no separate API fetch is needed on mount.
+ * Data source: useAuth().user — React Query loads and caches the
+ * authenticated user after login, so this page has no fetch logic of its own.
  *
  * Layout: min-w-0 space-y-6 — consistent with /my-documents and /uploads.
  * The surrounding UserShell (via (app)/(user)/layout.tsx) provides the
@@ -18,12 +18,12 @@
  * change-password.
  */
 
-import { useAuthStore } from "@/stores/auth/store";
+import { useAuth } from "@/features/auth";
 import { ProfileHeader } from "./components/ProfileHeader";
 import { PersonalInfoForm } from "./components/PersonalInfoForm";
 
 export default function ProfilePage(): React.JSX.Element {
-  const { user } = useAuthStore();
+  const { user } = useAuth();
 
   // Guard: this route is protected, but handle a missing user gracefully
   if (!user) {

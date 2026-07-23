@@ -9,8 +9,8 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { fetchDocumentDetail, fetchDocuments } from "@/apis/document.api";
+import { useAuth } from "@/features/auth";
 import type { DocumentDetail, LibraryDocument } from "@/types/document.type";
-import { useAuthStore } from "@/stores/auth/store";
 
 import { DocumentHero } from "../components/DocumentHero";
 import { DocumentPreview } from "../components/DocumentPreview";
@@ -86,8 +86,7 @@ function NotFoundState({ message }: { message: string }): React.JSX.Element {
 
 export default function DocumentDetailPage(): React.JSX.Element {
   const { id } = useParams<{ id: string }>();
-  const currentUser = useAuthStore((s) => s.user);
-  const accessToken = useAuthStore((s) => s.accessToken);
+  const { user: currentUser, accessToken } = useAuth();
 
   const [document, setDocument] = useState<DocumentDetail | null>(null);
   const [preview, setPreview] = useState<DocumentPreviewData | null>(null);
@@ -165,7 +164,7 @@ export default function DocumentDetailPage(): React.JSX.Element {
         URL.revokeObjectURL(activePreviewObjectUrl);
       }
     };
-  }, [id, accessToken]);
+  }, [id, accessToken, currentUser?.id]);
 
   if (accessDenied) return <AccessDeniedState />;
 

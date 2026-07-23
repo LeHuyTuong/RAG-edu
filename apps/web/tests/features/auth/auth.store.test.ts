@@ -25,3 +25,11 @@ test("clears persisted and legacy auth keys on logout", () => {
   expect(localStorage.getItem("auth_token")).toBeNull();
   expect(localStorage.getItem("user_info")).toBeNull();
 });
+
+test("keeps profile data out of the client auth session", () => {
+  const session = useAuthStore.getState();
+
+  expect(session).not.toHaveProperty("user");
+  expect(session).not.toHaveProperty("role");
+  expect(session).not.toHaveProperty("refreshToken");
+});

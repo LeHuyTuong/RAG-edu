@@ -3,10 +3,10 @@
 // Consolidation point: profile info form from modules/user/profile/components/PersonalInfoForm
 // is surfaced here as the unified account tab for user and moderator settings.
 import { PersonalInfoForm } from "@/modules/user/profile/components/PersonalInfoForm";
-import { useAuthStore } from "@/stores/auth/store";
+import { useAuth } from "@/features/auth";
 
 export function AccountSection(): React.JSX.Element {
-  const user = useAuthStore((state) => state.user);
+  const { user } = useAuth();
 
   if (!user) {
     return (

@@ -3,12 +3,12 @@
 import Link from "next/link";
 import type { FC } from "react";
 
-import { useAuthStore } from "@/stores/auth/store";
+import { useAuth } from "@/features/auth";
 import { ROUTE_PATHS } from "@/routes";
 import { isDefaultAvatar } from "@/shared/constants";
 
 export const UserInfo: FC = () => {
-  const user = useAuthStore((state) => state.user);
+  const { user } = useAuth();
 
   const initials = (() => {
     if (!user?.name) return "?";

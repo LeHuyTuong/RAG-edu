@@ -6,9 +6,8 @@ import type { ReactNode } from "react";
 import { DashboardShell } from "@/components/layout/DashboardShell";
 import { UserInfo } from "@/components/ui/UserInfo";
 import { ADMIN_NAV_ITEMS } from "@/constants/nav.const";
-import { logoutCurrentSession } from "@/modules/auth-api";
+import { useLogout } from "@/features/auth";
 import { ROUTE_PATHS } from "@/routes/router.const";
-import { useAuthStore } from "@/stores/auth/store";
 
 export function AdminShell({
   children,
@@ -16,15 +15,11 @@ export function AdminShell({
   readonly children: ReactNode;
 }): React.JSX.Element {
   const router = useRouter();
-  const { logout } = useAuthStore();
+  const logout = useLogout();
 
   const handleLogout = async () => {
-    try {
-      await logoutCurrentSession();
-    } finally {
-      logout();
-      router.replace(ROUTE_PATHS.AUTH_ROUTES.LOGIN);
-    }
+    await logout.mutateAsync();
+    router.replace(ROUTE_PATHS.AUTH_ROUTES.LOGIN);
   };
 
   const navItems = ADMIN_NAV_ITEMS.map((item) =>

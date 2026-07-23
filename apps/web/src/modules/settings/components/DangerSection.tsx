@@ -6,8 +6,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Modal } from "@/components/ui/Modal";
+import { useAuth, useLogout } from "@/features/auth";
 import { ROUTE_PATHS } from "@/routes/router.const";
-import { useAuthStore } from "@/stores/auth/store";
 import { deleteAccount } from "../api";
 
 export function DangerSection(): React.JSX.Element {
@@ -15,8 +15,8 @@ export function DangerSection(): React.JSX.Element {
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const user = useAuthStore((state) => state.user);
-  const logout = useAuthStore((state) => state.logout);
+  const { user } = useAuth();
+  const logout = useLogout();
   const router = useRouter();
 
   async function handleDelete() {
@@ -25,7 +25,7 @@ export function DangerSection(): React.JSX.Element {
     setError(null);
     try {
       await deleteAccount(user.id);
-      logout();
+      await logout.mutateAsync();
       router.replace(ROUTE_PATHS.AUTH_ROUTES.LOGIN);
     } catch (err) {
       setError(

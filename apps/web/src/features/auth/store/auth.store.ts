@@ -1,25 +1,12 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
-import type { User, UserRole } from "@/types";
-
 interface AuthSessionState {
   accessToken: string | null;
-  refreshToken: string | null;
-  role: UserRole | null;
-  user: User | null;
   isAuthenticated: boolean;
   isLoginPromptOpen: boolean;
-  setAuth: (
-    accessToken: string | null,
-    role: UserRole,
-    user?: User,
-    refreshToken?: string | null,
-  ) => void;
   setAccessToken: (accessToken: string | null) => void;
-  setUser: (user: User | null) => void;
   clearSession: () => void;
-  logout: () => void;
   setLoginPromptOpen: (open: boolean) => void;
 }
 
@@ -29,9 +16,6 @@ export const useAuthStore = create<AuthSessionState>()(
       const clearSession = () => {
         set({
           accessToken: null,
-          refreshToken: null,
-          role: null,
-          user: null,
           isAuthenticated: false,
         });
 
@@ -44,32 +28,11 @@ export const useAuthStore = create<AuthSessionState>()(
 
       return {
         accessToken: null,
-        refreshToken: null,
-        role: null,
-        user: null,
         isAuthenticated: false,
         isLoginPromptOpen: false,
-        setAuth: (accessToken, role, user, refreshToken) =>
-          set({
-            accessToken,
-            refreshToken: refreshToken ?? null,
-            role,
-            user: user ?? null,
-            isAuthenticated: Boolean(accessToken || user),
-          }),
         setAccessToken: (accessToken) =>
-          set((state) => ({
-            accessToken,
-            isAuthenticated: Boolean(accessToken || state.user),
-          })),
-        setUser: (user) =>
-          set((state) => ({
-            user,
-            role: user?.role ?? state.role,
-            isAuthenticated: Boolean(state.accessToken || user),
-          })),
+          set({ accessToken, isAuthenticated: Boolean(accessToken) }),
         clearSession,
-        logout: clearSession,
         setLoginPromptOpen: (isLoginPromptOpen) => set({ isLoginPromptOpen }),
       };
     },
@@ -79,12 +42,23 @@ export const useAuthStore = create<AuthSessionState>()(
         typeof window === "undefined"
           ? undefined
           : createJSONStorage(() => localStorage),
-      partialize: (state) => ({
-        accessToken: state.accessToken,
-        role: state.role,
-        user: state.user,
-        isAuthenticated: state.isAuthenticated,
-      }),
+      version: 2,
+      partialize: (state) => ({ accessToken: state.accessToken }),
+      // Ignore stale profile/role fields left by the pre-feature store and
+      // re-derive authentication from the only persisted session value.
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as Partial<AuthSessionState>;
+        const accessToken =
+          typeof persisted.accessToken === "string"
+            ? persisted.accessToken
+            : null;
+
+        return {
+          ...currentState,
+          accessToken,
+          isAuthenticated: Boolean(accessToken),
+        };
+      },
     },
   ),
 );

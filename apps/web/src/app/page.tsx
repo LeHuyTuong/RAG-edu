@@ -2,9 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, type ReactElement, type ReactNode } from "react";
-import { apiClient } from "@/lib/axios";
-import { API_ENDPOINTS } from "@/shared/constants";
-import { useAuthStore } from "@/stores";
+import { useAuth, useLogout } from "@/features/auth";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useInView } from "@/hooks/useInView";
 
@@ -270,7 +268,8 @@ const CommunityIcon = (
 
 export default function Home(): ReactElement {
   const [mounted, setMounted] = useState(false);
-  const { isAuthenticated, user, logout } = useAuthStore();
+  const { isAuthenticated, user } = useAuth();
+  const logout = useLogout();
   const [heroLoaded, setHeroLoaded] = useState(false);
 
   useEffect(() => {
@@ -387,15 +386,7 @@ export default function Home(): ReactElement {
                 </Link>
                 <button
                   type="button"
-                  onClick={async () => {
-                    try {
-                      await apiClient.post(API_ENDPOINTS.AUTH.LOGOUT, null, {
-                        skipToast: true,
-                      });
-                    } finally {
-                      logout();
-                    }
-                  }}
+                  onClick={() => void logout.mutateAsync()}
                   className="text-xs font-medium text-error/70 hover:text-error transition-colors cursor-pointer"
                 >
                   Đăng xuất

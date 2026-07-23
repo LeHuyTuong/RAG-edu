@@ -15,7 +15,7 @@ export async function signIn(payload: SignInPayload): Promise<SignInResponse> {
     skipToast: true,
   });
 
-  return result as SignInResponse;
+  return result as unknown as SignInResponse;
 }
 
 export async function signUp(payload: SignUpPayload): Promise<void> {

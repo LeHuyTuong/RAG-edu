@@ -11,8 +11,8 @@
  *  - "Trường đại học", "Khoa", "Chuyên ngành" are marked read-only with a message
  *    "(Tính năng đang phát triển)" as they are not yet supported by the backend.
  *
- * Auth store update:
- *  After a successful save, updates the store's user state immediately so
+ * Auth cache update:
+ *  After a successful save, updates the current-user cache immediately so
  *  the SideNav and other surfaces reflect the change without a page reload.
  */
 
@@ -27,7 +27,7 @@ import { Card } from "@/components/ui/Card";
 import { InputField } from "@/components/ui/InputField";
 
 import { updateProfile } from "@/apis/account.api";
-import { useAuthStore } from "@/stores/auth/store";
+import { useSetCurrentUser } from "@/features/auth";
 import { DEFAULT_AVATAR_URL, isDefaultAvatar } from "@/shared/constants";
 import type { User } from "@/types";
 import { toast } from "sonner";
@@ -95,14 +95,14 @@ async function uploadAvatarToCloudinary(file: File): Promise<string> {
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface Props {
-  /** Authenticated user object from the auth store. */
+  /** Authenticated user object from the current-user query. */
   readonly user: User;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function PersonalInfoForm({ user }: Props): React.JSX.Element {
-  const setUser = useAuthStore((state) => state.setUser);
+  const setCurrentUser = useSetCurrentUser();
 
   // ── States ──────────────────────────────────────────────────────────────────
   const [isEditing, setIsEditing] = useState(false);
@@ -260,8 +260,8 @@ export function PersonalInfoForm({ user }: Props): React.JSX.Element {
       // Persist name and/or avatarUrl to the API
       const response = await updateProfile(user.id, updatePayload);
 
-      // Update the auth store so other components update instantly
-      setUser({
+      // Update the current-user cache so other components update instantly
+      setCurrentUser({
         ...user,
         name: response.name,
         avatar: response.avatarUrl || undefined,
