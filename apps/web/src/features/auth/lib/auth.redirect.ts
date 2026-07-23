@@ -3,7 +3,6 @@ import type { UserRole } from "@/types";
 
 export function getDefaultRedirectForRole(role: UserRole): string {
   if (role === "admin") return ROUTE_PATHS.ADMIN_ROUTES.DASHBOARD;
-  if (role === "moderator") return ROUTE_PATHS.MODERATOR_ROUTES.DASHBOARD;
   return ROUTE_PATHS.PROTECTED_ROUTES.HOME;
 }
 

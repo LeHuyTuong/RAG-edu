@@ -7,7 +7,10 @@ export {
   useDeleteDocument,
   useDisableShareLink,
   useEnableShareLink,
+  useApproveDocument,
   useHardDeleteDocument,
+  useReclassifyDocument,
+  useRejectDocument,
   useRestoreDocument,
   useUpdateDocument,
 } from "./hooks/use-document-mutations";

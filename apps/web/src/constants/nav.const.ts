@@ -52,40 +52,6 @@ export const USER_NAV_ITEMS: SideNavItem[] = [
   },
 ];
 
-export const MODERATOR_NAV_ITEMS: SideNavItem[] = [
-  {
-    label: "Bảng điều khiển",
-    icon: "dashboard",
-    href: ROUTE_PATHS.MODERATOR_ROUTES.DASHBOARD,
-    section: "main",
-    exact: true,
-  },
-  {
-    label: "Duyệt tài liệu",
-    icon: "description",
-    href: ROUTE_PATHS.MODERATOR_ROUTES.DOCUMENTS,
-    section: "main",
-  },
-  {
-    label: "Kiểm duyệt bài viết",
-    icon: "gavel",
-    href: ROUTE_PATHS.MODERATOR_ROUTES.POSTS,
-    section: "main",
-  },
-  {
-    label: "Cài đặt",
-    icon: "settings",
-    href: ROUTE_PATHS.MODERATOR_ROUTES.SETTINGS,
-    section: "secondary",
-  },
-  {
-    label: "Đăng xuất",
-    icon: "logout",
-    href: "#",
-    section: "secondary",
-  },
-];
-
 export const ADMIN_NAV_ITEMS: SideNavItem[] = [
   {
     label: "Bảng điều khiển",

@@ -3,7 +3,7 @@
 import { type FormEvent, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { ragChat, type RagCitationResponse } from "@/apis/rag.api";
+import { type RagCitationResponse, useRagChat } from "@/features/rag";
 import { Button } from "@/components/ui/Button";
 import { getErrorMessage } from "@/utils/error";
 
@@ -54,7 +54,8 @@ export function AdminDocumentAiAssistant({
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [loading, setLoading] = useState(false);
+  const ragChat = useRagChat();
+  const loading = ragChat.isPending;
 
   const sourceIds = useMemo(
     () =>
@@ -76,7 +77,6 @@ export function AdminDocumentAiAssistant({
     }
 
     setInput("");
-    setLoading(true);
     setMessages((current) => [
       ...current,
       {
@@ -87,7 +87,7 @@ export function AdminDocumentAiAssistant({
     ]);
 
     try {
-      const response = await ragChat({
+      const response = await ragChat.mutateAsync({
         question,
         sourceIds,
         topK: 6,
@@ -103,8 +103,6 @@ export function AdminDocumentAiAssistant({
       ]);
     } catch (error) {
       toast.error(getErrorMessage(error));
-    } finally {
-      setLoading(false);
     }
   };
 

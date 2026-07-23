@@ -1,1 +1,1 @@
-export { default } from "@/modules/admin/pages/AdminDocumentManagementPage";
+export { default } from "@/features/admin/pages/AdminDocumentManagementPage";

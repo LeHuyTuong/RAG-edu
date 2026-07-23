@@ -1,4 +1,4 @@
-import AdminDocumentDetailPage from "@/modules/admin/pages/AdminDocumentDetailPage";
+import AdminDocumentDetailPage from "@/features/admin/pages/AdminDocumentDetailPage";
 
 export default async function AdminDocumentDetailRoute({
   params,

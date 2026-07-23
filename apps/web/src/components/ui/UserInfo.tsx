@@ -19,13 +19,10 @@ export const UserInfo: FC = () => {
   })();
 
   const isAdmin = user?.role === "admin";
-  const isModerator = user?.role === "moderator";
 
   const href = isAdmin
     ? ROUTE_PATHS.ADMIN_ROUTES.SETTINGS
-    : isModerator
-      ? ROUTE_PATHS.MODERATOR_ROUTES.SETTINGS
-      : ROUTE_PATHS.PROTECTED_ROUTES.PROFILE;
+    : ROUTE_PATHS.PROTECTED_ROUTES.PROFILE;
 
   return (
     <Link

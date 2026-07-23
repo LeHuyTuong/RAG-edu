@@ -23,7 +23,7 @@ import {
   AdminIconAction,
   AdminSelect,
   MaterialIcon,
-} from "@/modules/admin/components/AdminPrimitives";
+} from "@/features/admin/components/AdminPrimitives";
 
 const billingPlanColumns = [
   { key: "code", label: "Mã gói", sortable: true },

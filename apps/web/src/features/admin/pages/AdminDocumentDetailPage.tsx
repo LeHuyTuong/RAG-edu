@@ -1,28 +1,30 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import {
-  approveDocument,
-  fetchDocumentDetail,
-  rejectDocument,
-} from "@/apis/document.api";
+  useApproveDocument,
+  useDocumentDetail,
+  useDocumentPreview,
+  useRejectDocument,
+} from "@/features/documents";
+import { useAuth } from "@/features/auth";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { DocumentPreview } from "@/modules/user/documents/detail/components/DocumentPreview";
-import type { DocumentPreviewData } from "@/modules/user/documents/detail/type";
-import { loadDocumentPreview } from "@/modules/user/documents/detail/utils/document-preview";
-import { RejectDocumentModal } from "@/modules/moderator/components/RejectDocumentModal";
-import { useAuthStore } from "@/stores/auth/store";
-import type { DocumentDetail, DocumentStatus } from "@/types/document.type";
+import { RejectDocumentModal } from "@/features/documents/components/RejectDocumentModal";
+import type { DocumentStatus } from "@/types/document.type";
 import { formatDate, formatFileSize } from "@/utils";
 import { getErrorMessage } from "@/utils/error";
 import { getRagStatusDisplay } from "@/shared/documentStatus";
 
-import { AdminDocumentAiAssistant } from "../components/AdminDocumentAiAssistant";
-import { AdminCard, MaterialIcon } from "../components/AdminPrimitives";
+import { AdminDocumentAiAssistant } from "@/features/admin/components/AdminDocumentAiAssistant";
+import {
+  AdminCard,
+  MaterialIcon,
+} from "@/features/admin/components/AdminPrimitives";
 
 const statusLabels: Record<DocumentStatus, string> = {
   ACTIVE: "Đã duyệt",
@@ -69,78 +71,42 @@ export default function AdminDocumentDetailPage({
 }: {
   readonly documentId: string;
 }): React.JSX.Element {
-  const accessToken = useAuthStore((state) => state.accessToken);
-  const [document, setDocument] = useState<DocumentDetail | null>(null);
-  const [preview, setPreview] = useState<DocumentPreviewData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [actionLoading, setActionLoading] = useState(false);
+  const { accessToken } = useAuth();
+  const documentQuery = useDocumentDetail(documentId);
+  const approveDocument = useApproveDocument();
+  const rejectDocument = useRejectDocument();
+  const { preview } = useDocumentPreview(documentQuery.data, accessToken);
   const [rejectOpen, setRejectOpen] = useState(false);
-
-  const loadDocument = useCallback(async () => {
-    setLoading(true);
-    setErrorMessage("");
-
-    try {
-      const response = await fetchDocumentDetail(documentId);
-      setDocument(response);
-
-      try {
-        if (!accessToken) throw new Error("Missing access token");
-        setPreview((previous) => {
-          if (previous?.objectUrl) URL.revokeObjectURL(previous.objectUrl);
-          return previous;
-        });
-        setPreview(await loadDocumentPreview(response, accessToken));
-      } catch {
-        setPreview({ type: "unsupported" });
-      }
-    } catch (error) {
-      setDocument(null);
-      setErrorMessage(getErrorMessage(error));
-    } finally {
-      setLoading(false);
-    }
-  }, [documentId, accessToken]);
-
-  useEffect(() => {
-    return () => {
-      if (preview?.objectUrl) URL.revokeObjectURL(preview.objectUrl);
-    };
-  }, [preview?.objectUrl]);
-
-  useEffect(() => {
-    void loadDocument();
-  }, [loadDocument]);
+  const document = documentQuery.data;
+  const loading = documentQuery.isLoading;
+  const actionLoading = approveDocument.isPending || rejectDocument.isPending;
+  const errorMessage = documentQuery.isError
+    ? getErrorMessage(documentQuery.error)
+    : "";
 
   const handleApprove = async () => {
     if (!document) return;
 
-    setActionLoading(true);
     try {
-      const response = await approveDocument(document.id);
-      setDocument(response);
+      await approveDocument.mutateAsync(document.id);
       toast.success("Đã duyệt tài liệu");
     } catch (error) {
       toast.error(getErrorMessage(error));
-    } finally {
-      setActionLoading(false);
     }
   };
 
   const handleReject = async (rejectionReason: string) => {
     if (!document) return;
 
-    setActionLoading(true);
     try {
-      const response = await rejectDocument(document.id, { rejectionReason });
-      setDocument(response);
+      await rejectDocument.mutateAsync({
+        id: document.id,
+        payload: { rejectionReason },
+      });
       setRejectOpen(false);
       toast.success("Đã từ chối tài liệu");
     } catch (error) {
       toast.error(getErrorMessage(error));
-    } finally {
-      setActionLoading(false);
     }
   };
 

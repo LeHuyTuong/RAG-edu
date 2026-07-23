@@ -24,7 +24,7 @@ import {
   AdminCard,
   AdminIconAction,
   MaterialIcon,
-} from "@/modules/admin/components/AdminPrimitives";
+} from "@/features/admin/components/AdminPrimitives";
 
 interface AdminUser {
   readonly id: string;

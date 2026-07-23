@@ -2,14 +2,18 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import type {
   DocumentDetail,
+  RejectDocumentPayload,
   UpdateDocumentPayload,
 } from "@/types/document.type";
 
 import {
+  approveDocument,
   createDocument,
   createShareLink,
   deleteDocument,
   hardDeleteDocument,
+  reclassifyDocument,
+  rejectDocument,
   restoreDocument,
   revokeShareLink,
   updateDocument,
@@ -60,7 +64,7 @@ export function useCreateDocument() {
   });
 }
 
-function useDocumentAction(action: (id: string) => Promise<void>) {
+function useDocumentAction<Result>(action: (id: string) => Promise<Result>) {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -79,6 +83,29 @@ export function useRestoreDocument() {
 
 export function useHardDeleteDocument() {
   return useDocumentAction(hardDeleteDocument);
+}
+
+export function useApproveDocument() {
+  return useDocumentAction(approveDocument);
+}
+
+export function useReclassifyDocument() {
+  return useDocumentAction(reclassifyDocument);
+}
+
+export function useRejectDocument() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      payload,
+    }: {
+      id: string;
+      payload: RejectDocumentPayload;
+    }) => rejectDocument(id, payload),
+    onSuccess: async (_, { id }) => invalidateDocumentViews(queryClient, id),
+  });
 }
 
 export function useEnableShareLink() {

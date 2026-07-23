@@ -43,7 +43,7 @@ User routes include `/home`, `/profile`, `/settings`, `/uploads`,
 
 ### Role routes
 
-Admin and moderator routes require the matching role returned by `/api/v1/auth/me`.
+Admin routes require the matching role returned by `/api/v1/auth/me`.
 
 ## Access guards
 

@@ -1,7 +1,7 @@
 "use client";
 
 // Consolidation point: profile info form from modules/user/profile/components/PersonalInfoForm
-// is surfaced here as the unified account tab for user and moderator settings.
+// is surfaced here as the unified account tab for user settings.
 import { PersonalInfoForm } from "@/modules/user/profile/components/PersonalInfoForm";
 import { useAuth } from "@/features/auth";
 

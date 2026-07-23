@@ -3,7 +3,7 @@
  */
 
 // Status tone for badges, indicators, and status displays
-// Shared across ui/Badge, admin/, moderator/, and user/ modules
+// Shared across UI, admin, and user modules
 export type StatusTone =
   | "primary"
   | "secondary"
@@ -14,7 +14,7 @@ export type StatusTone =
   | "neutral";
 
 // User Types
-export type UserRole = "admin" | "moderator" | "teacher" | "student" | "guest";
+export type UserRole = "admin" | "teacher" | "student" | "guest";
 
 export interface User {
   id: string;

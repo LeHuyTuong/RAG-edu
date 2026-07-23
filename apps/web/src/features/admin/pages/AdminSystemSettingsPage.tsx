@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import {
   AdminCard,
   MaterialIcon,
-} from "@/modules/admin/components/AdminPrimitives";
+} from "@/features/admin/components/AdminPrimitives";
 
 export default function AdminSystemSettingsPage(): React.JSX.Element {
   const [allowedTypes, setAllowedTypes] = useState("");

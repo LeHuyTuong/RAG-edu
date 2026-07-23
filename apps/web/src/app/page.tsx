@@ -353,22 +353,12 @@ export default function Home(): ReactElement {
                       {user.name}
                     </p>
                     <p className="text-xs text-on-surface-variant mt-0.5">
-                      {user.role === "admin"
-                        ? "Quản trị viên"
-                        : user.role === "moderator"
-                          ? "Kiểm duyệt viên"
-                          : "Học viên"}
+                      {user.role === "admin" ? "Quản trị viên" : "Học viên"}
                     </p>
                   </div>
                 </div>
                 <Link
-                  href={
-                    user.role === "admin"
-                      ? "/admin"
-                      : user.role === "moderator"
-                        ? "/moderator"
-                        : "/profile"
-                  }
+                  href={user.role === "admin" ? "/admin" : "/profile"}
                   className="hidden sm:inline-flex items-center gap-1 text-xs font-medium text-on-surface-variant hover:text-primary transition-colors"
                 >
                   <svg

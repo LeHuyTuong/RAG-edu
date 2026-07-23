@@ -1,17 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import {
-  approveDocument,
-  deleteDocument,
-  fetchDocuments,
-  hardDeleteDocument,
-  reclassifyDocument,
-  restoreDocument,
-} from "@/apis/document.api";
+  useApproveDocument,
+  useDeleteDocument,
+  useHardDeleteDocument,
+  useLibraryDocuments,
+  useReclassifyDocument,
+  useRestoreDocument,
+} from "@/features/documents";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { AppDialog } from "@/components/ui/AppDialog";
@@ -22,8 +22,11 @@ import { getRagStatusDisplay } from "@/shared/documentStatus";
 import type { DocumentRagStatus, LibraryDocument } from "@/types/document.type";
 import { getErrorMessage } from "@/utils/error";
 
-import { AdminDocumentAiAssistant } from "../components/AdminDocumentAiAssistant";
-import { AdminCard, MaterialIcon } from "../components/AdminPrimitives";
+import { AdminDocumentAiAssistant } from "@/features/admin/components/AdminDocumentAiAssistant";
+import {
+  AdminCard,
+  MaterialIcon,
+} from "@/features/admin/components/AdminPrimitives";
 
 const columns = [
   { key: "select", label: "Chọn", align: "center" as const },
@@ -76,58 +79,46 @@ function ConfidenceBadge({
 }
 
 export default function AdminDocumentManagementPage(): React.JSX.Element {
-  const [documents, setDocuments] = useState<LibraryDocument[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(true);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<Set<string>>(
     () => new Set(),
   );
-  const [bulkApproveLoading, setBulkApproveLoading] = useState(false);
   const [reclassifyingId, setReclassifyingId] = useState<string | null>(null);
   const [deleteDocId, setDeleteDocId] = useState<string | null>(null);
   const [deleteDocTitle, setDeleteDocTitle] = useState("");
   const [isHardDelete, setIsHardDelete] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [restoreId, setRestoreId] = useState<string | null>(null);
   const [restoreTitle, setRestoreTitle] = useState("");
-  const [isRestoring, setIsRestoring] = useState(false);
-
   const [filterStatus, setFilterStatus] = useState<"ALL" | DocumentRagStatus>(
     "ALL",
   );
-
-  const load = useCallback(
-    async (page: number, statusFilter: "ALL" | DocumentRagStatus) => {
-      setLoading(true);
-      try {
-        const res = await fetchDocuments({
-          page,
-          limit: pageSize,
-          status: statusFilter !== "ALL" ? statusFilter : undefined,
-        });
-        setDocuments(res.documents);
-        setTotalPages(res.pagination.totalPages);
-        setSelectedDocumentIds((current) => {
-          const availableIds = new Set(
-            res.documents
-              .filter(canSelectForReview)
-              .map((document) => String(document.id)),
-          );
-          return new Set([...current].filter((id) => availableIds.has(id)));
-        });
-      } catch {
-        toast.error("Không thể tải danh sách tài liệu");
-      } finally {
-        setLoading(false);
-      }
-    },
-    [],
-  );
+  const documentsQuery = useLibraryDocuments({
+    page: currentPage,
+    limit: pageSize,
+    status: filterStatus !== "ALL" ? filterStatus : undefined,
+  });
+  const approveDocuments = useApproveDocument();
+  const reclassifyDocument = useReclassifyDocument();
+  const deleteDocument = useDeleteDocument();
+  const hardDeleteDocument = useHardDeleteDocument();
+  const restoreDocument = useRestoreDocument();
+  const documents = documentsQuery.data?.documents ?? [];
+  const totalPages = documentsQuery.data?.pagination.totalPages ?? 1;
+  const loading = documentsQuery.isLoading;
+  const bulkApproveLoading = approveDocuments.isPending;
+  const isDeleting = deleteDocument.isPending || hardDeleteDocument.isPending;
+  const isRestoring = restoreDocument.isPending;
 
   useEffect(() => {
-    void load(currentPage, filterStatus);
-  }, [currentPage, filterStatus, load]);
+    setSelectedDocumentIds((current) => {
+      const availableIds = new Set(
+        documents
+          .filter(canSelectForReview)
+          .map((document) => String(document.id)),
+      );
+      return new Set([...current].filter((id) => availableIds.has(id)));
+    });
+  }, [documents]);
 
   const selectedDocuments = useMemo(
     () =>
@@ -200,18 +191,14 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
   const handleBulkApprove = async () => {
     if (selectedDocuments.length === 0) return;
 
-    setBulkApproveLoading(true);
     try {
       for (const document of selectedDocuments) {
-        await approveDocument(document.id);
+        await approveDocuments.mutateAsync(document.id);
       }
       toast.success(`Đã duyệt ${selectedDocuments.length} tài liệu`);
       setSelectedDocumentIds(new Set());
-      await load(currentPage, filterStatus);
     } catch (error) {
       toast.error(getErrorMessage(error));
-    } finally {
-      setBulkApproveLoading(false);
     }
   };
 
@@ -219,12 +206,10 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
     if (!window.confirm("Phân loại lại tài liệu này bằng AI?")) return;
     setReclassifyingId(documentId);
     try {
-      await reclassifyDocument(documentId);
+      await reclassifyDocument.mutateAsync(documentId);
       toast.success(
         "Đã gửi yêu cầu phân loại lại. AI sẽ xử lý trong vài giây.",
       );
-      // Auto-refresh sau 5s để AI có thời gian xử lý
-      setTimeout(() => void load(currentPage, filterStatus), 5000);
     } catch (error) {
       toast.error(getErrorMessage(error));
     } finally {
@@ -249,39 +234,31 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
 
   const confirmDelete = async () => {
     if (!deleteDocId) return;
-    setIsDeleting(true);
     try {
       if (isHardDelete) {
-        await hardDeleteDocument(deleteDocId);
+        await hardDeleteDocument.mutateAsync(deleteDocId);
         toast.success("Đã xóa vĩnh viễn tài liệu.");
       } else {
-        await deleteDocument(deleteDocId);
+        await deleteDocument.mutateAsync(deleteDocId);
         toast.success("Đã chuyển tài liệu vào thùng rác.");
       }
       setDeleteDocId(null);
       setDeleteDocTitle("");
       setIsHardDelete(false);
-      await load(currentPage, filterStatus);
     } catch (error) {
       toast.error(getErrorMessage(error));
-    } finally {
-      setIsDeleting(false);
     }
   };
 
   const confirmRestore = async () => {
     if (!restoreId) return;
-    setIsRestoring(true);
     try {
-      await restoreDocument(restoreId);
+      await restoreDocument.mutateAsync(restoreId);
       toast.success("Khôi phục tài liệu thành công!");
       setRestoreId(null);
       setRestoreTitle("");
-      await load(currentPage, filterStatus);
     } catch (error) {
       toast.error(getErrorMessage(error));
-    } finally {
-      setIsRestoring(false);
     }
   };
 

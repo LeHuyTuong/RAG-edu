@@ -16,7 +16,7 @@ import {
   AdminCard,
   AdminToneIcon,
   MaterialIcon,
-} from "@/modules/admin/components/AdminPrimitives";
+} from "@/features/admin/components/AdminPrimitives";
 
 import type { AdminDashboardStats } from "../api/admin.api";
 import { useAdminDashboard } from "../hooks/use-admin-dashboard";

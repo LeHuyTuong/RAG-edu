@@ -6,8 +6,6 @@ function normalizeUserRole(role?: string): User["role"] {
   switch (role?.toUpperCase()) {
     case "ADMIN":
       return "admin";
-    case "MODERATOR":
-      return "moderator";
     case "TEACHER":
       return "teacher";
     case "USER":
