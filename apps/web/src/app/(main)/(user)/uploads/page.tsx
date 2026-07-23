@@ -1,1 +1,1 @@
-export { default } from "@/modules/user/documents/uploads/pages/UploadPage";
+export { default } from "@/features/upload/pages/UploadPage";

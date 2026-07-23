@@ -1,42 +1,30 @@
 "use client";
 
-/**
- * UploadPage (/uploads)
- *
- * Layout coordinator — owns the shared selectedFile state and wires the
- * two columns together. No form logic, no Cloudinary calls here.
- *
- * Single-step flow:
- *   1. User selects / drops a file in FileUploadBox (left column).
- *   2. User fills the metadata form in DocumentUploadForm (right column).
- *   3. "Công khai" or "Riêng tư" triggers Cloudinary upload + API create
- *      in one loading state — no intermediate "Upload File" button.
- */
-
 import { useState } from "react";
+
 import { Button } from "@/components/ui/Button";
+import { DEFAULT_UPLOAD_CONFIG } from "@/constants/upload.const";
+import { useFolderOptions, useSubjects } from "@/features/documents";
+import { useUploadConfig } from "@/features/upload";
+
 import FileUploadBox from "../components/FileUploadBox";
 import { DocumentUploadForm } from "../components/DocumentUploadForm";
-import { DEFAULT_UPLOAD_CONFIG } from "@/constants/upload.const";
+import { useUploadForm } from "../hooks/use-upload-form";
 
 export default function UploadPage(): React.JSX.Element {
-  /** File picked by FileUploadBox; passed to DocumentUploadForm for submission. */
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-
-  /**
-   * Mirrors DocumentUploadForm's submitting state so FileUploadBox can
-   * disable drag-and-drop while the upload is in progress.
-   */
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
   const [isSuccess, setIsSuccess] = useState(false);
+  const configQuery = useUploadConfig();
+  const subjectsQuery = useSubjects(100);
+  const foldersQuery = useFolderOptions();
+  const form = useUploadForm({
+    selectedFile,
+    onSuccess: () => {
+      setSelectedFile(null);
+      setIsSuccess(true);
+    },
+  });
 
-  const handleSuccess = () => {
-    setSelectedFile(null);
-    setIsSuccess(true);
-  };
-
-  // ── Success banner ────────────────────────────────────────────────────────
   if (isSuccess) {
     return (
       <div className="min-w-0 flex flex-col items-center justify-center py-24 text-center space-y-4">
@@ -51,9 +39,9 @@ export default function UploadPage(): React.JSX.Element {
           tư.
         </p>
         <Button
+          onClick={() => setIsSuccess(false)}
           type="button"
           variant="primary"
-          onClick={() => setIsSuccess(false)}
         >
           Tải lên tài liệu khác
         </Button>
@@ -63,7 +51,6 @@ export default function UploadPage(): React.JSX.Element {
 
   return (
     <div className="min-w-0 space-y-6">
-      {/* Page heading */}
       <div>
         <h1 className="text-2xl font-bold text-on-surface">
           Tải lên tài liệu mới
@@ -73,21 +60,24 @@ export default function UploadPage(): React.JSX.Element {
         </p>
       </div>
 
-      {/* Two-column layout */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:items-start">
-        {/* Left — file selection only (no upload button) */}
         <FileUploadBox
-          config={DEFAULT_UPLOAD_CONFIG}
-          selectedFile={selectedFile}
+          config={configQuery.data ?? DEFAULT_UPLOAD_CONFIG}
+          isSubmitting={form.isSubmitting}
           onFileChange={setSelectedFile}
-          isSubmitting={isSubmitting}
+          selectedFile={selectedFile}
         />
 
-        {/* Right — metadata form + single-step submit */}
         <DocumentUploadForm
-          selectedFile={selectedFile}
-          onSubmittingChange={setIsSubmitting}
-          onSuccess={handleSuccess}
+          folders={foldersQuery.data ?? []}
+          hasSelectedFile={Boolean(selectedFile)}
+          isLoadingSubjects={subjectsQuery.isLoading}
+          isSubmitting={form.isSubmitting}
+          onSubmit={form.submit}
+          setField={form.setField}
+          submitError={form.submitError}
+          subjects={subjectsQuery.data?.subjects ?? []}
+          values={form.values}
         />
       </div>
     </div>
