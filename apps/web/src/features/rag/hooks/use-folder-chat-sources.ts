@@ -17,7 +17,10 @@ export function useFolderChatSources(folderId: number) {
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<Set<string>>(
     () => new Set(),
   );
-  const documents = documentsQuery.data?.documents ?? [];
+  const documents = useMemo(
+    () => documentsQuery.data?.documents ?? [],
+    [documentsQuery.data?.documents],
+  );
 
   useEffect(() => {
     if (!isValidFolder) {

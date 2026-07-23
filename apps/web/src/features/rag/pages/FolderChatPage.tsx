@@ -96,17 +96,20 @@ export default function FolderChatPage(): React.JSX.Element {
     folderName ??
     (Number.isFinite(numericFolderId) ? `Thư mục ${folderId}` : "Thư mục");
 
-  const toggleDocument = useCallback((documentId: string, checked: boolean) => {
-    setSelectedDocumentIds((current) => {
-      const next = new Set(current);
-      if (checked) {
-        next.add(documentId);
-      } else {
-        next.delete(documentId);
-      }
-      return next;
-    });
-  }, []);
+  const toggleDocument = useCallback(
+    (documentId: string, checked: boolean) => {
+      setSelectedDocumentIds((current) => {
+        const next = new Set(current);
+        if (checked) {
+          next.add(documentId);
+        } else {
+          next.delete(documentId);
+        }
+        return next;
+      });
+    },
+    [setSelectedDocumentIds],
+  );
 
   const toggleAllDocuments = useCallback(
     (checked: boolean) => {
@@ -120,7 +123,7 @@ export default function FolderChatPage(): React.JSX.Element {
           : new Set(),
       );
     },
-    [documents],
+    [documents, setSelectedDocumentIds],
   );
 
   const selectDocumentById = useCallback(
@@ -139,7 +142,7 @@ export default function FolderChatPage(): React.JSX.Element {
         return next;
       });
     },
-    [documents],
+    [documents, setSelectedDocumentIds],
   );
 
   const handleSend = useCallback(() => {

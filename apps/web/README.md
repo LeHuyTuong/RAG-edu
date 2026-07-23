@@ -27,7 +27,16 @@ The web app keeps Next.js route files thin. Feature-owned UI, API functions, and
 - React Query owns server state. Zustand owns client/session state such as the access token and UI-only flags.
 - `src/app` keeps Next.js route wrappers thin; routes do not fetch feature data directly.
 
-`src/features/auth` is the reference slice for this convention.
+Migrated vertical slices currently include:
+
+- `src/features/auth` for session and identity state.
+- `src/features/documents` for library, document detail, owned documents, and document server state.
+- `src/features/upload` for backend upload configuration, multipart upload, and document registration.
+- `src/features/rag` for RAG endpoints, folder-scoped source queries, and streaming chat state.
+
+`src/apis/document.api.ts` and `src/apis/rag.api.ts` are temporary
+compatibility exports for unmigrated home, folders, admin, and moderator
+consumers. New code must use the corresponding feature API or hooks.
 
 ### Folder Structure
 
@@ -38,8 +47,11 @@ src/
 │   ├── (main)/                 # Protected/main app route group
 │   ├── layout.tsx              # Root layout
 │   ├── page.tsx                # Public home page
-├── features/                   # Vertical slices (auth is the reference)
-│   └── auth/                   # API, query hooks, views, guards, types
+├── features/                   # Vertical slices with API, hooks, UI and types
+│   ├── auth/                   # Session, identity, views and guards
+│   ├── documents/              # Library and document server state
+│   ├── upload/                 # Backend multipart upload flow
+│   └── rag/                    # RAG API and streaming chat flow
 ├── shared/                     # Shared API client, providers, constants
 ├── styles/                     # Global styles
 │   └── globals.css
