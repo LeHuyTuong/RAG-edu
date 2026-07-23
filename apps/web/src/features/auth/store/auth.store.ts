@@ -43,6 +43,15 @@ export const useAuthStore = create<AuthSessionState>()(
           ? undefined
           : createJSONStorage(() => localStorage),
       version: 2,
+      migrate: (persistedState) => {
+        const persisted = persistedState as Partial<AuthSessionState>;
+        const accessToken =
+          typeof persisted.accessToken === "string"
+            ? persisted.accessToken
+            : null;
+
+        return { accessToken };
+      },
       partialize: (state) => ({ accessToken: state.accessToken }),
       // Ignore stale profile/role fields left by the pre-feature store and
       // re-derive authentication from the only persisted session value.
