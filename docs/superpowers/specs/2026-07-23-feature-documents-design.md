@@ -16,7 +16,9 @@ Included:
   subject list.
 - `/documents/[id]`: document detail, related-document list, protected file
   preview, and the existing share control. The disabled discussion block is
-  removed because the backend provides no comment endpoint.
+  removed because the backend provides no comment endpoint. The inactive
+  bookmark and "Xem thêm tài liệu tương tự" controls are also removed because
+  they have neither endpoint nor working navigation.
 - `/my-documents`: the owner's list, status filter, edit, soft delete, restore,
   and hard-delete actions.
 
@@ -43,8 +45,8 @@ The Spring backend provides the endpoints consumed by this slice:
 - `POST` and `DELETE /api/v1/documents/{id}/share`.
 
 Every current document control in the three scoped screens has a matching
-backend endpoint except the disabled discussion block, which is removed rather
-than displayed as an unavailable feature.
+backend endpoint except the disabled discussion, bookmark, and related-list
+controls, which are removed rather than displayed as unavailable features.
 
 ## Target structure
 
