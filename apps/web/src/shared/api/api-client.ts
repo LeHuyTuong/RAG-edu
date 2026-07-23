@@ -20,9 +20,6 @@ export const apiClient = axios.create({
   withCredentials: true,
 });
 
-const isAuthPage = (pathname: string): boolean =>
-  pathname === "/login" || pathname === "/register";
-
 const PUBLIC_AUTH_ENDPOINTS = [
   API_ENDPOINTS.AUTH.LOGIN,
   API_ENDPOINTS.AUTH.REGISTER,
