@@ -3,6 +3,7 @@ export { useDocumentDetail } from "./hooks/use-document-detail";
 export { useDocumentFileActions } from "./hooks/use-document-file-actions";
 export { useDocumentPreview } from "./hooks/use-document-preview";
 export {
+  useCreateDocument,
   useDeleteDocument,
   useDisableShareLink,
   useEnableShareLink,

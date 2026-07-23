@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { beforeEach, vi } from "vitest";
 
 const documentsApi = vi.hoisted(() => ({
+  createDocument: vi.fn(),
   createShareLink: vi.fn(),
   deleteDocument: vi.fn(),
   fetchDocumentDetail: vi.fn(),
@@ -19,7 +20,11 @@ const documentsApi = vi.hoisted(() => ({
 vi.mock("@/features/documents/api/documents.api", () => documentsApi);
 
 import { documentKeys } from "@/features/documents/documents.keys";
-import { useLibraryDocuments, useUpdateDocument } from "@/features/documents";
+import {
+  useCreateDocument,
+  useLibraryDocuments,
+  useUpdateDocument,
+} from "@/features/documents";
 
 const pagination = { page: 1, limit: 12, total: 0, totalPages: 0 };
 const updatedDocument = { id: "42", title: "Mới" };
@@ -44,6 +49,7 @@ function createWrapper() {
 beforeEach(() => {
   vi.clearAllMocks();
   documentsApi.fetchDocuments.mockResolvedValue({ documents: [], pagination });
+  documentsApi.createDocument.mockResolvedValue(updatedDocument);
   documentsApi.updateDocument.mockResolvedValue(updatedDocument);
 });
 
@@ -82,5 +88,32 @@ test("invalidates document lists and the changed detail after an update", async 
   });
   expect(invalidateSpy).toHaveBeenCalledWith({
     queryKey: documentKeys.detail("42"),
+  });
+});
+
+test("invalidates library and owner lists after document creation", async () => {
+  const { Wrapper, queryClient } = createWrapper();
+  const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
+  const { result } = renderHook(() => useCreateDocument(), {
+    wrapper: Wrapper,
+  });
+
+  await act(async () => {
+    await result.current.mutateAsync({
+      title: "Tư liệu",
+      fileUrl: "http://localhost:8080/uploads/history.pdf",
+      publicId: "history.pdf",
+      sizeInBytes: 7,
+      format: "pdf",
+      resourceType: "local",
+      isPublic: false,
+    });
+  });
+
+  expect(invalidateSpy).toHaveBeenCalledWith({
+    queryKey: documentKeys.lists(),
+  });
+  expect(invalidateSpy).toHaveBeenCalledWith({
+    queryKey: [...documentKeys.all, "mine"],
   });
 });

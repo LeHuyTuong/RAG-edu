@@ -10,17 +10,16 @@ export const validateFile = (
   config: UploadConfig,
 ): ValidateFileResult => {
   // validate mime type
-  const validMime = config.allowedMimeTypes.includes(file.type);
-
-  const allowedExts = [".pdf", ".doc", ".docx", ".txt"];
-
   const extension = file.name.includes(".")
     ? `.${file.name.split(".").pop()?.toLowerCase()}`
     : "";
 
-  const validExtension = allowedExts.includes(extension);
+  const validMime = config.allowedMimeTypes.includes(file.type);
+  const validExtension = config.allowedExtensions
+    .map((allowedExtension) => allowedExtension.toLowerCase())
+    .includes(extension);
 
-  if (!validMime || !validExtension) {
+  if (!validMime && !validExtension) {
     return {
       valid: false,
       error: "Chỉ nhận tài liệu!",

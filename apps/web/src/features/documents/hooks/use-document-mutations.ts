@@ -6,6 +6,7 @@ import type {
 } from "@/types/document.type";
 
 import {
+  createDocument,
   createShareLink,
   deleteDocument,
   hardDeleteDocument,
@@ -40,6 +41,22 @@ export function useUpdateDocument() {
       payload: UpdateDocumentPayload;
     }) => updateDocument(id, payload),
     onSuccess: async (_, { id }) => invalidateDocumentViews(queryClient, id),
+  });
+}
+
+export function useCreateDocument() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createDocument,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: documentKeys.lists() }),
+        queryClient.invalidateQueries({
+          queryKey: [...documentKeys.all, "mine"],
+        }),
+      ]);
+    },
   });
 }
 

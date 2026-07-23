@@ -45,6 +45,10 @@ export const API_ENDPOINTS = {
     DETAIL: (id: string) => `/api/v1/folders/${id}`,
     CHAT: (id: string) => `/api/v1/folders/${id}/chat`,
   },
+  UPLOAD: {
+    BASE: "/api/v1/upload",
+    CONFIG: "/api/v1/upload/config",
+  },
   RAG: {
     BASE: "/api/v1/rag",
     HEALTH: "/api/v1/rag/health",
