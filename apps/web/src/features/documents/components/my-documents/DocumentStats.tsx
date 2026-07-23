@@ -8,11 +8,8 @@ interface Props {
 }
 
 /**
- * Four-column stats row shown at the top of the My Documents page.
- *
- * Only "Tổng tài liệu" is backed by real API data (pagination.total).
- * Views / downloads / contribution level are UI placeholders — the current
- * backend does not expose per-user engagement counters.
+ * Stats row shown at the top of the My Documents page.
+ * Only values exposed by the backend are displayed.
  */
 export function DocumentStats({
   totalDocuments,
@@ -26,15 +23,6 @@ export function DocumentStats({
         value={isLoading ? "…" : totalDocuments}
         iconBg="bg-primary/10"
         iconColor="text-primary"
-      />
-
-      {/* Placeholder — contribution level is a future gamification feature */}
-      <StatCard
-        icon="workspace_premium"
-        label="Đóng góp"
-        value="Level 1"
-        iconBg="bg-[#dcfce7]"
-        iconColor="text-[#166534]"
       />
     </section>
   );

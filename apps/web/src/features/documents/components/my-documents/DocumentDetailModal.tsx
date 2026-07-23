@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { listFolders, type FolderResponse } from "@/apis/folder.api";
 import { AppDialog } from "@/components/ui/AppDialog";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -16,6 +15,8 @@ import type {
 } from "@/types/document.type";
 import { formatDate } from "@/utils";
 import { getDisplayFromStatus } from "@/shared/documentStatus";
+
+import { useFolderOptions } from "../../hooks/use-folder-options";
 
 type DialogMode = "view" | "edit" | "delete";
 
@@ -78,7 +79,7 @@ export function DocumentDetailModal({
   const [subjectId, setSubjectId] = useState("");
   const [isPublic, setIsPublic] = useState(false);
   const [folderId, setFolderId] = useState("");
-  const [folders, setFolders] = useState<FolderResponse[]>([]);
+  const { data: folders = [] } = useFolderOptions();
 
   useEffect(() => {
     if (!document) return;
@@ -90,12 +91,6 @@ export function DocumentDetailModal({
     setIsPublic(document.isPublic);
     setFolderId(document.folderId ? String(document.folderId) : "");
   }, [document, initialMode]);
-
-  useEffect(() => {
-    listFolders()
-      .then((data) => setFolders(data))
-      .catch(() => setFolders([]));
-  }, []);
 
   const subjectOptions = useMemo(
     () => [

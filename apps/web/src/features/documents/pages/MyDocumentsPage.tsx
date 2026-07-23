@@ -3,46 +3,39 @@
 /**
  * MyDocumentPage (/my-documents)
  *
- * Responsible for data fetching and coordinating state.
+ * Coordinates client-side dialog state around the documents feature queries.
  * Rendering is fully delegated to child components:
  *   - DocumentStats  -> stats row
  *   - DocumentTable  -> search + table + pagination
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { AppDialog } from "@/components/ui/AppDialog";
-
 import {
-  deleteDocument,
-  fetchMyDocuments,
-  fetchSubjects,
-  hardDeleteDocument,
-  restoreDocument,
-  updateDocument,
-} from "@/apis/document.api";
+  useDeleteDocument,
+  useHardDeleteDocument,
+  useMyDocuments,
+  useRestoreDocument,
+  useSubjects,
+  useUpdateDocument,
+} from "@/features/documents";
 import type {
   LibraryDocument,
-  PaginationMeta,
-  Subject,
+  ListDocumentsQuery,
   UpdateDocumentPayload,
 } from "@/types/document.type";
 
-import { DocumentDetailModal } from "./components/DocumentDetailModal";
-import { DocumentStats } from "./components/DocumentStats";
-import { DocumentTable } from "./components/DocumentTable";
+import { DocumentDetailModal } from "../components/my-documents/DocumentDetailModal";
+import { DocumentStats } from "../components/my-documents/DocumentStats";
+import { DocumentTable } from "../components/my-documents/DocumentTable";
 
 const ITEMS_PER_PAGE = 10;
 
 export default function MyDocumentPage(): React.JSX.Element {
-  const [documents, setDocuments] = useState<LibraryDocument[]>([]);
-  const [pagination, setPagination] = useState<PaginationMeta | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [viewingDocument, setViewingDocument] =
     useState<LibraryDocument | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -57,50 +50,37 @@ export default function MyDocumentPage(): React.JSX.Element {
   );
   const [restoreDoc, setRestoreDoc] = useState<LibraryDocument | null>(null);
   const [isConfirming, setIsConfirming] = useState(false);
-
-  const load = useCallback(
-    async (page: number, status?: string) => {
-      const s = status ?? statusFilter;
-      setIsLoading(true);
-      setError(null);
-      try {
-        const res = await fetchMyDocuments({
-          page,
-          limit: ITEMS_PER_PAGE,
-          ...(s !== "ALL" ? { status: s as any } : {}),
-        });
-        setDocuments(res.documents);
-        setPagination(res.pagination);
-      } catch {
-        setError("Không thể tải danh sách tài liệu. Vui lòng thử lại.");
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [statusFilter],
-  );
-
-  useEffect(() => {
-    load(currentPage);
-  }, [currentPage, load]);
-
-  useEffect(() => {
-    fetchSubjects(100)
-      .then((res) => setSubjects(res.subjects))
-      .catch(() => setSubjects([]));
-  }, []);
+  const status =
+    statusFilter === "ALL"
+      ? undefined
+      : (statusFilter as ListDocumentsQuery["status"]);
+  const documentsQuery = useMyDocuments({
+    page: currentPage,
+    limit: ITEMS_PER_PAGE,
+    ...(status ? { status } : {}),
+  });
+  const subjectsQuery = useSubjects();
+  const deleteDocument = useDeleteDocument();
+  const hardDeleteDocument = useHardDeleteDocument();
+  const restoreDocument = useRestoreDocument();
+  const updateDocument = useUpdateDocument();
+  const documents = documentsQuery.data?.documents ?? [];
+  const pagination = documentsQuery.data?.pagination ?? null;
+  const subjects = subjectsQuery.data?.subjects ?? [];
+  const error = documentsQuery.isError
+    ? "Không thể tải danh sách tài liệu. Vui lòng thử lại."
+    : null;
 
   const handleDelete = async (id: string) => {
     setDeletingId(id);
     try {
-      await deleteDocument(id);
+      await deleteDocument.mutateAsync(id);
       toast.success("Xóa tài liệu thành công!");
       const targetPage =
         documents.length === 1 && currentPage > 1
           ? currentPage - 1
           : currentPage;
       setCurrentPage(targetPage);
-      await load(targetPage);
     } catch {
       alert("Xóa tài liệu thất bại. Vui lòng thử lại.");
     } finally {
@@ -140,14 +120,13 @@ export default function MyDocumentPage(): React.JSX.Element {
     if (!doc) return;
     setIsConfirming(true);
     try {
-      await hardDeleteDocument(doc.id);
+      await hardDeleteDocument.mutateAsync(doc.id);
       toast.success("Đã xóa vĩnh viễn tài liệu.");
       const targetPage =
         documents.length === 1 && currentPage > 1
           ? currentPage - 1
           : currentPage;
       setCurrentPage(targetPage);
-      await load(targetPage);
     } catch {
       toast.error("Xóa tài liệu thất bại. Vui lòng thử lại.");
     } finally {
@@ -161,9 +140,8 @@ export default function MyDocumentPage(): React.JSX.Element {
     if (!doc) return;
     setIsConfirming(true);
     try {
-      await restoreDocument(doc.id);
+      await restoreDocument.mutateAsync(doc.id);
       toast.success("Khôi phục tài liệu thành công!");
-      await load(currentPage);
     } catch {
       toast.error("Khôi phục tài liệu thất bại.");
     } finally {
@@ -179,9 +157,8 @@ export default function MyDocumentPage(): React.JSX.Element {
     setSavingId(document.id);
     setEditError(null);
     try {
-      await updateDocument(document.id, payload);
+      await updateDocument.mutateAsync({ id: document.id, payload });
       setViewingDocument(null);
-      await load(currentPage);
     } catch {
       setEditError("Cập nhật tài liệu thất bại. Vui lòng thử lại.");
     } finally {
@@ -200,13 +177,13 @@ export default function MyDocumentPage(): React.JSX.Element {
 
       <DocumentStats
         totalDocuments={pagination?.total ?? 0}
-        isLoading={isLoading}
+        isLoading={documentsQuery.isLoading}
       />
 
       <DocumentTable
         documents={documents}
         pagination={pagination}
-        isLoading={isLoading}
+        isLoading={documentsQuery.isLoading}
         error={error}
         skeletonCount={ITEMS_PER_PAGE}
         onPageChange={setCurrentPage}
