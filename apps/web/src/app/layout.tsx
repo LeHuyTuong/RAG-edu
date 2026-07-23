@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Inter, Geist } from "next/font/google";
-import "./globals.css";
+import "@/styles/globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/Toaster";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { CookieConsent } from "@/components/patterns/CookieConsent";
+import { QueryProvider } from "@/shared/providers/QueryProvider";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -56,11 +57,13 @@ export default function RootLayout({
         />
       </head>
       <body className={cn(inter.className, "bg-background text-foreground")}>
-        <ThemeProvider>
-          {children}
-          <Toaster position="top-right" richColors closeButton />
-          <CookieConsent />
-        </ThemeProvider>
+        <QueryProvider>
+          <ThemeProvider>
+            {children}
+            <Toaster position="top-right" richColors closeButton />
+            <CookieConsent />
+          </ThemeProvider>
+        </QueryProvider>
       </body>
     </html>
   );

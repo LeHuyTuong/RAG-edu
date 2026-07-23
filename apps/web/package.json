@@ -24,6 +24,7 @@
     "@radix-ui/react-dialog": "^1.1.18",
     "@repo/tokens": "workspace:*",
     "@repo/ui": "workspace:*",
+    "@tanstack/react-query": "^5",
     "axios": "^1.16.1",
     "class-variance-authority": "^0.7.1",
     "cloudinary": "^2.10.0",
