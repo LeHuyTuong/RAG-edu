@@ -10,21 +10,33 @@ import { SearchInput } from "@/components/ui/SearchInput";
 import { SelectField } from "@/components/ui/SelectField";
 import { Table, type TableRow } from "@/components/ui/Table";
 import type { StatusTone } from "@/types";
-import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  banAdminAccount,
-  createAdminAccount,
-  fetchAdminAccountDetail,
-  fetchAdminAccounts,
   type AdminAccount,
-} from "../api";
+  type AdminAccountRole,
+  type AdminAccountStatus,
+  useAdminAccounts,
+  useCreateAdminAccount,
+  useToggleAdminAccountBan,
+} from "@/features/admin";
 import {
   AdminCard,
   AdminIconAction,
   MaterialIcon,
-} from "../components/AdminPrimitives";
-import type { AdminUser, AdminUserRole, AdminUserStatus } from "../types";
+} from "@/modules/admin/components/AdminPrimitives";
+
+interface AdminUser {
+  readonly id: string;
+  readonly name: string;
+  readonly email: string;
+  readonly avatarUrl?: string | null;
+  readonly role: AdminAccountRole;
+  readonly status: AdminAccountStatus;
+  readonly createdAt: string;
+  readonly updatedAt?: string;
+  readonly lastLogin: string;
+}
 
 /** Badge only supports status tones, not semantic UI tones. */
 type BadgeStatusTone = Extract<
@@ -40,24 +52,19 @@ const userColumns = [
   { key: "actions", label: "", align: "right" as const },
 ] as const;
 
-const roleLabels: Record<AdminUserRole, string> = {
+const roleLabels: Record<AdminAccountRole, string> = {
   ADMIN: "Quản trị viên",
-  MODERATOR: "Kiểm duyệt viên",
   USER: "Người dùng",
 };
 
-const statusLabels: Record<AdminUserStatus, string> = {
+const statusLabels: Record<AdminAccountStatus, string> = {
   ACTIVE: "Đang hoạt động",
-  UNVERIFIED: "Chưa xác thực",
   BANNED: "Đã khóa",
-  DELETED: "Đã xóa",
 };
 
-const statusTone: Record<AdminUserStatus, BadgeStatusTone> = {
+const statusTone: Record<AdminAccountStatus, BadgeStatusTone> = {
   ACTIVE: "success",
-  UNVERIFIED: "warning",
   BANNED: "error",
-  DELETED: "neutral",
 };
 
 const pageSize = 6;
@@ -89,115 +96,96 @@ const mapAccountToUser = (account: AdminAccount): AdminUser => ({
   lastLogin: "Chưa có dữ liệu",
 });
 
-const roleLabelsMap: Record<"all" | AdminUserRole, string> = {
+const roleLabelsMap: Record<"all" | AdminAccountRole, string> = {
   all: "Tất cả vai trò",
   ADMIN: "Quản trị viên",
-  MODERATOR: "Kiểm duyệt viên",
   USER: "Người dùng",
 };
 
-const roleValuesMap: Record<string, "all" | AdminUserRole> = {
+const roleValuesMap: Record<string, "all" | AdminAccountRole> = {
   "Tất cả vai trò": "all",
   "Quản trị viên": "ADMIN",
-  "Kiểm duyệt viên": "MODERATOR",
   "Người dùng": "USER",
 };
 
 const roleOptionsList = Object.values(roleLabelsMap);
 
-const statusLabelsMap: Record<"all" | AdminUserStatus, string> = {
+const statusLabelsMap: Record<"all" | AdminAccountStatus, string> = {
   all: "Tất cả trạng thái",
   ACTIVE: "Đang hoạt động",
-  UNVERIFIED: "Chưa xác thực",
   BANNED: "Đã khóa",
-  DELETED: "Đã xóa",
 };
 
-const statusValuesMap: Record<string, "all" | AdminUserStatus> = {
+const statusValuesMap: Record<string, "all" | AdminAccountStatus> = {
   "Tất cả trạng thái": "all",
   "Đang hoạt động": "ACTIVE",
-  "Chưa xác thực": "UNVERIFIED",
   "Đã khóa": "BANNED",
-  "Đã xóa": "DELETED",
 };
 
 const statusOptionsList = Object.values(statusLabelsMap);
 
 export default function AdminUserManagementPage(): React.JSX.Element {
-  const [users, setUsers] = useState<AdminUser[]>([]);
+  const accountsQuery = useAdminAccounts();
+  const createAccount = useCreateAdminAccount();
+  const toggleAccountBan = useToggleAdminAccountBan();
   const [query, setQuery] = useState("");
-  const [roleFilter, setRoleFilter] = useState<"all" | AdminUserRole>("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | AdminUserStatus>(
+  const [roleFilter, setRoleFilter] = useState<"all" | AdminAccountRole>("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | AdminAccountStatus>(
     "all",
   );
   const [currentPage, setCurrentPage] = useState(1);
   const [viewUser, setViewUser] = useState<AdminUser | null>(null);
   const [confirmBanUser, setConfirmBanUser] = useState<AdminUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isDetailLoading, setIsDetailLoading] = useState(false);
-  const [isBanning, setIsBanning] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [actionErrorMessage, setActionErrorMessage] = useState("");
   const [formOpen, setFormOpen] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [formErrorMessage, setFormErrorMessage] = useState("");
   const [draft, setDraft] = useState({
     name: "",
     email: "",
     password: "",
-    role: "USER" as AdminUserRole,
+    role: "USER" as AdminAccountRole,
   });
+  const users = useMemo(
+    () =>
+      (accountsQuery.data ?? [])
+        .filter((account) => account.role !== "ADMIN")
+        .map(mapAccountToUser),
+    [accountsQuery.data],
+  );
+  const errorMessage = accountsQuery.isError
+    ? getErrorMessage(
+        accountsQuery.error,
+        "Không thể tải danh sách người dùng.",
+      )
+    : actionErrorMessage;
+  const isLoading = accountsQuery.isLoading;
+  const isSaving = createAccount.isPending;
+  const isBanning = toggleAccountBan.isPending;
 
-  const handleOpenAdd = () => {
+  const handleOpenAdd = useCallback(() => {
     setDraft({ name: "", email: "", password: "", role: "USER" });
     setFormErrorMessage("");
     setFormOpen(true);
-  };
+  }, []);
 
   const handleSaveUser = async () => {
     if (!draft.name.trim() || !draft.email.trim() || !draft.password.trim()) {
       setFormErrorMessage("Vui lòng nhập đầy đủ Tên, Email và Mật khẩu.");
       return;
     }
-    setIsSaving(true);
     setFormErrorMessage("");
     try {
-      await createAdminAccount({
+      await createAccount.mutateAsync({
         name: draft.name.trim(),
         email: draft.email.trim(),
         password: draft.password.trim(),
         role: draft.role,
       });
       setFormOpen(false);
-      void loadUsers();
     } catch (error) {
       setFormErrorMessage(getErrorMessage(error, "Không thể tạo người dùng."));
-    } finally {
-      setIsSaving(false);
     }
   };
-
-  const loadUsers = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage("");
-    try {
-      const accounts = await fetchAdminAccounts({});
-      setUsers(
-        accounts
-          .filter((account) => account.role !== "ADMIN")
-          .map(mapAccountToUser),
-      );
-    } catch (error) {
-      setErrorMessage(
-        getErrorMessage(error, "Không thể tải danh sách người dùng."),
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadUsers();
-  }, [loadUsers]);
 
   const searchParams = useSearchParams();
   useEffect(() => {
@@ -206,7 +194,7 @@ export default function AdminUserManagementPage(): React.JSX.Element {
       // Remove the query param so it doesn't re-open on refresh if they closed it
       window.history.replaceState({}, "", "/admin/users");
     }
-  }, [searchParams]);
+  }, [handleOpenAdd, searchParams]);
 
   const filteredUsers = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -235,38 +223,21 @@ export default function AdminUserManagementPage(): React.JSX.Element {
     setCurrentPage(1);
   };
 
-  const handleOpenDetail = async (user: AdminUser) => {
-    setIsDetailLoading(true);
-    setErrorMessage("");
-    try {
-      const account = await fetchAdminAccountDetail(user.id);
-      setViewUser(mapAccountToUser(account));
-    } catch (error) {
-      setErrorMessage(
-        getErrorMessage(error, "Không thể tải chi tiết tài khoản."),
-      );
-    } finally {
-      setIsDetailLoading(false);
-    }
+  const handleOpenDetail = (user: AdminUser) => {
+    setViewUser(user);
   };
 
   const handleBanUser = async () => {
     if (!confirmBanUser) return;
-    setIsBanning(true);
-    setErrorMessage("");
+    setActionErrorMessage("");
     try {
-      await banAdminAccount(confirmBanUser.id);
-      setUsers((current) =>
-        current.map((user) =>
-          user.id === confirmBanUser.id ? { ...user, status: "BANNED" } : user,
-        ),
-      );
+      await toggleAccountBan.mutateAsync(confirmBanUser.id);
       setConfirmBanUser(null);
       setViewUser(null);
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Không thể khóa tài khoản."));
-    } finally {
-      setIsBanning(false);
+      setActionErrorMessage(
+        getErrorMessage(error, "Không thể khóa tài khoản."),
+      );
     }
   };
 
@@ -537,14 +508,6 @@ export default function AdminUserManagementPage(): React.JSX.Element {
         </div>
       </AppDialog>
 
-      {isDetailLoading ? (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-inverse-surface/20 px-4 py-8">
-          <div className="rounded border border-outline-variant bg-surface-container-lowest px-5 py-3 font-label-md text-label-md text-on-surface">
-            Đang tải chi tiết...
-          </div>
-        </div>
-      ) : null}
-
       <AppDialog
         onOpenChange={(open) => {
           if (!open && !isSaving) setFormOpen(false);
@@ -604,12 +567,11 @@ export default function AdminUserManagementPage(): React.JSX.Element {
             label="Vai trò"
             options={[
               { label: "Người dùng", value: "USER" },
-              { label: "Kiểm duyệt viên", value: "MODERATOR" },
               { label: "Quản trị viên", value: "ADMIN" },
             ]}
             value={draft.role}
             onChange={(value) =>
-              setDraft({ ...draft, role: value as AdminUserRole })
+              setDraft({ ...draft, role: value as AdminAccountRole })
             }
             disabled={isSaving}
           />

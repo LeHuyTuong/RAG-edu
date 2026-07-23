@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
-import { AdminShell } from "@/modules/admin/components/AdminShell";
+import { AdminShell } from "@/features/admin/components/AdminShell";
 
 export default function AdminLayout({
   children,

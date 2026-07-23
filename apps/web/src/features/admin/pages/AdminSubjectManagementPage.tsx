@@ -8,21 +8,20 @@ import { InputField } from "@/components/ui/InputField";
 import { Pagination } from "@/components/ui/Pagination";
 import { SearchInput } from "@/components/ui/SearchInput";
 import { Table, type TableRow } from "@/components/ui/Table";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { toast } from "sonner";
 import {
-  createAdminSubject,
-  deleteAdminSubject,
-  fetchAdminSubjectDetail,
-  fetchAdminSubjects,
-  updateAdminSubject,
   type AdminSubject,
-} from "../api";
+  useAdminSubjects,
+  useCreateAdminSubject,
+  useDeleteAdminSubject,
+  useUpdateAdminSubject,
+} from "@/features/admin";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import {
   AdminCard,
   AdminIconAction,
   MaterialIcon,
-} from "../components/AdminPrimitives";
+} from "@/modules/admin/components/AdminPrimitives";
 
 const periodColumns = [
   { key: "code", label: "Mã giai đoạn", sortable: true },
@@ -68,52 +67,32 @@ const getErrorMessage = (error: unknown, fallback: string): string => {
 };
 
 export default function AdminSubjectManagementPage(): React.JSX.Element {
-  const [subjects, setSubjects] = useState<AdminSubject[]>([]);
   const [query, setQuery] = useState("");
-
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
-
   const [formOpen, setFormOpen] = useState(false);
   const [editSubject, setEditSubject] = useState<AdminSubject | null>(null);
   const [viewSubject, setViewSubject] = useState<AdminSubject | null>(null);
   const [deleteSubject, setDeleteSubject] = useState<AdminSubject | null>(null);
-
   const [draft, setDraft] = useState<PeriodDraft>(emptyDraft);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isDetailLoading, setIsDetailLoading] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [actionErrorMessage, setActionErrorMessage] = useState("");
   const [formErrorMessage, setFormErrorMessage] = useState("");
-
-  const loadSubjects = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage("");
-
-    try {
-      const response = await fetchAdminSubjects({
-        page: currentPage,
-        limit: pageSize,
-        search: query.trim() || undefined,
-      });
-
-      setSubjects(response.subjects as AdminSubject[]);
-      setTotalPages(response.pagination.totalPages);
-      setTotalItems(response.pagination.total);
-    } catch (error) {
-      setErrorMessage(
-        getErrorMessage(error, "Không thể tải danh sách giai đoạn."),
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, [currentPage, query]);
-
-  useEffect(() => {
-    void loadSubjects();
-  }, [loadSubjects]);
+  const subjectsQuery = useAdminSubjects({
+    page: currentPage,
+    limit: pageSize,
+    search: query.trim() || undefined,
+  });
+  const createSubject = useCreateAdminSubject();
+  const updateSubject = useUpdateAdminSubject();
+  const deleteSubjectMutation = useDeleteAdminSubject();
+  const subjects = subjectsQuery.data?.subjects ?? [];
+  const totalPages = subjectsQuery.data?.pagination.totalPages ?? 1;
+  const totalItems = subjectsQuery.data?.pagination.total ?? 0;
+  const isLoading = subjectsQuery.isLoading;
+  const isSaving = createSubject.isPending || updateSubject.isPending;
+  const isDeleting = deleteSubjectMutation.isPending;
+  const errorMessage = subjectsQuery.isError
+    ? getErrorMessage(subjectsQuery.error, "Không thể tải danh sách giai đoạn.")
+    : actionErrorMessage;
 
   const handleResetFilters = () => {
     setQuery("");
@@ -137,20 +116,8 @@ export default function AdminSubjectManagementPage(): React.JSX.Element {
     setFormOpen(true);
   };
 
-  const handleOpenDetail = async (subject: AdminSubject) => {
-    setIsDetailLoading(true);
-    setErrorMessage("");
-
-    try {
-      const detailed = await fetchAdminSubjectDetail(subject.id);
-      setViewSubject(detailed);
-    } catch (error) {
-      setErrorMessage(
-        getErrorMessage(error, "Không thể tải chi tiết giai đoạn."),
-      );
-    } finally {
-      setIsDetailLoading(false);
-    }
+  const handleOpenDetail = (subject: AdminSubject) => {
+    setViewSubject(subject);
   };
 
   const handleSaveSubject = async () => {
@@ -159,17 +126,19 @@ export default function AdminSubjectManagementPage(): React.JSX.Element {
       return;
     }
 
-    setIsSaving(true);
     setFormErrorMessage("");
 
     try {
       if (editSubject) {
-        await updateAdminSubject(editSubject.id, {
-          name: draft.name.trim(),
-          code: draft.code.trim().toUpperCase(),
+        await updateSubject.mutateAsync({
+          id: editSubject.id,
+          payload: {
+            name: draft.name.trim(),
+            code: draft.code.trim().toUpperCase(),
+          },
         });
       } else {
-        await createAdminSubject({
+        await createSubject.mutateAsync({
           name: draft.name.trim(),
           code: draft.code.trim().toUpperCase(),
         });
@@ -184,7 +153,6 @@ export default function AdminSubjectManagementPage(): React.JSX.Element {
       setDraft(emptyDraft);
       setEditSubject(null);
       setCurrentPage(1);
-      await loadSubjects();
     } catch (error) {
       setFormErrorMessage(
         getErrorMessage(
@@ -194,8 +162,6 @@ export default function AdminSubjectManagementPage(): React.JSX.Element {
             : "Không thể tạo giai đoạn.",
         ),
       );
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -204,19 +170,15 @@ export default function AdminSubjectManagementPage(): React.JSX.Element {
       return;
     }
 
-    setIsDeleting(true);
-    setErrorMessage("");
+    setActionErrorMessage("");
 
     try {
-      await deleteAdminSubject(deleteSubject.id);
+      await deleteSubjectMutation.mutateAsync(deleteSubject.id);
       toast.success("Xóa giai đoạn thành công!");
       setDeleteSubject(null);
       setCurrentPage(1);
-      await loadSubjects();
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Không thể xóa giai đoạn."));
-    } finally {
-      setIsDeleting(false);
+      setActionErrorMessage(getErrorMessage(error, "Không thể xóa giai đoạn."));
     }
   };
 
@@ -405,14 +367,6 @@ export default function AdminSubjectManagementPage(): React.JSX.Element {
           onClose={() => setViewSubject(null)}
           subject={viewSubject}
         />
-      ) : null}
-
-      {isDetailLoading ? (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-inverse-surface/20 px-4 py-8">
-          <div className="rounded border border-outline-variant bg-surface-container-lowest px-5 py-3 font-label-md text-label-md text-on-surface">
-            Đang tải chi tiết...
-          </div>
-        </div>
       ) : null}
 
       <AdminConfirmDialog

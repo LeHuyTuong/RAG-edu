@@ -3,10 +3,13 @@
 import { Button } from "@/components/ui/Button";
 import { InputField } from "@/components/ui/InputField";
 import { SelectField } from "@/components/ui/SelectField";
+import { useAdminConfig, useUpdateAdminConfig } from "@/features/admin";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { fetchAdminConfig, updateAdminConfig } from "../api";
-import { AdminCard, MaterialIcon } from "../components/AdminPrimitives";
+import {
+  AdminCard,
+  MaterialIcon,
+} from "@/modules/admin/components/AdminPrimitives";
 
 export default function AdminSystemSettingsPage(): React.JSX.Element {
   const [allowedTypes, setAllowedTypes] = useState("");
@@ -15,29 +18,32 @@ export default function AdminSystemSettingsPage(): React.JSX.Element {
   const [geminiApiKeys, setGeminiApiKeys] = useState("");
   const [cerebrasApiKey, setCerebrasApiKey] = useState("");
   const [activeLlmProvider, setActiveLlmProvider] = useState("CEREBRAS");
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const configQuery = useAdminConfig();
+  const updateConfig = useUpdateAdminConfig();
+  const loading = configQuery.isLoading;
+  const saving = updateConfig.isPending;
 
   useEffect(() => {
-    fetchAdminConfig()
-      .then((config) => {
-        setAllowedTypes(config.allowedTypes);
-        setMaxSizeMb(config.maxSizeMb);
-        setAutoApproveCron(config.autoApproveCron || "0 * * * * *");
-        setGeminiApiKeys(config.geminiApiKeys || "");
-        setCerebrasApiKey(config.cerebrasApiKey || "");
-        setActiveLlmProvider(config.activeLlmProvider || "CEREBRAS");
-      })
-      .catch(() => {
-        toast.error("Không thể tải cấu hình hệ thống");
-      })
-      .finally(() => setLoading(false));
-  }, []);
+    const config = configQuery.data;
+    if (!config) return;
+
+    setAllowedTypes(config.allowedTypes);
+    setMaxSizeMb(config.maxSizeMb);
+    setAutoApproveCron(config.autoApproveCron || "0 * * * * *");
+    setGeminiApiKeys(config.geminiApiKeys || "");
+    setCerebrasApiKey(config.cerebrasApiKey || "");
+    setActiveLlmProvider(config.activeLlmProvider || "CEREBRAS");
+  }, [configQuery.data]);
+
+  useEffect(() => {
+    if (configQuery.isError) {
+      toast.error("Không thể tải cấu hình hệ thống");
+    }
+  }, [configQuery.isError]);
 
   const handleSave = useCallback(async () => {
-    setSaving(true);
     try {
-      await updateAdminConfig({
+      await updateConfig.mutateAsync({
         allowedTypes,
         maxSizeMb,
         autoApproveCron,
@@ -48,8 +54,6 @@ export default function AdminSystemSettingsPage(): React.JSX.Element {
       toast.success("Đã cập nhật cấu hình hệ thống");
     } catch {
       toast.error("Không thể cập nhật cấu hình");
-    } finally {
-      setSaving(false);
     }
   }, [
     allowedTypes,
@@ -58,6 +62,7 @@ export default function AdminSystemSettingsPage(): React.JSX.Element {
     geminiApiKeys,
     cerebrasApiKey,
     activeLlmProvider,
+    updateConfig,
   ]);
 
   if (loading) {

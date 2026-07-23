@@ -1,6 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  type AdminBillingCycle,
+  type AdminBillingPlan,
+  type AdminBillingPlanPayload,
+  useAdminBillingPlans,
+  useCreateAdminBillingPlan,
+  useDeactivateAdminBillingPlan,
+  useUpdateAdminBillingPlan,
+} from "@/features/admin";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { AppDialog } from "@/components/ui/AppDialog";
@@ -10,21 +19,11 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { InputField } from "@/components/ui/InputField";
 import { Table, type TableRow } from "@/components/ui/Table";
 import {
-  createAdminBillingPlan,
-  deactivateAdminBillingPlan,
-  fetchAdminBillingPlanDetail,
-  fetchAdminBillingPlans,
-  updateAdminBillingPlan,
-  type AdminBillingCycle,
-  type AdminBillingPlan,
-  type AdminBillingPlanPayload,
-} from "../api";
-import {
   AdminCard,
   AdminIconAction,
   AdminSelect,
   MaterialIcon,
-} from "../components/AdminPrimitives";
+} from "@/modules/admin/components/AdminPrimitives";
 
 const billingPlanColumns = [
   { key: "code", label: "Mã gói", sortable: true },
@@ -174,7 +173,10 @@ const toPayload = (draft: BillingPlanDraft): AdminBillingPlanPayload | null => {
 };
 
 export default function AdminBillingPlanManagementPage(): React.JSX.Element {
-  const [plans, setPlans] = useState<AdminBillingPlan[]>([]);
+  const billingPlansQuery = useAdminBillingPlans();
+  const createBillingPlan = useCreateAdminBillingPlan();
+  const updateBillingPlan = useUpdateAdminBillingPlan();
+  const deactivateBillingPlan = useDeactivateAdminBillingPlan();
   const [formOpen, setFormOpen] = useState(false);
   const [editPlan, setEditPlan] = useState<AdminBillingPlan | null>(null);
   const [viewPlan, setViewPlan] = useState<AdminBillingPlan | null>(null);
@@ -182,29 +184,15 @@ export default function AdminBillingPlanManagementPage(): React.JSX.Element {
     null,
   );
   const [draft, setDraft] = useState<BillingPlanDraft>(emptyDraft);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isDetailLoading, setIsDetailLoading] = useState(false);
-  const [isDeactivating, setIsDeactivating] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [actionErrorMessage, setActionErrorMessage] = useState("");
   const [formErrorMessage, setFormErrorMessage] = useState("");
-
-  const loadPlans = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage("");
-
-    try {
-      setPlans(await fetchAdminBillingPlans());
-    } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Không thể tải danh sách gói."));
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadPlans();
-  }, [loadPlans]);
+  const plans = billingPlansQuery.data ?? [];
+  const isLoading = billingPlansQuery.isLoading;
+  const isSaving = createBillingPlan.isPending || updateBillingPlan.isPending;
+  const isDeactivating = deactivateBillingPlan.isPending;
+  const errorMessage = billingPlansQuery.isError
+    ? getErrorMessage(billingPlansQuery.error, "Không thể tải danh sách gói.")
+    : actionErrorMessage;
 
   const activeCount = useMemo(
     () => plans.filter((plan) => plan.active).length,
@@ -228,17 +216,8 @@ export default function AdminBillingPlanManagementPage(): React.JSX.Element {
     setFormOpen(true);
   };
 
-  const handleOpenDetail = async (plan: AdminBillingPlan) => {
-    setIsDetailLoading(true);
-    setErrorMessage("");
-
-    try {
-      setViewPlan(await fetchAdminBillingPlanDetail(plan.id));
-    } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Không thể tải chi tiết gói."));
-    } finally {
-      setIsDetailLoading(false);
-    }
+  const handleOpenDetail = (plan: AdminBillingPlan) => {
+    setViewPlan(plan);
   };
 
   const handleSavePlan = async () => {
@@ -253,14 +232,13 @@ export default function AdminBillingPlanManagementPage(): React.JSX.Element {
       return;
     }
 
-    setIsSaving(true);
     setFormErrorMessage("");
 
     try {
       if (editPlan) {
-        await updateAdminBillingPlan(editPlan.id, payload);
+        await updateBillingPlan.mutateAsync({ id: editPlan.id, payload });
       } else {
-        await createAdminBillingPlan(payload);
+        await createBillingPlan.mutateAsync(payload);
       }
 
       toast.success(
@@ -269,7 +247,6 @@ export default function AdminBillingPlanManagementPage(): React.JSX.Element {
       setFormOpen(false);
       setDraft(emptyDraft);
       setEditPlan(null);
-      await loadPlans();
     } catch (error) {
       setFormErrorMessage(
         getErrorMessage(
@@ -277,26 +254,22 @@ export default function AdminBillingPlanManagementPage(): React.JSX.Element {
           editPlan ? "Không thể cập nhật gói." : "Không thể tạo gói.",
         ),
       );
-    } finally {
-      setIsSaving(false);
     }
   };
 
   const handleDeactivatePlan = async () => {
     if (!deactivatePlan) return;
 
-    setIsDeactivating(true);
-    setErrorMessage("");
+    setActionErrorMessage("");
 
     try {
-      await deactivateAdminBillingPlan(deactivatePlan.id);
+      await deactivateBillingPlan.mutateAsync(deactivatePlan.id);
       toast.success("Đã ngừng kích hoạt gói.");
       setDeactivatePlan(null);
-      await loadPlans();
     } catch (error) {
-      setErrorMessage(getErrorMessage(error, "Không thể ngừng kích hoạt gói."));
-    } finally {
-      setIsDeactivating(false);
+      setActionErrorMessage(
+        getErrorMessage(error, "Không thể ngừng kích hoạt gói."),
+      );
     }
   };
 
@@ -417,7 +390,7 @@ export default function AdminBillingPlanManagementPage(): React.JSX.Element {
             </p>
           </div>
           <Button
-            onClick={() => void loadPlans()}
+            onClick={() => void billingPlansQuery.refetch()}
             type="button"
             variant="outline"
           >
@@ -467,14 +440,6 @@ export default function AdminBillingPlanManagementPage(): React.JSX.Element {
           }}
           plan={viewPlan}
         />
-      ) : null}
-
-      {isDetailLoading ? (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-inverse-surface/20 px-4 py-8">
-          <div className="rounded border border-outline-variant bg-surface-container-lowest px-5 py-3 font-label-md text-label-md text-on-surface">
-            Đang tải chi tiết...
-          </div>
-        </div>
       ) : null}
 
       <AdminConfirmDialog
