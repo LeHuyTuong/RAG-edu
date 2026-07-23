@@ -6,7 +6,7 @@ import type { FC } from "react";
 interface DocumentCardProps {
   id: string;
   title: string;
-  /** Description / snippet — only rendered if non-null & non-empty */
+  /** Description / snippet — reserves space to keep cards aligned */
   description?: string | null;
   format?: string;
   sizeInBytes?: number;
@@ -74,11 +74,14 @@ export const DocumentCard: FC<DocumentCardProps> = ({
   const hasDescription = !!description?.trim();
 
   return (
-    <Link href={`/documents/${id}`}>
+    <Link
+      href={`/documents/${id}`}
+      className={`block h-[244px] w-[280px] shrink-0 snap-start ${className}`}
+    >
       <div
-        className={`group flex cursor-pointer select-none flex-col gap-3.5 rounded-2xl border border-outline-variant/60 bg-surface p-5 transition-all duration-300 ease-out
+        className="group flex h-full cursor-pointer select-none flex-col gap-3.5 rounded-2xl border border-outline-variant/60 bg-surface p-5 transition-all duration-300 ease-out
           hover:-translate-y-1 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/[0.06]
-          ${className}`}
+        "
       >
         {/* ── Top row: subject badge + format badge ── */}
         <div className="flex items-center justify-between gap-2">
@@ -95,7 +98,7 @@ export const DocumentCard: FC<DocumentCardProps> = ({
                 <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
                 <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
               </svg>
-              {period}
+              <span className="line-clamp-2">{period}</span>
             </span>
           ) : null}
           {format ? (
@@ -108,16 +111,14 @@ export const DocumentCard: FC<DocumentCardProps> = ({
         </div>
 
         {/* ── Title ── */}
-        <h3 className="line-clamp-2 text-[15px] font-bold leading-snug tracking-tight text-on-surface transition-colors group-hover:text-primary">
+        <h3 className="min-h-[2.75rem] line-clamp-2 text-[15px] font-bold leading-snug tracking-tight text-on-surface transition-colors group-hover:text-primary">
           {title}
         </h3>
 
         {/* ── Description snippet (conditional) ── */}
-        {hasDescription ? (
-          <p className="line-clamp-2 text-sm leading-relaxed text-on-surface-variant/70">
-            {description}
-          </p>
-        ) : null}
+        <p className="min-h-[2.75rem] line-clamp-2 text-sm leading-relaxed text-on-surface-variant/70">
+          {hasDescription ? description : null}
+        </p>
 
         {/* ── Metadata row ── */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-on-surface-variant/50">

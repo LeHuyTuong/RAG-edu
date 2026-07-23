@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import { Pagination } from "@/components/ui/Pagination";
 import { useLibraryDocuments } from "../hooks/use-library-documents";
@@ -26,6 +26,18 @@ import { FilterToolbar } from "../components/library/FilterToolbar";
 export default function LibraryPage(): React.JSX.Element {
   const filters = useLibraryFiltersStore((state) => state.filters);
   const setPage = useLibraryFiltersStore((state) => state.setPage);
+  const setSubjectId = useLibraryFiltersStore((state) => state.setSubjectId);
+
+  useEffect(() => {
+    const subjectId = new URLSearchParams(window.location.search).get(
+      "subjectId",
+    );
+
+    if (subjectId) {
+      setSubjectId(subjectId);
+    }
+  }, [setSubjectId]);
+
   const documentsQuery = useLibraryDocuments({
     page: filters.page,
     limit: 12,

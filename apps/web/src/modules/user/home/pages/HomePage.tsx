@@ -1,49 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
 
 import { DocumentCard } from "../components/DocumentCard";
 import { DocumentCarousel } from "../components/DocumentCarousel";
 import { DocumentCardSkeleton } from "../components/DocumentSkeleton";
-import { fetchDocuments } from "@/apis/document.api";
-import type { LibraryDocument } from "@/types/document.type";
-
-/* ── Historical periods ── */
-
-const HISTORY_PERIODS = [
-  {
-    id: "co-dai",
-    name: "Cổ đại",
-    period: "Trước thế kỷ X",
-    icon: "account_balance",
-  },
-  {
-    id: "ly-tran",
-    name: "Thời Lý - Trần",
-    period: "Thế kỷ XI - XIV",
-    icon: "castle",
-  },
-  {
-    id: "le-so",
-    name: "Thời Lê Sơ",
-    period: "Thế kỷ XV - XVI",
-    icon: "history_edu",
-  },
-  {
-    id: "nguyen",
-    name: "Thời Nguyễn",
-    period: "Thế kỷ XIX - XX",
-    icon: "menu_book",
-  },
-  {
-    id: "khang-chien",
-    name: "Kháng chiến",
-    period: "1945 - 1975",
-    icon: "flag",
-  },
-  { id: "doi-moi", name: "Đổi mới", period: "1986 - nay", icon: "trending_up" },
-];
+import { useLibraryDocuments, useSubjects } from "@/features/documents";
 
 /* ── Relative time ── */
 
@@ -108,26 +70,12 @@ function ragStatusLabel(status?: string | null): {
 }
 
 export default function HomePage(): React.JSX.Element {
-  const [documents, setDocuments] = useState<LibraryDocument[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const documentsResponse = await fetchDocuments({ page: 1, limit: 15 });
-        const publicDocs = (documentsResponse.documents ?? []).filter(
-          (doc) => doc.isPublic === true,
-        );
-        setDocuments(publicDocs);
-      } catch {
-        setDocuments([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    load();
-  }, []);
+  const documentsQuery = useLibraryDocuments({ page: 1, limit: 15 });
+  const subjectsQuery = useSubjects(100);
+  const documents = (documentsQuery.data?.documents ?? []).filter(
+    (doc) => doc.isPublic === true,
+  );
+  const subjects = subjectsQuery.data?.subjects ?? [];
 
   const featuredDocs = documents.slice(0, 6);
   const recentUpdatedDocs = [...documents]
@@ -137,12 +85,7 @@ export default function HomePage(): React.JSX.Element {
     )
     .slice(0, 5);
   const hasRecentUpdated = recentUpdatedDocs.length > 0;
-
-  const linkClass =
-    "inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-outline-variant/60 bg-surface px-3.5 py-2 text-sm font-medium text-on-surface-variant transition-all duration-200 hover:border-primary/30 hover:text-primary hover:shadow-sm";
-
-  /* ── Period pill color cycle ── */
-  const periodColors = [
+  const subjectColors = [
     "from-blue-50 to-indigo-50 border-blue-200 dark:from-blue-950/30 dark:to-indigo-950/30 dark:border-blue-800/40",
     "from-sky-50 to-cyan-50 border-sky-200 dark:from-sky-950/30 dark:to-cyan-950/30 dark:border-sky-800/40",
     "from-violet-50 to-purple-50 border-violet-200 dark:from-violet-950/30 dark:to-purple-950/30 dark:border-violet-800/40",
@@ -150,6 +93,17 @@ export default function HomePage(): React.JSX.Element {
     "from-rose-50 to-pink-50 border-rose-200 dark:from-rose-950/30 dark:to-pink-950/30 dark:border-rose-800/40",
     "from-teal-50 to-emerald-50 border-teal-200 dark:from-teal-950/30 dark:to-emerald-950/30 dark:border-teal-800/40",
   ];
+  const subjectIcons = [
+    "account_balance",
+    "castle",
+    "history_edu",
+    "menu_book",
+    "flag",
+    "trending_up",
+  ];
+
+  const linkClass =
+    "inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-outline-variant/60 bg-surface px-3.5 py-2 text-sm font-medium text-on-surface-variant transition-all duration-200 hover:border-primary/30 hover:text-primary hover:shadow-sm";
 
   return (
     <div className="min-w-0">
@@ -180,39 +134,47 @@ export default function HomePage(): React.JSX.Element {
           </div>
 
           <DocumentCarousel>
-            {loading || documents.length === 0
-              ? Array.from({ length: 4 }).map((_, index) => (
-                  <DocumentCardSkeleton key={index} />
-                ))
-              : featuredDocs.map((doc) => (
-                  <DocumentCard
-                    id={doc.id}
-                    key={doc.id}
-                    title={doc.title}
-                    description={doc.description}
-                    format={doc.format}
-                    sizeInBytes={doc.sizeInBytes}
-                    pageCount={doc.pageCount ?? undefined}
-                    authorName={doc.author?.name}
-                    updatedAt={doc.updatedAt}
-                    period={doc.subject?.name}
-                  />
-                ))}
+            {documentsQuery.isLoading ? (
+              Array.from({ length: 4 }).map((_, index) => (
+                <DocumentCardSkeleton key={index} />
+              ))
+            ) : featuredDocs.length > 0 ? (
+              featuredDocs.map((doc) => (
+                <DocumentCard
+                  id={doc.id}
+                  key={doc.id}
+                  title={doc.title}
+                  description={doc.description}
+                  format={doc.format}
+                  sizeInBytes={doc.sizeInBytes}
+                  pageCount={doc.pageCount ?? undefined}
+                  authorName={doc.author?.name}
+                  updatedAt={doc.updatedAt}
+                  period={doc.subject?.name}
+                />
+              ))
+            ) : (
+              <div className="flex min-h-[244px] w-full items-center justify-center rounded-2xl border border-dashed border-outline-variant/70 bg-surface-container-low px-6 text-center text-sm text-on-surface-variant/60">
+                {documentsQuery.isError
+                  ? "Không thể tải tài liệu nổi bật lúc này."
+                  : "Chưa có tài liệu công khai để hiển thị."}
+              </div>
+            )}
           </DocumentCarousel>
         </section>
 
         {/* ══════ SECTION 2: TWO-COLUMN ══════ */}
         <section className="mb-14">
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-[2.2fr_1fr]">
-            {/* ── LEFT: Explore by historical period ── */}
+            {/* ── LEFT: Explore by subject ── */}
             <div>
               <div className="mb-6 flex items-end justify-between">
                 <div>
                   <h2 className="text-[26px] font-bold tracking-tight text-on-surface">
-                    Khám phá theo giai đoạn lịch sử
+                    Khám phá theo chủ đề
                   </h2>
                   <p className="mt-1 text-sm text-on-surface-variant/60">
-                    Chọn giai đoạn lịch sử bạn quan tâm để khám phá tư liệu
+                    Chọn một chủ đề đang có trong hệ thống để khám phá tư liệu
                   </p>
                 </div>
                 <Link
@@ -226,38 +188,46 @@ export default function HomePage(): React.JSX.Element {
                 </Link>
               </div>
 
-              {/* Period pills grid */}
+              {/* Subject cards grid */}
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {loading
-                  ? Array.from({ length: 6 }).map((_, i) => (
-                      <div
-                        key={i}
-                        className="h-[72px] animate-pulse rounded-xl border border-outline-variant bg-surface-container-low"
-                      />
-                    ))
-                  : HISTORY_PERIODS.map((period, i) => (
-                      <Link
-                        key={period.id}
-                        href={`/library?period=${period.id}`}
-                        className={`group relative overflow-hidden rounded-xl border bg-gradient-to-br
-                          ${periodColors[i % periodColors.length]}
+                {subjectsQuery.isLoading ? (
+                  Array.from({ length: 6 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="h-[104px] animate-pulse rounded-xl border border-outline-variant bg-surface-container-low"
+                    />
+                  ))
+                ) : subjects.length > 0 ? (
+                  subjects.map((subject, i) => (
+                    <Link
+                      key={subject.id}
+                      href={`/library?subjectId=${encodeURIComponent(subject.id)}`}
+                      className={`group relative flex h-[104px] flex-col overflow-hidden rounded-xl border bg-gradient-to-br
+                          ${subjectColors[i % subjectColors.length]}
                           px-4 py-4 transition-all duration-300
                           hover:-translate-y-1 hover:shadow-md hover:border-primary/40
                         `}
-                      >
-                        {/* Icon */}
-                        <span className="material-symbols-outlined text-xl text-primary/70 mb-2 block transition-transform duration-300 group-hover:scale-110 group-hover:text-primary">
-                          {period.icon}
-                        </span>
+                    >
+                      {/* Icon */}
+                      <span className="material-symbols-outlined text-xl text-primary/70 mb-2 block transition-transform duration-300 group-hover:scale-110 group-hover:text-primary">
+                        {subjectIcons[i % subjectIcons.length]}
+                      </span>
 
-                        <h3 className="text-sm font-bold text-on-surface leading-tight">
-                          {period.name}
-                        </h3>
-                        <p className="text-[11px] font-medium text-on-surface-variant/50 mt-0.5">
-                          {period.period}
-                        </p>
-                      </Link>
-                    ))}
+                      <h3 className="min-h-[2.25rem] line-clamp-2 text-sm font-bold leading-tight text-on-surface">
+                        {subject.name}
+                      </h3>
+                      <p className="mt-0.5 line-clamp-1 text-[11px] font-medium text-on-surface-variant/50">
+                        Mã chủ đề: {subject.code}
+                      </p>
+                    </Link>
+                  ))
+                ) : (
+                  <div className="col-span-full rounded-xl border border-dashed border-outline-variant/70 bg-surface-container-low px-4 py-6 text-center text-sm text-on-surface-variant/60">
+                    {subjectsQuery.isError
+                      ? "Không thể tải danh sách chủ đề lúc này."
+                      : "Chưa có chủ đề nào trong hệ thống."}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -273,7 +243,7 @@ export default function HomePage(): React.JSX.Element {
               </div>
 
               <div className="rounded-2xl border border-outline-variant/60 bg-surface-container-low/50 p-5">
-                {loading ? (
+                {documentsQuery.isLoading ? (
                   Array.from({ length: 3 }).map((_, i) => (
                     <div key={i} className="flex gap-3 py-2">
                       <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-surface-variant" />

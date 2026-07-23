@@ -2,7 +2,7 @@ import type { FC } from "react";
 
 export const DocumentCardSkeleton: FC = () => {
   return (
-    <div className="w-[280px] shrink-0 snap-start rounded-2xl border border-outline-variant/40 bg-surface p-5">
+    <div className="h-[244px] w-[280px] shrink-0 snap-start rounded-2xl border border-outline-variant/40 bg-surface p-5">
       <div className="flex flex-col gap-4">
         {/* Badge row */}
         <div className="flex items-center justify-between">
