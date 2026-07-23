@@ -1,7 +1,8 @@
 "use client";
 
 import type { FC } from "react";
-import { useLibraryStore } from "../store/useLibraryStore";
+import type { Subject } from "@/types/document.type";
+import { useLibraryFiltersStore } from "../../store/library-filters.store";
 
 /**
  * FilterBar — sticky left sidebar.
@@ -9,9 +10,16 @@ import { useLibraryStore } from "../store/useLibraryStore";
  *  - Free-text search  (client-side, no re-fetch)
  *  - Subject filter    (server-side, triggers re-fetch via store)
  */
-export const FilterBar: FC = () => {
-  const { filters, subjects, isLoadingSubjects, setSearch, setSubjectId } =
-    useLibraryStore();
+interface FilterBarProps {
+  readonly subjects: Subject[];
+  readonly isLoadingSubjects: boolean;
+}
+
+export const FilterBar: FC<FilterBarProps> = ({
+  subjects,
+  isLoadingSubjects,
+}) => {
+  const { filters, setSearch, setSubjectId } = useLibraryFiltersStore();
 
   return (
     <aside

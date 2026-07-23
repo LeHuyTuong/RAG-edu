@@ -2,12 +2,14 @@
 
 import type { FC } from "react";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useLibraryStore } from "../store/useLibraryStore";
 import type { PaginationMeta, Subject } from "@/types/document.type";
+import { useLibraryFiltersStore } from "../../store/library-filters.store";
 
 interface FilterToolbarProps {
   pagination: PaginationMeta | null;
   isLoading: boolean;
+  subjects: Subject[];
+  isLoadingSubjects: boolean;
 }
 
 const MAX_VISIBLE_PILLS = 4;
@@ -15,16 +17,11 @@ const MAX_VISIBLE_PILLS = 4;
 export const FilterToolbar: FC<FilterToolbarProps> = ({
   pagination,
   isLoading,
+  subjects,
+  isLoadingSubjects,
 }) => {
-  const {
-    filters,
-    subjects,
-    isLoadingSubjects,
-    setSearch,
-    setSubjectId,
-    setFormat,
-    setSortBy,
-  } = useLibraryStore();
+  const { filters, setSearch, setSubjectId, setFormat, setSortBy } =
+    useLibraryFiltersStore();
 
   /* ── UI state ── */
   const [sortOpen, setSortOpen] = useState(false);

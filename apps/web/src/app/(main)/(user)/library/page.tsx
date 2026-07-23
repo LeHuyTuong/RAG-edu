@@ -1,1 +1,1 @@
-export { default } from "@/modules/library/pages/LibraryPage";
+export { default } from "@/features/documents/pages/LibraryPage";

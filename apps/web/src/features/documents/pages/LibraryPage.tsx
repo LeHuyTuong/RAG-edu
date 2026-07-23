@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
+
 import { Pagination } from "@/components/ui/Pagination";
-import { useLibraryStore } from "../store/useLibraryStore";
-import { FilterToolbar } from "../components/FilterToolbar";
-import { DocumentGrid } from "../components/DocumentGrid";
+import { useLibraryDocuments } from "../hooks/use-library-documents";
+import { useSubjects } from "../hooks/use-subjects";
+import { useLibraryFiltersStore } from "../store/library-filters.store";
+import { DocumentGrid } from "../components/library/DocumentGrid";
+import { FilterToolbar } from "../components/library/FilterToolbar";
 
 /**
  * LibraryPage — main entry point for /library.
@@ -21,31 +24,24 @@ import { DocumentGrid } from "../components/DocumentGrid";
  *  └────────────────────────────────────────┘
  */
 export default function LibraryPage(): React.JSX.Element {
-  const {
-    documents,
-    pagination,
-    isLoading,
-    error,
-    filters,
-    fetchDocuments: loadDocuments,
-    fetchSubjects: loadSubjects,
-    setPage,
-  } = useLibraryStore();
+  const filters = useLibraryFiltersStore((state) => state.filters);
+  const setPage = useLibraryFiltersStore((state) => state.setPage);
+  const documentsQuery = useLibraryDocuments({
+    page: filters.page,
+    limit: 12,
+    ...(filters.search ? { search: filters.search } : {}),
+    ...(filters.subjectId ? { subjectId: filters.subjectId } : {}),
+  });
+  const subjectsQuery = useSubjects();
+  const documents = documentsQuery.data?.documents ?? [];
+  const pagination = documentsQuery.data?.pagination ?? null;
+  const error = documentsQuery.isError
+    ? "Không thể tải danh sách tài liệu. Vui lòng thử lại."
+    : null;
 
-  useEffect(() => {
-    loadDocuments();
-    loadSubjects();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  /** Client-side search + format filter + sort */
+  /** Client-side format filter + sort */
   const visibleDocuments = useMemo(() => {
     let docs = documents;
-
-    const term = filters.search.trim().toLowerCase();
-    if (term) {
-      docs = docs.filter((doc) => doc.title.toLowerCase().includes(term));
-    }
 
     if (filters.format) {
       docs = docs.filter((doc) => doc.format?.toLowerCase() === filters.format);
@@ -71,13 +67,18 @@ export default function LibraryPage(): React.JSX.Element {
     }
 
     return docs;
-  }, [documents, filters.search, filters.format, filters.sortBy]);
+  }, [documents, filters.format, filters.sortBy]);
 
   return (
     <div className="flex h-[calc(100vh-3rem)] flex-col gap-6 overflow-hidden">
       {/* Horizontal filter toolbar */}
       <div className="shrink-0">
-        <FilterToolbar pagination={pagination} isLoading={isLoading} />
+        <FilterToolbar
+          pagination={pagination}
+          isLoading={documentsQuery.isLoading}
+          subjects={subjectsQuery.data?.subjects ?? []}
+          isLoadingSubjects={subjectsQuery.isLoading}
+        />
       </div>
 
       {/* Document grid — full width, scrollable */}
@@ -89,7 +90,7 @@ export default function LibraryPage(): React.JSX.Element {
       >
         <DocumentGrid
           documents={visibleDocuments}
-          isLoading={isLoading}
+          isLoading={documentsQuery.isLoading}
           error={error}
         />
       </div>
