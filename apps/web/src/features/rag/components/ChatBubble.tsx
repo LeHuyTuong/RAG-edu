@@ -3,11 +3,34 @@
 import type { FC } from "react";
 
 import type { RagCitationResponse } from "../api/rag.api";
+import { normalizeAgentResponse } from "../lib/normalize-agent-response";
 
 interface ChatBubbleProps {
   role: "user" | "assistant";
   content: string;
   citations?: RagCitationResponse[];
+}
+
+const TECHNICAL_SOURCE_TYPES = new Set([
+  "DOCUMENT",
+  "ARTICLE",
+  "URL",
+  "MANUAL_INPUT",
+]);
+
+function getCitationLabel(
+  citation: RagCitationResponse,
+  index: number,
+): string {
+  const title = citation.title?.trim();
+  if (title) return normalizeAgentResponse(title);
+
+  const source = citation.source?.trim();
+  if (source && !TECHNICAL_SOURCE_TYPES.has(source.toUpperCase())) {
+    return normalizeAgentResponse(source);
+  }
+
+  return `Nguồn ${index + 1}`;
 }
 
 export const ChatBubble: FC<ChatBubbleProps> = ({
@@ -16,6 +39,7 @@ export const ChatBubble: FC<ChatBubbleProps> = ({
   citations,
 }) => {
   const isUser = role === "user";
+  const displayContent = isUser ? content : normalizeAgentResponse(content);
 
   const uniqueCitations = citations
     ? citations.filter(
@@ -50,7 +74,7 @@ export const ChatBubble: FC<ChatBubbleProps> = ({
           )}
 
           <div className="text-sm whitespace-pre-wrap leading-relaxed">
-            {content ||
+            {displayContent ||
               (isUser ? (
                 ""
               ) : (
@@ -76,11 +100,11 @@ export const ChatBubble: FC<ChatBubbleProps> = ({
                       className="text-xs bg-surface/80 rounded-lg p-3 border border-outline/20"
                     >
                       <p className="font-medium text-on-surface line-clamp-1">
-                        {c.title ?? c.source ?? `Nguồn ${i + 1}`}
+                        {getCitationLabel(c, i)}
                       </p>
                       {c.content && (
                         <p className="text-on-surface-variant line-clamp-2 mt-1">
-                          {c.content}
+                          {normalizeAgentResponse(c.content)}
                         </p>
                       )}
 
