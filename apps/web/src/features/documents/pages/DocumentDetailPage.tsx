@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import axios from "axios";
@@ -8,18 +7,17 @@ import axios from "axios";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { fetchDocumentDetail, fetchDocuments } from "@/apis/document.api";
 import { useAuth } from "@/features/auth";
-import type { DocumentDetail, LibraryDocument } from "@/types/document.type";
 
-import { DocumentHero } from "../components/DocumentHero";
-import { DocumentPreview } from "../components/DocumentPreview";
-import { FileInfoCard } from "../components/FileInfoCard";
-import { RelatedDocumentCard } from "../components/RelatedDocumentCard";
-import { AuthorCard } from "../components/AuthorCard";
-import { ShareCard } from "../components/ShareCard";
-import { loadDocumentPreview } from "../utils/document-preview";
-import type { DocumentPreviewData } from "../type";
+import { AuthorCard } from "../components/detail/AuthorCard";
+import { DocumentHero } from "../components/detail/DocumentHero";
+import { DocumentPreview } from "../components/detail/DocumentPreview";
+import { FileInfoCard } from "../components/detail/FileInfoCard";
+import { RelatedDocumentCard } from "../components/detail/RelatedDocumentCard";
+import { ShareCard } from "../components/detail/ShareCard";
+import { useDocumentDetail } from "../hooks/use-document-detail";
+import { useDocumentPreview } from "../hooks/use-document-preview";
+import { useLibraryDocuments } from "../hooks/use-library-documents";
 
 function DetailPageSkeleton(): React.JSX.Element {
   return (
@@ -87,91 +85,36 @@ function NotFoundState({ message }: { message: string }): React.JSX.Element {
 export default function DocumentDetailPage(): React.JSX.Element {
   const { id } = useParams<{ id: string }>();
   const { user: currentUser, accessToken } = useAuth();
-
-  const [document, setDocument] = useState<DocumentDetail | null>(null);
-  const [preview, setPreview] = useState<DocumentPreviewData | null>(null);
-  const [relatedDocuments, setRelatedDocuments] = useState<LibraryDocument[]>(
-    [],
+  const documentQuery = useDocumentDetail(id);
+  const document = documentQuery.data;
+  const { preview } = useDocumentPreview(document, accessToken);
+  const relatedQuery = useLibraryDocuments(
+    { subjectId: document?.subject?.id ?? "", limit: 4 },
+    { enabled: Boolean(document?.subject?.id) },
   );
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [accessDenied, setAccessDenied] = useState(false);
-
-  useEffect(() => {
-    if (!id || !accessToken) return;
-
-    let activePreviewObjectUrl: string | undefined;
-
-    const loadData = async () => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const doc = await fetchDocumentDetail(id);
-        setDocument(doc);
-        setRelatedDocuments([]);
-        setAccessDenied(false);
-
-        if (doc.subject?.id) {
-          try {
-            const relatedResponse = await fetchDocuments({
-              subjectId: doc.subject.id,
-              limit: 4,
-            });
-
-            const filtered = relatedResponse.documents
-              .filter((d) => {
-                if (d.id === id) return false;
-                const isOwner =
-                  currentUser?.id != null &&
-                  String(d.ownerId) === String(currentUser.id);
-                return d.isPublic || isOwner;
-              })
-              .slice(0, 3);
-
-            setRelatedDocuments(filtered);
-          } catch (relatedError) {
-            console.error("Could not load related documents", relatedError);
-          }
-        }
-
-        try {
-          const nextPreview = await loadDocumentPreview(doc, accessToken);
-          activePreviewObjectUrl = nextPreview.objectUrl;
-          setPreview(nextPreview);
-        } catch (previewError) {
-          console.error("Could not load document preview", previewError);
-          setPreview({ type: "error" });
-        }
-      } catch (err: unknown) {
-        if (
-          axios.isAxiosError(err) &&
-          (err.response?.status === 403 || err.response?.status === 404)
-        ) {
-          setAccessDenied(true);
-        } else {
-          setError("Không thể tải tài liệu. Vui lòng thử lại.");
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadData();
-
-    return () => {
-      if (activePreviewObjectUrl) {
-        URL.revokeObjectURL(activePreviewObjectUrl);
-      }
-    };
-  }, [id, accessToken, currentUser?.id]);
+  const relatedDocuments = (relatedQuery.data?.documents ?? [])
+    .filter((relatedDocument) => {
+      if (relatedDocument.id === document?.id) return false;
+      const isOwner =
+        currentUser?.id != null &&
+        String(relatedDocument.ownerId) === String(currentUser.id);
+      return relatedDocument.isPublic || isOwner;
+    })
+    .slice(0, 3);
+  const accessDenied =
+    documentQuery.isError &&
+    axios.isAxiosError(documentQuery.error) &&
+    (documentQuery.error.response?.status === 403 ||
+      documentQuery.error.response?.status === 404);
 
   if (accessDenied) return <AccessDeniedState />;
 
-  if (isLoading) return <DetailPageSkeleton />;
+  if (documentQuery.isLoading) return <DetailPageSkeleton />;
 
-  if (error || !document) {
-    return <NotFoundState message={error ?? "Tài liệu không tồn tại."} />;
+  if (documentQuery.isError || !document) {
+    return (
+      <NotFoundState message="Không thể tải tài liệu. Vui lòng thử lại." />
+    );
   }
 
   return (
@@ -180,7 +123,7 @@ export default function DocumentDetailPage(): React.JSX.Element {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
         <div className="space-y-6">
-          <DocumentPreview preview={preview ?? { type: "error" }} />
+          <DocumentPreview preview={preview} />
 
           {document.description ? (
             <Card className="space-y-5 p-6">
@@ -198,34 +141,6 @@ export default function DocumentDetailPage(): React.JSX.Element {
               ) : null}
             </Card>
           ) : null}
-
-          <Card className="space-y-6 p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Thảo luận</h2>
-              <Badge tone="neutral">Sắp ra mắt</Badge>
-            </div>
-
-            <label className="block space-y-2">
-              <span className="text-sm font-medium">Bình luận của bạn</span>
-              <textarea
-                placeholder="Viết bình luận của bạn..."
-                disabled
-                className="
-                  min-h-30 w-full rounded-xl border border-outline
-                  bg-surface p-4 outline-none transition-colors
-                  disabled:cursor-not-allowed disabled:opacity-50
-                "
-              />
-            </label>
-
-            <div className="flex justify-end">
-              <Button disabled>Gửi bình luận</Button>
-            </div>
-
-            <p className="text-center text-sm text-on-surface-variant">
-              Chức năng bình luận đang được phát triển.
-            </p>
-          </Card>
         </div>
 
         <aside className="space-y-6">
@@ -258,12 +173,6 @@ export default function DocumentDetailPage(): React.JSX.Element {
                   : "Tài liệu này chưa được gắn môn học."}
               </p>
             )}
-
-            {relatedDocuments.length > 0 ? (
-              <Button variant="ghost" className="w-full" type="button">
-                Xem thêm tài liệu tương tự
-              </Button>
-            ) : null}
           </Card>
 
           <AuthorCard author={document.author} />

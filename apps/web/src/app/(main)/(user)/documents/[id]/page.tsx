@@ -1,1 +1,1 @@
-export { default } from "@/modules/user/documents/detail/pages/DocumentDetailPage";
+export { default } from "@/features/documents/pages/DocumentDetailPage";

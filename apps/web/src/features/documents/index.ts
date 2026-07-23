@@ -1,5 +1,7 @@
 export { documentKeys } from "./documents.keys";
 export { useDocumentDetail } from "./hooks/use-document-detail";
+export { useDocumentFileActions } from "./hooks/use-document-file-actions";
+export { useDocumentPreview } from "./hooks/use-document-preview";
 export {
   useDeleteDocument,
   useDisableShareLink,

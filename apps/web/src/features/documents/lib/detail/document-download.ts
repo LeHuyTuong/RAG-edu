@@ -52,9 +52,10 @@ export function buildCloudinaryDownloadUrl(fileUrl: string): string {
 }
 
 export function buildProtectedDownloadUrl(documentId: number | string): string {
-  return `/api/v1/documents/${documentId}/download`;
+  return API_ENDPOINTS.DOCUMENTS.DOWNLOAD(String(documentId));
 }
 
 export function buildProtectedFileUrl(documentId: number | string): string {
-  return `/api/v1/documents/${documentId}/file`;
+  return API_ENDPOINTS.DOCUMENTS.FILE(String(documentId));
 }
+import { API_ENDPOINTS } from "@/shared/constants";

@@ -59,31 +59,20 @@ describe("buildPreviewSkeleton", () => {
     ).toEqual({ type: "unsupported" });
   });
 
-  it("loads PDF preview through the protected file endpoint", async () => {
+  it("builds PDF preview from a fetched file", async () => {
     const blob = new Blob(["pdf"], { type: "application/pdf" });
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      blob: () => Promise.resolve(blob),
-    });
     const createObjectURL = vi.fn().mockReturnValue("blob:preview");
-    vi.stubGlobal("fetch", fetchMock);
     vi.stubGlobal("URL", {
       ...URL,
       createObjectURL,
       revokeObjectURL: vi.fn(),
     });
 
-    await expect(
-      loadDocumentPreview(pdfDocument, "access-token"),
-    ).resolves.toEqual({
+    await expect(loadDocumentPreview(pdfDocument, blob)).resolves.toEqual({
       type: "pdf",
       fileUrl: "blob:preview",
       objectUrl: "blob:preview",
     });
-    expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/api/v1/documents/101/file"),
-      { headers: { Authorization: "Bearer access-token" } },
-    );
     expect(createObjectURL).toHaveBeenCalledWith(blob);
   });
 });

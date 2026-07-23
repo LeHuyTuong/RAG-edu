@@ -24,6 +24,8 @@ export interface DocumentFileResponse {
   filename: string | null;
 }
 
+export type DocumentFileDisposition = "inline" | "download";
+
 export async function fetchDocuments(
   query: ListDocumentsQuery = {},
 ): Promise<DocumentsListResponse> {
@@ -44,9 +46,14 @@ export async function fetchDocumentDetail(id: string): Promise<DocumentDetail> {
 export async function fetchDocumentFile(
   id: string,
   accessToken: string,
+  disposition: DocumentFileDisposition = "inline",
 ): Promise<DocumentFileResponse> {
   const response = await fetch(
-    `${APP_CONFIG.api.baseUrl}${API_ENDPOINTS.DOCUMENTS.FILE(id)}`,
+    `${APP_CONFIG.api.baseUrl}${
+      disposition === "download"
+        ? API_ENDPOINTS.DOCUMENTS.DOWNLOAD(id)
+        : API_ENDPOINTS.DOCUMENTS.FILE(id)
+    }`,
     { headers: { Authorization: `Bearer ${accessToken}` } },
   );
 

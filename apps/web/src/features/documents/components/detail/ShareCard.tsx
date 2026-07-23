@@ -1,11 +1,15 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { createShareLink, revokeShareLink } from "@/apis/document.api";
 import type { DocumentDetail } from "@/types/document.type";
+
+import {
+  useDisableShareLink,
+  useEnableShareLink,
+} from "../../hooks/use-document-mutations";
 
 interface ShareCardProps {
   document: DocumentDetail;
@@ -14,40 +18,34 @@ interface ShareCardProps {
 export function ShareCard({
   document,
 }: ShareCardProps): React.JSX.Element | null {
-  const [loading, setLoading] = useState(false);
-  const [shareToken, setShareToken] = useState<string | null>(
-    document.shareEnabled ? (document.shareToken ?? null) : null,
-  );
+  const enableShareLink = useEnableShareLink();
+  const disableShareLink = useDisableShareLink();
+  const shareToken = document.shareEnabled
+    ? (document.shareToken ?? null)
+    : null;
+  const loading = enableShareLink.isPending || disableShareLink.isPending;
 
   const shareUrl = shareToken
     ? `${typeof window !== "undefined" ? window.location.origin : ""}/share/${shareToken}`
     : null;
 
   const handleEnable = useCallback(async () => {
-    setLoading(true);
     try {
-      const res = await createShareLink(document.id);
-      setShareToken(res.shareToken);
+      await enableShareLink.mutateAsync(document.id);
       toast.success("Đã tạo link chia sẻ");
     } catch {
       toast.error("Không thể tạo link chia sẻ");
-    } finally {
-      setLoading(false);
     }
-  }, [document.id]);
+  }, [document.id, enableShareLink]);
 
   const handleDisable = useCallback(async () => {
-    setLoading(true);
     try {
-      await revokeShareLink(document.id);
-      setShareToken(null);
+      await disableShareLink.mutateAsync(document.id);
       toast.success("Đã tắt chia sẻ");
     } catch {
       toast.error("Không thể tắt chia sẻ");
-    } finally {
-      setLoading(false);
     }
-  }, [document.id]);
+  }, [disableShareLink, document.id]);
 
   const handleCopy = useCallback(async () => {
     if (!shareUrl) return;
