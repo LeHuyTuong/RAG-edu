@@ -33,10 +33,15 @@ Migrated vertical slices currently include:
 - `src/features/documents` for library, document detail, owned documents, and document server state.
 - `src/features/upload` for backend upload configuration, multipart upload, and document registration.
 - `src/features/rag` for RAG endpoints, folder-scoped source queries, and streaming chat state.
+- `src/features/admin` for dashboard metrics, account, subject, billing, system configuration, and document-review server state.
 
 `src/apis/document.api.ts` and `src/apis/rag.api.ts` are temporary
-compatibility exports for unmigrated home, folders, admin, and moderator
-consumers. New code must use the corresponding feature API or hooks.
+compatibility exports for remaining home and folder consumers. New code must use
+the corresponding feature API or hooks.
+
+The backend does not expose a `MODERATOR` role or moderator endpoints, so the
+moderator portal, navigation, guards, and routes are intentionally absent from
+the frontend.
 
 ### Folder Structure
 
@@ -51,7 +56,8 @@ src/
 │   ├── auth/                   # Session, identity, views and guards
 │   ├── documents/              # Library and document server state
 │   ├── upload/                 # Backend multipart upload flow
-│   └── rag/                    # RAG API and streaming chat flow
+│   ├── rag/                    # RAG API and streaming chat flow
+│   └── admin/                  # Admin server state and administration UI
 ├── shared/                     # Shared API client, providers, constants
 ├── styles/                     # Global styles
 │   └── globals.css

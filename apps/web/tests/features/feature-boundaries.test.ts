@@ -8,5 +8,7 @@ test("documents upload and RAG feature boundaries", () => {
   expect(readme).toContain("src/features/documents");
   expect(readme).toContain("src/features/upload");
   expect(readme).toContain("src/features/rag");
+  expect(readme).toContain("src/features/admin");
+  expect(readme).toContain("does not expose a `MODERATOR` role");
   expect(readme).toContain("React Query");
 });
