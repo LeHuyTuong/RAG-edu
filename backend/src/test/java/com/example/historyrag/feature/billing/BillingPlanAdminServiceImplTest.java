@@ -19,13 +19,13 @@ import static org.mockito.Mockito.when;
 
 class BillingPlanAdminServiceImplTest {
 
-    private BillingPlanRepository planRepository;
+    private BillingPlanService planService;
     private BillingPlanAdminServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        planRepository = mock(BillingPlanRepository.class);
-        service = new BillingPlanAdminServiceImpl(planRepository);
+       planService = mock(BillingPlanService.class);
+       service = new BillingPlanAdminServiceImpl(planService);
     }
 
     @Test
@@ -33,7 +33,7 @@ class BillingPlanAdminServiceImplTest {
     void findAll_existingPlans_returnsAllPlans() {
         BillingPlan free = plan(1L, "FREE", true);
         BillingPlan pro = plan(2L, "PRO", false);
-        when(planRepository.findAllByOrderByDisplayOrderAsc()).thenReturn(List.of(free, pro));
+        when(planService.findAllByOrderByDisplayOrderAsc()).thenReturn(List.of(free, pro));
 
         var response = service.findAll();
 
@@ -45,8 +45,8 @@ class BillingPlanAdminServiceImplTest {
     @Test
     @DisplayName("create should normalize code and save plan")
     void create_validRequest_savesNormalizedPlan() {
-        when(planRepository.existsByCodeIgnoreCase("STUDENT_PLUS")).thenReturn(false);
-        when(planRepository.save(any(BillingPlan.class))).thenAnswer(invocation -> {
+        when(planService.existsByCodeIgnoreCase("STUDENT_PLUS")).thenReturn(false);
+        when(planService.save(any(BillingPlan.class))).thenAnswer(invocation -> {
             BillingPlan saved = invocation.getArgument(0);
             saved.setId(10L);
             return saved;
@@ -56,13 +56,13 @@ class BillingPlanAdminServiceImplTest {
 
         assertEquals(10L, response.id());
         assertEquals("STUDENT_PLUS", response.code());
-        verify(planRepository).save(any(BillingPlan.class));
+        verify(planService).save(any(BillingPlan.class));
     }
 
     @Test
     @DisplayName("create should reject duplicated plan code")
     void create_duplicateCode_throwsDuplicateResourceException() {
-        when(planRepository.existsByCodeIgnoreCase("PRO")).thenReturn(true);
+        when(planService.existsByCodeIgnoreCase("PRO")).thenReturn(true);
 
         assertThrows(
                 DuplicateResourceException.class,
@@ -72,7 +72,7 @@ class BillingPlanAdminServiceImplTest {
     @Test
     @DisplayName("update should reject unsupported billing cycle")
     void update_invalidBillingCycle_throwsInvalidRequestException() {
-        when(planRepository.findById(1L)).thenReturn(Optional.of(plan(1L, "FREE", true)));
+        when(planService.findById(1L)).thenReturn(Optional.of(plan(1L, "FREE", true)));
 
         assertThrows(
                 InvalidRequestException.class,
@@ -83,13 +83,13 @@ class BillingPlanAdminServiceImplTest {
     @DisplayName("deactivate should only mark plan inactive")
     void deactivate_existingPlan_setsInactive() {
         BillingPlan plan = plan(1L, "FREE", true);
-        when(planRepository.findById(1L)).thenReturn(Optional.of(plan));
-        when(planRepository.save(plan)).thenReturn(plan);
+        when(planService.findById(1L)).thenReturn(Optional.of(plan));
+        when(planService.save(plan)).thenReturn(plan);
 
         service.deactivate(1L);
 
         assertFalse(plan.getActive());
-        verify(planRepository).save(plan);
+        verify(planService).save(plan);
     }
 
     private AdminBillingPlanRequest request(String code, String name, String billingCycle) {

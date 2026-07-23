@@ -1,7 +1,7 @@
 package com.example.historyrag.feature.document;
 
 import com.example.historyrag.feature.document.event.DocumentIngestRequested;
-import com.example.historyrag.feature.document.chunk.DocumentChunkRepository;
+import com.example.historyrag.feature.document.chunk.DocumentChunkService;
 import com.example.historyrag.infrastructure.file.FileStorageService;
 import com.example.historyrag.infrastructure.webclient.RagClientService;
 import com.example.historyrag.infrastructure.webclient.dto.RagClassifyRequest;
@@ -33,7 +33,7 @@ class DocumentIngestListenerTest {
     @Mock private DocumentRepository documentRepository;
     @Mock private RagClientService ragClientService;
     @Mock private FileStorageService fileStorageService;
-    @Mock private DocumentChunkRepository documentChunkRepository;
+    @Mock private DocumentChunkService documentChunkService;
 
     @Test
     @DisplayName("handleDocumentIngest — should classify then auto-approve with confidence >= 0.9")
@@ -56,7 +56,7 @@ class DocumentIngestListenerTest {
                 documentRepository,
                 ragClientService,
                 fileStorageService,
-                documentChunkRepository,
+                documentChunkService,
                 true,
                 new ContentHashLockRegistry()
         );
@@ -75,8 +75,8 @@ class DocumentIngestListenerTest {
         assertEquals("AUTO_APPROVED", document.getAiReviewStatus());
         assertEquals("NONE", document.getAiWarningLevel());
         assertEquals(DocumentStatus.READY, document.getStatus());
-        verify(documentChunkRepository).deleteByDocumentId(7L);
-        verify(documentChunkRepository).saveAll(any());
+        verify(documentChunkService).deleteByDocumentId(7L);
+        verify(documentChunkService).saveAll(any());
     }
 
     @Test
@@ -98,7 +98,7 @@ class DocumentIngestListenerTest {
                 documentRepository,
                 ragClientService,
                 fileStorageService,
-                documentChunkRepository,
+                documentChunkService,
                 false, // review disabled
                 new ContentHashLockRegistry()
         );
@@ -111,8 +111,8 @@ class DocumentIngestListenerTest {
         assertEquals("/app/uploads/lesson.pdf", ingestCaptor.getValue().filePath());
         assertNull(ingestCaptor.getValue().sourceUrl());
         assertEquals(DocumentStatus.READY, document.getStatus());
-        verify(documentChunkRepository).deleteByDocumentId(7L);
-        verify(documentChunkRepository).saveAll(any());
+        verify(documentChunkService).deleteByDocumentId(7L);
+        verify(documentChunkService).saveAll(any());
     }
 
     @Test
@@ -124,7 +124,7 @@ class DocumentIngestListenerTest {
                 documentRepository,
                 ragClientService,
                 fileStorageService,
-                documentChunkRepository,
+                documentChunkService,
                 true,
                 new ContentHashLockRegistry()
         );
@@ -134,7 +134,7 @@ class DocumentIngestListenerTest {
         assertEquals(DocumentStatus.REJECTED, document.getStatus());
         verify(ragClientService, never()).classify(any(), any());
         verify(ragClientService, never()).ingest(any(), any());
-    }
+    } 
 
     private static Document document(Long id, DocumentStatus status, String publicId) {
         Document document = new Document();

@@ -12,16 +12,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class BillingPlanAdminServiceImpl implements BillingPlanAdminService {
 
-    private final BillingPlanRepository planRepository;
+    private final BillingPlanService planService;
 
-    public BillingPlanAdminServiceImpl(BillingPlanRepository planRepository) {
-        this.planRepository = planRepository;
+    public BillingPlanAdminServiceImpl(BillingPlanService planService) {
+        this.planService = planService;
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<AdminBillingPlanResponse> findAll() {
-        return planRepository.findAllByOrderByDisplayOrderAsc()
+        return planService.findAllByOrderByDisplayOrderAsc()
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -39,13 +39,13 @@ public class BillingPlanAdminServiceImpl implements BillingPlanAdminService {
         String code = normalizeCode(request.code());
         validateBillingCycle(request.billingCycle());
 
-        if (planRepository.existsByCodeIgnoreCase(code)) {
+        if (planService.existsByCodeIgnoreCase(code)) {
             throw new DuplicateResourceException("BillingPlan", "code", code);
         }
 
         BillingPlan plan = new BillingPlan();
         applyRequest(plan, request, code);
-        return toResponse(planRepository.save(plan));
+        return toResponse(planService.save(plan));
     }
 
     @Override
@@ -55,12 +55,12 @@ public class BillingPlanAdminServiceImpl implements BillingPlanAdminService {
         String code = normalizeCode(request.code());
         validateBillingCycle(request.billingCycle());
 
-        if (planRepository.existsByCodeIgnoreCaseAndIdNot(code, id)) {
+        if (planService.existsByCodeIgnoreCaseAndIdNot(code, id)) {
             throw new DuplicateResourceException("BillingPlan", "code", code);
         }
 
         applyRequest(plan, request, code);
-        return toResponse(planRepository.save(plan));
+        return toResponse(planService.save(plan));
     }
 
     @Override
@@ -68,11 +68,11 @@ public class BillingPlanAdminServiceImpl implements BillingPlanAdminService {
     public void deactivate(Long id) {
         BillingPlan plan = findPlan(id);
         plan.setActive(false);
-        planRepository.save(plan);
+        planService.save(plan);
     }
 
     private BillingPlan findPlan(Long id) {
-        return planRepository.findById(id)
+        return planService.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("BillingPlan", "id", id));
     }
 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent, type ReactElement } from "react";
 
+import { APP_CONFIG } from "@/config";
 import { BackButton } from "@/components/ui/BackButton";
 import { buildUserFromAccessToken, extractAccessToken } from "@/lib/auth";
 import { apiClient } from "@/lib/axios";
@@ -157,7 +158,27 @@ export default function LoginPageClient(): ReactElement {
             </button>
           </form>
 
-          <p className="mt-5 font-label-sm text-label-sm text-on-surface-variant">
+          <div className="mt-6 flex items-center gap-3">
+            <div className="h-px flex-1 bg-outline-variant"></div>
+            <span className="font-label-sm text-label-sm uppercase tracking-wider text-on-surface-variant">
+              Hoặc
+            </span>
+            <div className="h-px flex-1 bg-outline-variant"></div>
+          </div>
+
+          <a
+            href={`${APP_CONFIG.api.baseUrl}${API_ENDPOINTS.AUTH.GOOGLE}`}
+            className="mt-6 inline-flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-outline-variant bg-surface px-5 font-label-lg text-label-lg font-semibold text-on-surface transition-colors hover:bg-surface-container-high"
+          >
+            <img
+              src="https://www.google.com/favicon.ico"
+              alt="Google"
+              className="h-5 w-5"
+            />
+            Đăng nhập bằng Google
+          </a>
+
+          <p className="mt-6 text-center font-label-sm text-label-sm text-on-surface-variant">
             Chưa có tài khoản?{" "}
             <Link
               href={ROUTE_PATHS.AUTH_ROUTES.REGISTER}

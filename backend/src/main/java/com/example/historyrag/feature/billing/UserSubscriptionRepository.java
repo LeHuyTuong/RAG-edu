@@ -16,6 +16,13 @@ public interface UserSubscriptionRepository extends JpaRepository<UserSubscripti
 
     long countByStatus(String status);
 
-    @org.springframework.data.jpa.repository.Query("SELECT SUM(bp.priceVnd) FROM UserSubscription us JOIN us.plan bp WHERE us.status = 'ACTIVE'")
+    @org.springframework.data.jpa.repository.Query("SELECT SUM(bp.priceVnd) FROM UserSubscription us JOIN us.plan bp WHERE us.status <> 'REFUNDED' AND bp.priceVnd > 0")
     Long calculateTotalRevenue();
+
+    @org.springframework.data.jpa.repository.Query("SELECT FUNCTION('YEAR', us.createdAt), FUNCTION('MONTH', us.createdAt), SUM(bp.priceVnd) " +
+            "FROM UserSubscription us JOIN us.plan bp " +
+            "WHERE us.status <> 'REFUNDED' AND bp.priceVnd > 0 " +
+            "GROUP BY FUNCTION('YEAR', us.createdAt), FUNCTION('MONTH', us.createdAt) " +
+            "ORDER BY FUNCTION('YEAR', us.createdAt) ASC, FUNCTION('MONTH', us.createdAt) ASC")
+    List<Object[]> calculateRevenueByMonth();
 }
