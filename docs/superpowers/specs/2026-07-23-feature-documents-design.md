@@ -15,7 +15,8 @@ Included:
 - `/library`: public document listing, filters, sort controls, pagination, and
   subject list.
 - `/documents/[id]`: document detail, related-document list, protected file
-  preview, and the existing share control.
+  preview, and the existing share control. The disabled discussion block is
+  removed because the backend provides no comment endpoint.
 - `/my-documents`: the owner's list, status filter, edit, soft delete, restore,
   and hard-delete actions.
 
@@ -42,7 +43,8 @@ The Spring backend provides the endpoints consumed by this slice:
 - `POST` and `DELETE /api/v1/documents/{id}/share`.
 
 Every current document control in the three scoped screens has a matching
-backend endpoint. No document UI is removed in this slice.
+backend endpoint except the disabled discussion block, which is removed rather
+than displayed as an unavailable feature.
 
 ## Target structure
 
