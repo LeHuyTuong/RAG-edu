@@ -11,7 +11,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
-      ddl-auto: ${JPA_DDL_AUTO:update}
+      ddl-auto: ${JPA_DDL_AUTO:validate}
     open-in-view: false
     properties:
       hibernate:
@@ -26,7 +26,7 @@ spring:
       max-file-size: ${MAX_FILE_SIZE:20MB}
       max-request-size: ${MAX_REQUEST_SIZE:25MB}
 jwt:
-  secret-key: ${JWT_SECRET_KEY}
+  secret-key: ${JWT_SECRET_KEY:dev-secret-key-r4g-3du-2024-history-rag-system-abcdefgh}
   # 15 minutes
   access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:900}
   # 3 days

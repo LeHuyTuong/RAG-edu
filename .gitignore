@@ -9,10 +9,10 @@ node_modules/
 .env.development.local
 .env.test.local
 .env.production.local
+apps/*/.env
 apps/*/.env.local
 rag-service/.env
-# Contains real DB credentials for local/test runs — never commit real values here.
-backend/src/main/resources/application-test.yml
+backend/.env
 
 # Testing
 coverage/
@@ -63,8 +63,8 @@ stich/
 backend/src/main/resources/application-local.yml
 backend/src/main/java/com/example/historyrag/config/DataInitializer.java
 backend/data/
+backend/uploads/
 
 # Python & Dependencies
 **/__pycache__/
 *.pyc
-pnpm-lock.yaml

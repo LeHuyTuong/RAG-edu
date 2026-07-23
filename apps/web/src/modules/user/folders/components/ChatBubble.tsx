@@ -1,7 +1,9 @@
 "use client";
 
-import type { FC } from "react";
+import { useState, type FC } from "react";
 import type { RagCitationResponse } from "@/apis/rag.api";
+import { toast } from "sonner";
+import { Tooltip } from "@/components/ui/Tooltip";
 
 interface ChatBubbleProps {
   role: "user" | "assistant";
@@ -15,6 +17,8 @@ export const ChatBubble: FC<ChatBubbleProps> = ({
   citations,
 }) => {
   const isUser = role === "user";
+  const [feedback, setFeedback] = useState<"up" | "down" | null>(null);
+
   const uniqueCitations = citations
     ? citations.filter(
         (c, idx, self) =>
@@ -26,63 +30,136 @@ export const ChatBubble: FC<ChatBubbleProps> = ({
       )
     : [];
 
+  const handleFeedback = (type: "up" | "down") => {
+    if (feedback === type) {
+      setFeedback(null);
+    } else {
+      setFeedback(type);
+      toast.success(
+        type === "up" ? "Cảm ơn bạn đã đánh giá tốt!" : "Cảm ơn bạn đã góp ý!",
+      );
+    }
+  };
+
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-      <div
-        className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-          isUser
-            ? "bg-primary text-on-primary"
-            : "bg-surface-variant text-on-surface"
-        }`}
-      >
-        {!isUser && (
-          <div className="flex items-center gap-2 mb-1">
-            <span className="material-symbols-outlined text-[18px] text-primary">
-              smart_toy
-            </span>
-            <span className="text-xs font-medium text-primary">
-              AI Assistant
-            </span>
-          </div>
-        )}
+      <div className={`max-w-[80%] flex flex-col gap-1`}>
+        <div
+          className={`rounded-2xl px-4 py-3 ${
+            isUser
+              ? "bg-primary text-on-primary"
+              : "bg-surface-variant text-on-surface"
+          }`}
+        >
+          {!isUser && (
+            <div className="flex items-center gap-2 mb-1">
+              <span className="material-symbols-outlined text-[18px] text-primary">
+                smart_toy
+              </span>
+              <span className="text-xs font-medium text-primary">
+                AI Assistant
+              </span>
+            </div>
+          )}
 
-        <div className="text-sm whitespace-pre-wrap leading-relaxed">
-          {content ||
-            (isUser ? (
-              ""
-            ) : (
-              <span className="italic opacity-60">Đang suy nghĩ...</span>
-            ))}
+          <div className="text-sm whitespace-pre-wrap leading-relaxed">
+            {content ||
+              (isUser ? (
+                ""
+              ) : (
+                <span className="italic opacity-60">Đang suy nghĩ...</span>
+              ))}
+          </div>
+
+          {!isUser && uniqueCitations.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-outline/30">
+              <p className="text-xs font-medium text-on-surface-variant mb-2">
+                Nguồn tham khảo ({uniqueCitations.length})
+              </p>
+              <div className="space-y-2">
+                {uniqueCitations.map((c, i) => {
+                  const relevancePercent =
+                    c.relevance !== undefined
+                      ? Math.round(c.relevance * 100)
+                      : null;
+
+                  return (
+                    <div
+                      key={i}
+                      className="text-xs bg-surface/80 rounded-lg p-3 border border-outline/20"
+                    >
+                      <p className="font-medium text-on-surface line-clamp-1">
+                        {c.title ?? c.source ?? `Nguồn ${i + 1}`}
+                      </p>
+                      {c.content && (
+                        <p className="text-on-surface-variant line-clamp-2 mt-1">
+                          {c.content}
+                        </p>
+                      )}
+
+                      {relevancePercent !== null && (
+                        <div className="mt-2 flex flex-col gap-1">
+                          <div className="flex items-center justify-between text-[10px] text-on-surface-variant">
+                            <span>
+                              {c.page ? `Trang ${c.page}` : "Độ liên quan"}
+                            </span>
+                            <span>{relevancePercent}%</span>
+                          </div>
+                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-outline-variant/30">
+                            <div
+                              className={`h-full rounded-full ${
+                                relevancePercent >= 80
+                                  ? "bg-emerald-500"
+                                  : relevancePercent >= 50
+                                    ? "bg-amber-500"
+                                    : "bg-rose-500"
+                              }`}
+                              style={{ width: `${relevancePercent}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
-        {!isUser && uniqueCitations.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-outline/30">
-            <p className="text-xs font-medium text-on-surface-variant mb-2">
-              Nguồn tham khảo ({uniqueCitations.length})
-            </p>
-            <div className="space-y-2">
-              {uniqueCitations.map((c, i) => (
-                <div
-                  key={i}
-                  className="text-xs bg-surface/80 rounded-lg p-2 border border-outline/20"
-                >
-                  <p className="font-medium text-on-surface line-clamp-1">
-                    {c.title ?? c.source ?? `Nguồn ${i + 1}`}
-                  </p>
-                  {c.content && (
-                    <p className="text-on-surface-variant line-clamp-2 mt-0.5">
-                      {c.content}
-                    </p>
-                  )}
-                  {c.relevance !== undefined && (
-                    <span className="text-on-surface-variant/60 mt-0.5 block">
-                      {c.page ? `Trang ${c.page} · ` : ""}Độ liên quan:{" "}
-                      {Math.round(c.relevance * 100)}%
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
+        {/* Feedback UI */}
+        {!isUser && content && (
+          <div className="flex items-center gap-1 px-2 mt-0.5">
+            <Tooltip text="Câu trả lời tốt">
+              <button
+                type="button"
+                onClick={() => handleFeedback("up")}
+                className={`flex h-6 w-6 items-center justify-center rounded-full transition-colors ${
+                  feedback === "up"
+                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                    : "text-on-surface-variant hover:bg-surface-variant hover:text-on-surface"
+                }`}
+              >
+                <span className="material-symbols-outlined text-[14px]">
+                  thumb_up
+                </span>
+              </button>
+            </Tooltip>
+            <Tooltip text="Câu trả lời chưa tốt">
+              <button
+                type="button"
+                onClick={() => handleFeedback("down")}
+                className={`flex h-6 w-6 items-center justify-center rounded-full transition-colors ${
+                  feedback === "down"
+                    ? "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                    : "text-on-surface-variant hover:bg-surface-variant hover:text-on-surface"
+                }`}
+              >
+                <span className="material-symbols-outlined text-[14px]">
+                  thumb_down
+                </span>
+              </button>
+            </Tooltip>
           </div>
         )}
       </div>

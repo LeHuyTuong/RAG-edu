@@ -2,34 +2,42 @@ package com.example.historyrag.feature.admin;
 
 import com.example.historyrag.feature.admin.dto.DashboardActivityResponse;
 import com.example.historyrag.feature.admin.dto.DashboardResponse;
+import com.example.historyrag.feature.billing.UserSubscriptionService;
 import com.example.historyrag.feature.document.DocumentService;
 import com.example.historyrag.feature.document.DocumentStatus;
 import com.example.historyrag.feature.subject.SubjectService;
 import com.example.historyrag.feature.user.User;
 import com.example.historyrag.feature.user.UserService;
-import com.example.historyrag.feature.billing.UserSubscriptionRepository;
+
+import java.time.YearMonth;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.ArrayList;
-import java.util.List;
-import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class AdminDashboardServiceImpl implements AdminDashboardService {
 
+    private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("MM/yyyy")
+            .withZone(ZoneId.of("Asia/Ho_Chi_Minh"));
+
     private final UserService userService;
     private final DocumentService documentService;
     private final SubjectService subjectService;
-    private final UserSubscriptionRepository userSubscriptionRepository;
+    private final UserSubscriptionService userSubscriptionService;
 
     @Override
     @Transactional(readOnly = true)
     public DashboardResponse getDashboard() {
         long totalUsers = userService.countAll();
         long totalStudents = userService.countByRole(User.UserRole.STUDENT);
-        userService.countByRole(User.UserRole.ADMIN);
         long activeUsers = userService.countByStatus(User.UserStatus.ACTIVE);
         long lockedUsers = userService.countByStatus(User.UserStatus.LOCKED);
 
@@ -41,47 +49,45 @@ public class AdminDashboardServiceImpl implements AdminDashboardService {
         long indexingDocs = documentService.countByStatus(DocumentStatus.INDEXING);
         long reindexingDocs = documentService.countByStatus(DocumentStatus.REINDEXING);
         long failedDocs = documentService.countByStatus(DocumentStatus.FAILED);
-        // PENDING = all processing states (uploading + indexing + reindexing + failed)
-        long pendingDocs = uploadingDocs + indexingDocs + reindexingDocs + failedDocs;
+        long pendingDocs = uploadingDocs + indexingDocs + reindexingDocs + failedDocs + pendingReviewDocs;
         long subjectCount = subjectService.countAll();
 
-        long activeSubscriptions = userSubscriptionRepository.countByStatus("ACTIVE");
-        Long calculatedRevenue = userSubscriptionRepository.calculateTotalRevenue();
+        long activeSubscriptions = userSubscriptionService.countByStatus("ACTIVE");
+        Long calculatedRevenue = userSubscriptionService.calculateTotalRevenue();
         long totalRevenue = calculatedRevenue != null ? calculatedRevenue : 0L;
 
-        // Tính doanh thu theo tháng (thực tế từ Database)
-        java.time.format.DateTimeFormatter formatter = java.time.format.DateTimeFormatter.ofPattern("MM/yyyy")
-                .withZone(java.time.ZoneId.systemDefault());
-        
-        java.util.Map<String, Long> revenueByMonth = new java.util.LinkedHashMap<>();
-        // Khởi tạo 6 tháng gần nhất bằng 0
-        java.time.Instant now = java.time.Instant.now();
-        for (int i = 5; i >= 0; i--) {
-            String month = formatter.format(now.minus(java.time.Duration.ofDays(30L * i)));
-            revenueByMonth.put(month, 0L);
-        }
-
-        userSubscriptionRepository.findAll().forEach(sub -> {
-            if (sub.getPlan() != null && sub.getPlan().getPriceVnd() > 0 
-                && !"REFUNDED".equals(sub.getStatus())) {
-                String monthKey = formatter.format(sub.getCreatedAt());
-                if (revenueByMonth.containsKey(monthKey)) {
-                    revenueByMonth.put(monthKey, revenueByMonth.get(monthKey) + sub.getPlan().getPriceVnd());
-                }
-            }
-        });
-
-        List<DashboardResponse.RevenueData> revenueChart = revenueByMonth.entrySet().stream()
-                .map(e -> new DashboardResponse.RevenueData("Tháng " + e.getKey().split("/")[0], e.getValue()))
-                .toList();
+        List<DashboardResponse.RevenueData> revenueChart = buildRevenueChart();
 
         return new DashboardResponse(
-                new DashboardResponse.AccountStats(totalUsers, activeUsers, lockedUsers, totalStudents),
+                new DashboardResponse.AccountStats(totalUsers, activeUsers, lockedUsers, 0L),
                 new DashboardResponse.DocumentStats(totalDocuments, readyDocs, pendingDocs, rejectedDocs),
                 new DashboardResponse.SubjectStats(subjectCount),
                 new DashboardResponse.BillingStats(totalRevenue, activeSubscriptions, revenueChart),
                 buildActivities(totalStudents, readyDocs, failedDocs, pendingReviewDocs)
         );
+    }
+
+    private List<DashboardResponse.RevenueData> buildRevenueChart() {
+        YearMonth now = YearMonth.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+        Map<String, Long> revenueByMonth = new LinkedHashMap<>();
+        for (int i = 5; i >= 0; i--) {
+            revenueByMonth.put(now.minusMonths(i).format(MONTH_FORMATTER), 0L);
+        }
+
+        List<Object[]> dbResults = userSubscriptionService.calculateRevenueByMonth();
+        for (Object[] row : dbResults) {
+            int year = ((Number) row[0]).intValue();
+            int month = ((Number) row[1]).intValue();
+            String monthKey = YearMonth.of(year, month).format(MONTH_FORMATTER);
+            Long revenue = ((Number) row[2]).longValue();
+            if (revenueByMonth.containsKey(monthKey)) {
+                revenueByMonth.put(monthKey, revenue);
+            }
+        }
+
+        return revenueByMonth.entrySet().stream()
+                .map(e -> new DashboardResponse.RevenueData("Tháng " + e.getKey().split("/")[0], e.getValue()))
+                .toList();
     }
 
     private List<DashboardActivityResponse> buildActivities(

@@ -2,7 +2,7 @@ package com.example.historyrag.feature.document;
 
 import com.example.historyrag.feature.document.event.DocumentIngestRequested;
 import com.example.historyrag.feature.document.chunk.DocumentChunk;
-import com.example.historyrag.feature.document.chunk.DocumentChunkRepository;
+import com.example.historyrag.feature.document.chunk.DocumentChunkService;
 import com.example.historyrag.infrastructure.file.FileStorageService;
 import com.example.historyrag.infrastructure.webclient.RagClientService;
 import com.example.historyrag.infrastructure.webclient.dto.RagClassifyRequest;
@@ -26,20 +26,20 @@ public class DocumentIngestListener {
     private final DocumentRepository documentRepository;
     private final RagClientService ragClientService;
     private final FileStorageService fileStorageService;
-    private final DocumentChunkRepository documentChunkRepository;
+    private final DocumentChunkService documentChunkService;
     private final boolean reviewEnabled;
     private final ContentHashLockRegistry contentHashLockRegistry;
 
     public DocumentIngestListener(DocumentRepository documentRepository,
                                    RagClientService ragClientService,
                                    FileStorageService fileStorageService,
-                                   DocumentChunkRepository documentChunkRepository,
+                                   DocumentChunkService documentChunkService,
                                    @Value("${app.document.review.enabled:true}") boolean reviewEnabled,
                                    ContentHashLockRegistry contentHashLockRegistry) {
         this.documentRepository = documentRepository;
         this.ragClientService = ragClientService;
         this.fileStorageService = fileStorageService;
-        this.documentChunkRepository = documentChunkRepository;
+        this.documentChunkService = documentChunkService;
         this.reviewEnabled = reviewEnabled;
         this.contentHashLockRegistry = contentHashLockRegistry;
     }
@@ -202,7 +202,7 @@ public class DocumentIngestListener {
     }
 
     private void saveIngestedChunks(Document doc, RagIngestResponse response) {
-        documentChunkRepository.deleteByDocumentId(doc.getId());
+        documentChunkService.deleteByDocumentId(doc.getId());
         if (response.chunks() == null || response.chunks().isEmpty()) {
             return;
         }
@@ -219,7 +219,7 @@ public class DocumentIngestListener {
                     return chunk;
                 })
                 .toList();
-        documentChunkRepository.saveAll(chunks);
+        documentChunkService.saveAll(chunks);
     }
 
     private Document findMutableDocument(Long docId) {

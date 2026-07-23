@@ -5,6 +5,7 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/Toaster";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { CookieConsent } from "@/components/patterns/CookieConsent";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -58,6 +59,7 @@ export default function RootLayout({
         <ThemeProvider>
           {children}
           <Toaster position="top-right" richColors closeButton />
+          <CookieConsent />
         </ThemeProvider>
       </body>
     </html>
