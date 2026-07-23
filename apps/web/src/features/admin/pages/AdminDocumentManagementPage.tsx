@@ -93,7 +93,8 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
   const deleteDocument = useDeleteDocument();
   const hardDeleteDocument = useHardDeleteDocument();
   const restoreDocument = useRestoreDocument();
-  const documents = documentsQuery.data?.documents ?? [];
+  const rawDocuments = documentsQuery.data?.documents;
+  const documents = useMemo(() => rawDocuments ?? [], [rawDocuments]);
   const totalPages = documentsQuery.data?.pagination.totalPages ?? 1;
   const loading = documentsQuery.isLoading;
   const isDeleting = deleteDocument.isPending || hardDeleteDocument.isPending;
@@ -101,12 +102,16 @@ export default function AdminDocumentManagementPage(): React.JSX.Element {
 
   useEffect(() => {
     setSelectedDocumentIds((current) => {
+      if (current.size === 0) return current;
+
       const availableIds = new Set(
         documents
           .filter(canSelectForReview)
           .map((document) => String(document.id)),
       );
-      return new Set([...current].filter((id) => availableIds.has(id)));
+      const next = new Set([...current].filter((id) => availableIds.has(id)));
+      if (next.size === current.size) return current;
+      return next;
     });
   }, [documents]);
 
