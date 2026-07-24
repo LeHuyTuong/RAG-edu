@@ -13,8 +13,10 @@ import {
 import { useAuth } from "@/features/auth";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { APP_CONFIG } from "@/config";
 import { DocumentPreview } from "@/modules/user/documents/detail/components/DocumentPreview";
 import { RejectDocumentModal } from "@/features/documents/components/RejectDocumentModal";
+import { buildProtectedFileUrl } from "@/features/documents/lib/detail/document-download";
 import type { DocumentStatus } from "@/types/document.type";
 import { formatDate, formatFileSize } from "@/utils";
 import { getErrorMessage } from "@/utils/error";
@@ -89,6 +91,29 @@ export default function AdminDocumentDetailPage({
     try {
       await approveDocument.mutateAsync(document.id);
       toast.success("Đã duyệt tài liệu");
+    } catch (error) {
+      toast.error(getErrorMessage(error));
+    }
+  };
+
+  const handleOpenOriginal = async () => {
+    if (!document || !accessToken) {
+      toast.error("Bạn cần đăng nhập để mở tài liệu");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `${APP_CONFIG.api.baseUrl}${buildProtectedFileUrl(document.id)}`,
+        { headers: { Authorization: `Bearer ${accessToken}` } },
+      );
+
+      if (!response.ok) {
+        throw new Error("Không thể mở tài liệu");
+      }
+
+      const blob = await response.blob();
+      window.open(URL.createObjectURL(blob), "_blank", "noopener,noreferrer");
     } catch (error) {
       toast.error(getErrorMessage(error));
     }
@@ -185,15 +210,14 @@ export default function AdminDocumentDetailPage({
                 <MaterialIcon className="text-primary" name="article" />
                 Xem trước tài liệu
               </h2>
-              <a
+              <button
                 className="inline-flex items-center gap-2 rounded-lg border border-outline-variant px-3 py-2 text-sm text-on-surface-variant transition-colors hover:border-primary hover:text-primary"
-                href={document.fileUrl}
-                rel="noopener noreferrer"
-                target="_blank"
+                onClick={() => void handleOpenOriginal()}
+                type="button"
               >
                 <MaterialIcon name="open_in_new" />
                 Mở tệp gốc
-              </a>
+              </button>
             </div>
             <div className="bg-surface-container-low p-4">
               <DocumentPreview preview={preview ?? { type: "unsupported" }} />

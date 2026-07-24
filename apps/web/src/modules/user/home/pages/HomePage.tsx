@@ -177,10 +177,11 @@ export default function HomePage(): React.JSX.Element {
               <div className="mb-6 flex items-end justify-between">
                 <div>
                   <h2 className="text-[26px] font-bold tracking-tight text-on-surface">
-                    Khám phá theo chủ đề
+                    Khám phá theo giai đoạn
                   </h2>
                   <p className="mt-1 text-sm text-on-surface-variant/60">
-                    Chọn một chủ đề đang có trong hệ thống để khám phá tư liệu
+                    Chọn một giai đoạn đang có trong hệ thống để khám phá tư
+                    liệu
                   </p>
                 </div>
                 <Link

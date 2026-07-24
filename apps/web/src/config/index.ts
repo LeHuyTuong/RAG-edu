@@ -10,7 +10,13 @@ export const APP_CONFIG = {
 
   // API Configuration
   api: {
-    baseUrl: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080",
+    // Derive from the browser's current host so the same build works whether
+    // opened via localhost or a Tailscale/LAN IP; falls back to the env var
+    // during SSR where `window` isn't available.
+    baseUrl:
+      typeof window !== "undefined"
+        ? `http://${window.location.hostname}:8080`
+        : process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080",
     timeout: 15_000,
   },
 
