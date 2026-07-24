@@ -35,7 +35,9 @@ _INDEXED_FIELDS: dict[str, PayloadSchemaType] = {
 def get_client() -> QdrantClient:
     global _client
     if _client is None:
-        _client = QdrantClient(url=settings.qdrant_url, api_key=settings.qdrant_api_key)
+        # timeout mặc định của thư viện quá ngắn cho upsert wait=True hàng loạt
+        # điểm (tài liệu dài → nhiều chunk) — dễ timeout dù Qdrant vẫn đang ghi.
+        _client = QdrantClient(url=settings.qdrant_url, api_key=settings.qdrant_api_key, timeout=120)
     return _client
 
 

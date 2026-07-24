@@ -64,7 +64,7 @@ def generate(system_prompt: str, user_message: str, temperature: float = 0.2, ai
 def generate_with_wikipedia(system_prompt: str, user_message: str, temperature: float = 0.2, ai_config: AiConfig = None) -> str:
     # MVP: Fallback to standard generate
     # In future, this can be enhanced to perform an iterative tool-call loop with wikipedia_service
-    return generate(system_prompt, user_message, temperature, ai_config)
+    return generate(system_prompt, user_message, temperature, ai_config=ai_config)
 
 
 def generate_stream(system_prompt: str, user_message: str, temperature: float = 0.2, ai_config: AiConfig = None):

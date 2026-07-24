@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Optional
 
 from app.schemas.classify import RagClassifyRequest, RagClassifyResponse
+from app.schemas.config import AiConfig
 from app.services.extract_service import extract
 from app.services.llm_service import generate_with_wikipedia
 
@@ -64,7 +65,7 @@ def load_classify_prompt() -> str:
     return _CLASSIFY_PROMPT_PATH.read_text(encoding="utf-8").strip()
 
 
-def classify(req: RagClassifyRequest) -> RagClassifyResponse:
+def classify(req: RagClassifyRequest, ai_config: AiConfig = None) -> RagClassifyResponse:
     pages = extract(
         raw_content=req.rawContent,
         file_path=req.filePath,
