@@ -92,13 +92,12 @@ public class DocumentIngestListener {
 
                 if (isHistory && confidence >= 0.9) {
                     // === AUTO APPROVE: confidence >= 90% và là lịch sử ===
-                    // Ingest ngay lập tức — không cần chờ cronjob
+                    // Giữ status REVIEWING, để AutoApprovalScheduler ingest sau (chạy mỗi phút),
+                    // cho user thấy "pending" một khoảng ngắn trước khi thành công.
                     doc.setAiWarningLevel("NONE");
                     doc.setAiReviewStatus("AUTO_APPROVED");
-                    doc.setStatus(DocumentStatus.INDEXING);
                     documentRepository.save(doc);
-                    log.info("Document {} AUTO_APPROVED, tự động ingest ngay: confidence={}", docId, confidence);
-                    runIngest(doc, filePath);
+                    log.info("Document {} AUTO_APPROVED, chờ scheduler ingest: confidence={}", docId, confidence);
                     return;
                 } else if (!isHistory) {
                     doc.setStatus(DocumentStatus.PENDING_REVIEW);

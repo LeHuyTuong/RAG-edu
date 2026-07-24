@@ -340,15 +340,14 @@ public class DocumentServiceImpl implements DocumentService {
         // đã qua kiểm duyệt, nên ca "đã duyệt nhưng index lỗi" = FAILED + reviewedAt.
         if (doc.getStatus() == DocumentStatus.PENDING_REVIEW || doc.getStatus() == DocumentStatus.FAILED) {
             doc.setStatus(DocumentStatus.INDEXING);
-            doc.setIsPublic(true);
             doc.setReviewedById(userId);
             doc.setReviewedAt(Instant.now());
             documentRepository.save(doc);
             eventPublisher.publishEvent(new DocumentIngestRequested(doc.getId()));
             log.info("Document {} manually approved by userId={}, status -> INDEXING", id, userId);
         } else if (doc.getStatus() == DocumentStatus.READY) {
-            // Đã index sẵn — chỉ cập nhật quyết định publish, không ingest lại.
-            doc.setIsPublic(true);
+            // Đã index sẵn — chỉ ghi nhận việc đã qua kiểm duyệt, không đụng isPublic
+            // (công khai hay không là lựa chọn của người upload, không phải quyết định duyệt).
             doc.setReviewedById(userId);
             doc.setReviewedAt(Instant.now());
             documentRepository.save(doc);
