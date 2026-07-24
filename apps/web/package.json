@@ -8,7 +8,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "check-types": "next typegen && tsc --noEmit"
+    "check-types": "next typegen && tsc --noEmit",
+    "screenshots": "node e2e/capture-screenshots.mjs",
+    "chatbot-screenshot": "node e2e/capture-chatbot-demo.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
@@ -34,6 +36,7 @@
     "zustand": "^5.0.13"
   },
   "devDependencies": {
+    "@playwright/test": "1.60.0",
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@tailwindcss/postcss": "^4.3.0",

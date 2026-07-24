@@ -6,6 +6,33 @@ service: users upload documents, the Spring API stores metadata and files, then
 the RAG service extracts content, chunks it, embeds it, stores vectors in
 Qdrant, and answers questions with citations.
 
+## Screenshots
+
+|                                                                          |                                                                                 |
+| ------------------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| ![Landing page](docs/screenshots/landing.png) Landing page               | ![Login](docs/screenshots/login.png) Login                                      |
+| ![Student home](docs/screenshots/home.png) Student home                  | ![Library](docs/screenshots/library.png) Library                                |
+| ![Admin dashboard](docs/screenshots/admin-dashboard.png) Admin dashboard | ![AI chatbot](docs/screenshots/chatbot.png) AI chatbot answering with citations |
+
+Regenerate these after a UI change with the full local stack running
+(`docker compose up --build` + `pnpm --filter web dev`):
+
+```bash
+pnpm --filter web screenshots
+```
+
+This logs in as a freshly registered student and as the seeded admin
+(`admin@historyrag.edu.vn`), then writes PNGs to `docs/screenshots/`.
+
+The chatbot screenshot demos a folder chat answering a question with
+citations. It logs in as a real account with real folder data, so
+credentials are passed via env vars and never committed:
+
+```bash
+DEMO_EMAIL=you@example.com DEMO_PASSWORD=yourpassword \
+  pnpm --filter web chatbot-screenshot
+```
+
 ## Current Stack
 
 | Layer         | Technology                                 | Purpose                                                  |
@@ -146,14 +173,16 @@ on frontend integration, set `NEXT_PUBLIC_API_URL=http://localhost:8080`.
 
 ## Useful Commands
 
-| Command                     | Description                                       |
-| --------------------------- | ------------------------------------------------- |
-| `docker compose up --build` | Start MySQL, Spring Boot backend, and RAG service |
-| `cd backend && mvn test`    | Run Spring tests when Maven is installed locally  |
-| `cd rag-service && pytest`  | Run RAG service tests                             |
-| `pnpm --filter web dev`     | Start the Next.js web app                         |
-| `pnpm --filter web test`    | Run web tests                                     |
-| `./e2e-test.sh`             | Run Spring/RAG smoke flow after services are up   |
+| Command                                | Description                                                       |
+| -------------------------------------- | ----------------------------------------------------------------- |
+| `docker compose up --build`            | Start MySQL, Spring Boot backend, and RAG service                 |
+| `cd backend && mvn test`               | Run Spring tests when Maven is installed locally                  |
+| `cd rag-service && pytest`             | Run RAG service tests                                             |
+| `pnpm --filter web dev`                | Start the Next.js web app                                         |
+| `pnpm --filter web test`               | Run web tests                                                     |
+| `pnpm --filter web screenshots`        | Capture README screenshots with Playwright                        |
+| `pnpm --filter web chatbot-screenshot` | Capture an AI chatbot answer (needs `DEMO_EMAIL`/`DEMO_PASSWORD`) |
+| `./e2e-test.sh`                        | Run Spring/RAG smoke flow after services are up                   |
 
 ## API Overview
 
